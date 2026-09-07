@@ -26,48 +26,49 @@ The MBTX runner owns script execution and job lifecycle. Codex remains the
 authority for model interaction, workspace selection, approvals, and the host
 sandbox. The runner must not become an alternate model client or agent loop.
 
-## Proposed packages
+## Packages
 
-- `runtime/`: typed execution requests, results, job states, and errors.
-- `process/`: process startup, argument passing, output capture, timeout, and
-  cancellation.
+- `runtime/`: validated execution requests, results, and event types.
+- `process/`: invokes `moon run` without a shell and captures output.
 - `protocol/`: JSONL requests and execution events.
-- `policy/`: workspace, environment, executable, and argument restrictions.
-- `cmd/mbtx/`: the executable entry point once the runner is implemented.
+- `cmd/mbtx/`: reads JSONL requests from stdin and writes events to stdout.
 - `examples/`: small runnable `.mbtx` scripts.
-- `eval/`: deterministic fixtures and comparative evaluation tasks.
+- `scripts/`: `.mbtx` automation, including the CLI smoke test.
+- `policy/` (planned): workspace, environment, executable, and argument restrictions.
+- `eval/` (planned): comparative evaluation tasks.
 - `codex/`: a pinned Codex source tree, added after the standalone protocol is
   stable.
 
-Dependencies should flow from the command entry point into protocol, policy,
-process, and runtime packages. The MBTX packages should not depend on the
-Codex model client.
+Dependencies flow from the command entry point into protocol and process, which
+both depend on runtime. The MBTX packages do not depend on the Codex model client.
 
 ## Initial protocol
 
-The first protocol should use one JSON object per line. A run request contains
-the script source or script path, literal arguments, workspace-relative working
-directory, timeout, and foreground/background mode.
+M1 uses one JSON object per line and a caller-provided correlation ID. Requests
+contain `op: "run"`, exactly one of `source` or `script_path`, optional literal
+`args`, and optional `cwd`. The request does not select a different executable
+or backend. The runner invokes `moon run --quiet --target wasm --` with separate
+argv elements; inline source is written to the child's stdin.
 
-Execution events should include a job ID and use explicit event types such as
-`started`, `stdout`, `stderr`, `completed`, `failed`, and `stopped`. Completion
-must report the exit code and duration. Errors must be structured so Codex can
-distinguish a rejected request, a compile error, a timeout, a cancellation, and
-an execution failure.
+The deadline is fixed at 30 seconds and aggregate captured output at 1 MiB.
+`started` is emitted when a validated request is accepted; stdout and stderr
+are buffered and emitted before `completed`. Nonzero toolchain exits preserve
+their code and diagnostics. M1 does not infer compile/runtime error categories
+from diagnostic strings. See [the protocol](protocol.md) for details.
 
-The first implementation should not translate arbitrary shell strings into
-MBTX. It should expose a separate `mbtx` tool with a clear script contract and
-preserve literal argument boundaries.
+M2 will add job IDs, configurable lifecycle controls, cancellation, and live
+output. Host sandboxing must remain in the Codex adapter: the standalone runner
+currently inherits the environment and has no workspace isolation.
 
 ## Milestones
 
-### M0: repository baseline
+### M0: repository baseline (complete)
 
 - Normalize the MoonBit module and Git remote names.
 - Keep the repository buildable with `moon check` and `moon test`.
 - Record the execution boundary and protocol decisions in this document.
 
-### M1: standalone MBTX runner
+### M1: standalone MBTX runner (implemented)
 
 - Run a foreground script.
 - Pass arguments and working directory explicitly.

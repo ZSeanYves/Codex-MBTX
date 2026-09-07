@@ -1,0 +1,16 @@
+import {
+  "ZSeanYves/Codex-MBTX/runtime",
+  "moonbitlang/async",
+  "moonbitlang/async/shell",
+}
+
+import {
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+} for "test"
+
+supported_targets = "native+wasm"
+
+options(
+  "max-concurrent-tests": 1,
+)

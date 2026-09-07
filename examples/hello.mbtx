@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/env",
+}
+
+fn main {
+  for argument in @env.args()[1:] {
+    println("Hello, \{argument}!")
+  }
+}

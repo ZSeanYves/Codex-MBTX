@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "ZSeanYves/Codex-MBTX/runtime"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror RequestError {
+  InvalidRequest(String)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) enum Event {
+  Started(id~ : String)
+  Stdout(id~ : String, data~ : String)
+  Stderr(id~ : String, data~ : String)
+  Completed(id~ : String, exit_code~ : Int, duration_ms~ : Int64)
+  Failed(id~ : String?, kind~ : String, message~ : String)
+} derive(Eq, @debug.Debug)
+
+pub struct Request {
+  id : String
+  script : Script
+  cwd : String
+  // private fields
+} derive(@debug.Debug)
+pub fn Request::args(Self) -> Array[String]
+pub fn Request::new(String, Script, args? : Array[String], cwd? : String) -> Self raise RequestError
+
+pub(all) struct RunResult {
+  exit_code : Int
+  stdout : String
+  stderr : String
+  duration_ms : Int64
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Script {
+  Source(String)
+  Path(String)
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

@@ -24,3 +24,7 @@ keywords = [ ]
 preferred_target = "wasm"
 
 description = "An experiment for using MBTX as a Codex script execution backend."
+
+import {
+  "moonbitlang/async@0.21.2",
+}
