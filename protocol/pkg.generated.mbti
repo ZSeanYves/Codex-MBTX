@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn decode_command(String) -> @runtime.Command raise @runtime.RequestError
+
 pub fn decode_request(String) -> @runtime.Request raise @runtime.RequestError
 
 pub fn encode_event(@runtime.Event) -> String

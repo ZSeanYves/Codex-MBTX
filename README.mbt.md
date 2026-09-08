@@ -11,9 +11,10 @@ The project is intentionally being built in stages:
 3. Connect the protocol to Codex through a replaceable execution backend.
 4. Compare MBTX execution with the existing shell execution path.
 
-M1 provides a standalone foreground runner with a JSONL interface. It accepts
+M2 provides a standalone job runner with a JSONL interface. It accepts
 inline MoonBit source or a `.mbtx` file, passes literal arguments and cwd, and
-returns captured stdout, stderr, exit code, and elapsed time. Codex integration
+streams stdout and stderr, and reports exit code and elapsed time. Background
+jobs support output polling, cancellation, and configurable deadlines. Codex integration
 is planned for M3.
 
 ## Run the runner
@@ -31,10 +32,18 @@ line. To run the example directly:
 moon run examples/hello.mbtx MBTX
 ```
 
-The runner processes requests sequentially. M1 buffers output until the child
-exits and applies a fixed 30-second deadline and a 1 MiB combined output cap.
-It uses the installed MoonBit toolchain and inherits the host environment; it
-does not yet provide workspace isolation or interactive/background jobs. See
+Run the interactive job lifecycle demonstration with:
+
+```bash
+moon run scripts/jobs_smoke.mbtx
+```
+
+Foreground runs remain sequential; background runs allow subsequent runs to
+start while controls remain responsive in both modes. The deadline defaults to
+30 seconds and is configurable per request. Output is limited to 1 MiB and 4096
+chunks per job. The runner compiles each job in a private directory and directly
+manages its Wasm VM. It inherits the host environment and does not provide
+workspace isolation, detached jobs, or interactive stdin. See
 [`docs/protocol.md`](docs/protocol.md) for the exact contract and failure behavior.
 
 ## Development
@@ -44,16 +53,21 @@ This is a MoonBit module. Install the MoonBit toolchain, then run:
 ```bash
 moon check
 moon test
+moon test --target native
 moon run scripts/smoke.mbtx
+moon run scripts/jobs_smoke.mbtx
+moon run scripts/jobs_smoke.mbtx native
 moon info
 moon fmt
 ```
 
-Unit tests include real `moon run` executions. The smoke script checks the
-JSONL CLI, recovery after malformed input and compile failure, and a final
-record without a newline. Tests require no model account, API key, or GPU.
+Tests include real script execution, live output, direct VM cancellation,
+timeouts, UTF-8 chunk boundaries, output/history bounds, queue saturation,
+transport failure cleanup, and EOF draining. CLI scripts exercise both M1
+compatibility and M2 interactive controls. Tests require no model account,
+API key, or GPU.
 
-The `CI` GitHub Actions workflow runs these checks on Linux for pushes and
+The `CI` GitHub Actions workflow runs Wasm and native jobs on Linux for pushes and
 pull requests. It installs the current stable MoonBit toolchain and records its
 version in the log. Local development was validated with `moon 0.1.20260827`
 and `moonc v0.10.11+6ff76a5f9`; `moonbitlang/async` is declared at `0.21.2`.

@@ -12,6 +12,10 @@ jobs:
   moonbit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm, native]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -27,13 +31,16 @@ jobs:
           moon update
 
       - name: Check
-        run: moon check --deny-warn
+        run: moon check --deny-warn --target ${{ matrix.target }}
 
       - name: Test
-        run: moon test
+        run: moon test --target ${{ matrix.target }}
 
       - name: Exercise JSONL CLI
         run: moon run scripts/smoke.mbtx
+
+      - name: Exercise job lifecycle CLI
+        run: moon run scripts/jobs_smoke.mbtx ${{ matrix.target }}
 
       - name: Check generated interfaces and formatting
         run: |

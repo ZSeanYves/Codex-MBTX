@@ -41,7 +41,7 @@ test "invalid requests never silently fall back to a different mode" {
       #|{"id":"x","op":"run","source":"fn main {}","cwd":false}
     ),
     (
-      #|{"id":"x","op":"run","source":"fn main {}","background":true}
+      #|{"id":"x","op":"run","source":"fn main {}","background":"true"}
     ),
   ]
   for line in invalid {
@@ -56,38 +56,42 @@ test "invalid requests never silently fall back to a different mode" {
 ///|
 test "output is escaped as one JSONL record" {
   let line = @protocol.encode_event(
-    @runtime.Event::Stdout(id="quoted\"id", data="line 1\nline 2\u{0000}你好"),
+    @runtime.Event::Output(id="quoted\"id", job_id="job-1", chunk={
+      seq: 0,
+      stream: Stdout,
+      data: "line 1\nline 2\u{0000}你好",
+    }),
   )
   assert_false(line.contains("\n"))
   assert_eq(
     @json.parse(line),
     @json.parse(
       (
-        #|{"event":"stdout","id":"quoted\"id","data":"line 1\nline 2\u0000你好"}
+        #|{"event":"stdout","id":"quoted\"id","job_id":"job-1","seq":0,"data":"line 1\nline 2\u0000你好"}
       ),
     ),
   )
   assert_eq(
     @json.parse(
       @protocol.encode_event(
-        Completed(id="done", exit_code=7, duration_ms=123L),
+        Completed(id="done", job_id="job-2", exit_code=7, duration_ms=123L),
       ),
     ),
     @json.parse(
       (
-        #|{"event":"completed","id":"done","exit_code":7,"duration_ms":123}
+        #|{"event":"completed","id":"done","job_id":"job-2","exit_code":7,"duration_ms":123}
       ),
     ),
   )
   assert_eq(
     @json.parse(
       @protocol.encode_event(
-        Failed(id=None, kind="invalid_request", message="bad"),
+        Failed(id=None, job_id=None, kind="invalid_request", message="bad"),
       ),
     ),
     @json.parse(
       (
-        #|{"event":"failed","id":null,"error":{"kind":"invalid_request","message":"bad"}}
+        #|{"event":"failed","id":null,"job_id":null,"error":{"kind":"invalid_request","message":"bad"}}
       ),
     ),
   )

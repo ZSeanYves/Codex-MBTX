@@ -91,7 +91,7 @@ async test "captured output cannot grow beyond the runner limit" {
   try
     @process.run(@runtime.Request::new("output-limit", Source(source)))
   catch {
-    @process.ExecutionFailed(_) => ()
+    @process.OutputLimitExceeded => ()
     error => raise error
   } noraise {
     _ => fail("expected excessive output to stop the run")

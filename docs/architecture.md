@@ -29,9 +29,13 @@ sandbox. The runner must not become an alternate model client or agent loop.
 ## Packages
 
 - `runtime/`: validated execution requests, results, and event types.
-- `process/`: invokes `moon run` without a shell and captures output.
+- `process/`: compiles to private artifacts and manages streaming, cancellable
+  `moonrun` processes through `moonbitlang/async`.
 - `protocol/`: JSONL requests and execution events.
-- `cmd/mbtx/`: reads JSONL requests from stdin and writes events to stdout.
+- `jobs/`: bounded job registry, lifecycle state, cancellation, and output history.
+- `session/`: bounded JSONL framing, foreground/background scheduling, responsive
+  control dispatch, and a single output writer.
+- `cmd/mbtx/`: connects the session to stdin and stdout.
 - `examples/`: small runnable `.mbtx` scripts.
 - `scripts/`: `.mbtx` automation, including the CLI smoke test.
 - `policy/` (planned): workspace, environment, executable, and argument restrictions.
@@ -39,26 +43,35 @@ sandbox. The runner must not become an alternate model client or agent loop.
 - `codex/`: a pinned Codex source tree, added after the standalone protocol is
   stable.
 
-Dependencies flow from the command entry point into protocol and process, which
-both depend on runtime. The MBTX packages do not depend on the Codex model client.
+Dependencies flow from `cmd/mbtx` to `session`, then to `protocol` and `jobs`.
+Jobs use `process`; shared contracts live in `runtime`. None of these packages
+depend on the Codex model client.
 
-## Initial protocol
+## Execution protocol
 
-M1 uses one JSON object per line and a caller-provided correlation ID. Requests
+The protocol uses one JSON object per line and a caller-provided correlation ID. Requests
 contain `op: "run"`, exactly one of `source` or `script_path`, optional literal
-`args`, and optional `cwd`. The request does not select a different executable
-or backend. The runner invokes `moon run --quiet --target wasm --` with separate
-argv elements; inline source is written to the child's stdin.
+`args`, and optional `cwd`. M2 adds `background` and `timeout_ms` plus `job_output`
+and `job_stop` control requests. Each admitted run receives a session-local job ID.
+The request does not select a different executable or backend.
 
-The deadline is fixed at 30 seconds and aggregate captured output at 1 MiB.
-`started` is emitted when a validated request is accepted; stdout and stderr
-are buffered and emitted before `completed`. Nonzero toolchain exits preserve
-their code and diagnostics. M1 does not infer compile/runtime error categories
-from diagnostic strings. See [the protocol](protocol.md) for details.
+Each job compiles with `moon run --build-only --output-json --target wasm` in its
+own temporary build directory, then runs the artifact through a directly managed
+`moonrun` child. The default deadline is 30 seconds, configurable up to 10 minutes.
+Stdout and stderr stream in bounded chunks with per-job sequence numbers.
+Readers and child processes finish cleanup before the terminal event is emitted.
+Nonzero toolchain exits preserve their code and diagnostics. Compilation/runtime
+error categories are not inferred from diagnostic strings.
 
-M2 will add job IDs, configurable lifecycle controls, cancellation, and live
-output. Host sandboxing must remain in the Codex adapter: the standalone runner
-currently inherits the environment and has no workspace isolation.
+The session limits active jobs, queued requests, output history, and protocol
+frames. Foreground runs serialize later runs while controls remain responsive;
+background runs release the run queue. EOF drains accepted work, and a transport
+failure cancels the session's structured task group. See [the protocol](protocol.md)
+for state transitions, retention, output cursors, and failure behavior.
+
+Host sandboxing remains the Codex adapter's responsibility. Direct VM cancellation
+does not confine arbitrary descendants; the standalone runner inherits the host
+environment and has no workspace isolation.
 
 ## Milestones
 
@@ -76,11 +89,14 @@ currently inherits the environment and has no workspace isolation.
 - Add deterministic tests for success, failure, malformed input, and argument
   preservation.
 
-### M2: job lifecycle
+### M2: job lifecycle (implemented)
 
 - Add timeouts, cancellation, background jobs, and job IDs.
 - Emit streaming JSONL events.
 - Test the complete lifecycle without a model API.
+
+Acceptance is covered by the process, jobs, protocol, and session test suites,
+plus `scripts/jobs_smoke.mbtx` against the actual CLI on Wasm and native backends.
 
 ### M3: Codex adapter
 
@@ -98,7 +114,8 @@ currently inherits the environment and has no workspace isolation.
 
 ## Validation
 
-Pull requests should run MoonBit checks, MoonBit tests, Rust formatting and
-targeted integration tests. Live model evaluations should be manually
-triggered in CI and use repository secrets; they must not be required for a
-normal pull request.
+CI runs MoonBit checks and tests for Wasm and native runners on Linux, the M1
+compatibility smoke script, and the M2 CLI lifecycle script. Generated interfaces
+and formatting are checked for drift. Rust checks and mock-model integration
+tests will be added with M3. Live model evaluations will be manually triggered
+and use repository secrets; they must not be required for a normal pull request.

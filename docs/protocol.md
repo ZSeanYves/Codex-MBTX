@@ -1,78 +1,149 @@
-# M1 JSONL Protocol
+# M2 JSONL Protocol
 
-Run `moon run --quiet cmd/mbtx` from a checkout. The runner reads UTF-8 JSONL
-from stdin and reserves stdout for JSONL events. It executes one request at a
-time until EOF. Blank lines are ignored; a final nonempty line without a newline
-is processed. Invalid requests produce an error event and do not stop later
-requests.
+Run `moon run --quiet cmd/mbtx` from a checkout. Stdin and stdout carry UTF-8
+JSONL. Blank lines are ignored; CRLF and a final record without a newline are
+accepted. Each request line is limited to 1 MiB. Oversized records are discarded
+through the next newline; malformed JSON or UTF-8 produces an error and does
+not prevent later requests from being handled.
 
-## Request
+## Scheduling and lifetime
+
+A run defaults to foreground execution. Run submissions are processed in order;
+a foreground run holds subsequent run submissions until its terminal event has
+been enqueued. A background run releases that submission queue immediately.
+Both modes allow `job_output` and `job_stop` while the script is running.
+
+The session admits at most four active jobs and queues at most 16 run requests.
+Excess requests receive `failed` with kind `busy`; they have no job ID. A full
+run queue does not block control requests. A job's deadline starts when execution
+begins, after admission; time in the pending run queue is not included.
+
+EOF stops admission, drains queued runs, and waits for active jobs to finish
+under their deadlines. Background does not mean detached: jobs belong to this
+runner process. A protocol transport error cancels the session's structured task
+group and cleans up its directly managed children before propagating.
+
+Job IDs are monotonically increasing, session-local strings such as `job-1`.
+They are not PIDs and do not survive a runner restart. The registry retains up to
+32 jobs, including active jobs. When a new admission needs room, the oldest
+settled job in admission order is evicted. Active jobs are never evicted.
+Clients must wait for `started` before sending controls for a job.
+
+## Run request
 
 ```json
-{"id":"hello","op":"run","source":"fn main { println(42) }","args":[],"cwd":"."}
+{"id":"hello","op":"run","source":"fn main { println(42) }","args":[],"cwd":".","background":false,"timeout_ms":30000}
 ```
 
 | Field | Contract |
 | --- | --- |
-| `id` | Required nonempty string, echoed in execution events. A correlation ID, not a persistent job handle. |
+| `id` | Required nonempty string, echoed in events. Use a distinct ID for each run/control request. |
 | `op` | Required string `run`. |
-| `source` | Nonempty MoonBit script source. Exactly one of `source` and `script_path` is required. |
-| `script_path` | Nonempty path ending in `.mbtx`, resolved by `moon` relative to `cwd`. |
-| `args` | Optional array of strings; defaults to `[]`. Empty arguments and shell punctuation are passed literally. |
-| `cwd` | Optional nonempty host directory; defaults to `.` relative to the runner's working directory. |
+| `source` | Nonempty script source. Exactly one of `source` and `script_path` is required. |
+| `script_path` | Nonempty path ending in `.mbtx`, resolved relative to `cwd`. |
+| `args` | Optional array of strings; default `[]`. Empty and option-like arguments and shell punctuation are literal. |
+| `cwd` | Optional nonempty host directory; default `.` relative to the runner. |
+| `background` | Optional boolean; default `false`. |
+| `timeout_ms` | Optional integer from 1 to 600,000; default 30,000. Includes compilation, execution, output backpressure, and cleanup. |
 
-Unknown fields, wrong types, NUL bytes, and unsupported operations are rejected.
-M1 does not accept `background`, `timeout_ms`, or policy fields. The runner does
-not interpret shell commands or expand argument punctuation.
+Unknown fields, wrong types, NUL bytes, fractional numbers, and unsupported
+operations are rejected. There are no implicit string/number conversions.
 
-## Events
-
-Each event is a JSON object followed by one newline. Embedded newlines and
-control characters in captured text are escaped by the JSON encoder.
+## Output and stop requests
 
 ```json
-{"event":"started","id":"hello"}
-{"event":"stdout","id":"hello","data":"42\n"}
-{"event":"completed","id":"hello","exit_code":0,"duration_ms":123}
+{"id":"query-1","op":"job_output","job_id":"job-1","cursor":0}
+{"id":"stop-1","op":"job_stop","job_id":"job-1"}
 ```
 
-- `started`: the request passed validation and execution is about to be attempted.
-  This event alone does not prove the child was successfully spawned.
-- `stdout` / `stderr`: captured text, emitted after the process has finished.
-  Empty streams produce no event. M1 emits stdout before stderr and does not
-  preserve ordering between the two original streams. Text uses lossy UTF-8.
-- `completed`: the toolchain process exited. `exit_code` and `duration_ms` are
-  JSON numbers. Duration covers process startup, compilation, and execution.
-  Nonzero exits also use this event, retaining compiler or runtime diagnostics
-  in stderr. The runner does not guess which stage failed.
-- `failed`: the request could not be validated or the runner could not obtain
-  a completed result.
+Both require nonempty `id` and `job_id` strings. `job_output` takes an optional
+integer cursor (default 0), which is the next output sequence number to read.
+It returns up to 128 chunks and a `next_cursor` for pagination. A cursor beyond
+current history is rejected with `invalid_cursor`. No polling operation consumes
+or mutates history.
 
 ```json
-{"event":"failed","id":null,"error":{"kind":"invalid_request","message":"op must be run"}}
+{"event":"job_output","id":"query-1","job_id":"job-1","state":"running","chunks":[{"seq":0,"stream":"stdout","data":"42\n"}],"next_cursor":1,"exit_code":null,"duration_ms":null,"error":null}
+{"event":"job_stop","id":"stop-1","job_id":"job-1","state":"stopping"}
 ```
 
-`invalid_request` has `id: null` because there is no accepted request. Errors
-after acceptance echo the request ID and use `timeout` or `runner_error`.
-`runner_error` includes spawn/IO failures and output-limit failures. Partial
-output is unavailable when the underlying capture fails.
+Repeated stops are idempotent. A stop reply is an acknowledgement, not proof of
+termination. Wait for the run's terminal event or a terminal snapshot before
+reclaiming its resources. A previously decided completion, timeout, or failure
+can win a race with a stop. Unknown or evicted job IDs return `unknown_job`.
 
-The CLI's exit status describes the protocol process itself, not the last
-script: it exits normally after handling requests that include script failures.
-Clients must inspect each request's terminal event. Fatal protocol transport
-errors, such as a broken stdout pipe, can terminate the runner without a final
-event.
+## Run events
 
-## Execution environment and limits
+```json
+{"event":"started","id":"hello","job_id":"job-1"}
+{"event":"stdout","id":"hello","job_id":"job-1","seq":0,"data":"42\n"}
+{"event":"completed","id":"hello","job_id":"job-1","exit_code":0,"duration_ms":123}
+```
 
-The runner launches `moon` from `PATH`, forces its Wasm target, and inherits the
-host environment. Inline source is sent using `moon run -`; file requests close
-stdin. Interactive input is outside M1's contract.
+- `started`: validation and admission succeeded; compilation is about to be
+  attempted. It does not guarantee successful process creation.
+- `stdout` / `stderr`: live output chunks, with a shared, zero-based sequence
+  number per job. Chunk boundaries are arbitrary; clients concatenate data by
+  stream and must not assume one chunk per line. Newlines are not required for
+  delivery. UTF-8 split across reads is preserved; malformed/incomplete bytes
+  decode lossily. Order within each stream is preserved; relative timing across
+  the two OS pipes is not guaranteed.
+- `completed`: compilation or script execution exited, readers drained, and
+  cleanup finished. Nonzero exit codes also use this event and preserve
+  diagnostics. The runner does not guess compilation/runtime error categories
+  from diagnostic text.
+- `stopped`: cancellation finished and the direct child was reaped.
+- `failed`: validation, admission, timeout, output limit, or execution failure.
 
-Every invocation has a fixed 30,000 ms deadline and a 1,048,576 byte combined
-stdout/stderr capture cap, including compiler diagnostics. These are execution
-bounds rather than sandbox guarantees. The direct child is managed by
-`moonbitlang/async/shell`; descendants require the host to enforce confinement.
-`cwd` selects a directory and does not restrict filesystem access. The future
-Codex adapter must provide host approvals and sandboxing before this is used
-as an untrusted execution service.
+Each admitted job emits exactly one terminal event during a healthy session:
+`completed`, `stopped`, or `failed`. No output event follows its terminal event.
+Independent jobs may interleave; one writer serializes complete JSON frames.
+Control responses carry the control request ID, while live and terminal events
+retain the original run ID.
+
+```json
+{"event":"failed","id":"hello","job_id":"job-1","error":{"kind":"timeout","message":"execution exceeded 30000 ms"}}
+{"event":"failed","id":null,"job_id":null,"error":{"kind":"invalid_request","message":"request must be a JSON object"}}
+```
+
+Validation errors have null IDs because no request was accepted. Admission
+errors echo the run ID and use a null job ID. Control errors echo both IDs.
+`runner_error` covers toolchain, spawn, and IO errors. `output_limit` covers
+script output bounds. Earlier captured output remains queryable on failure or
+stop. Under output backpressure, cancellation may prevent some already retained
+chunks from reaching the live stream; `job_output` can retrieve that prefix.
+
+Snapshots use states `running`, `stopping`, `completed`, `failed`, and
+`stopped`. Terminal snapshots contain numeric `duration_ms`, and either an
+exit code or error when applicable. JSON nullable fields are scalars or null.
+
+The CLI exits normally after processing requests even when scripts fail.
+Clients inspect per-request terminal events, not just the CLI exit code.
+A fatal transport error can terminate the runner without delivering final
+events; it propagates after cancellation and cleanup.
+
+## Execution environment and bounds
+
+The runner invokes `moon run --build-only --output-json --target wasm` with a
+private temporary target directory per job. It parses the toolchain's structured
+artifact result, then starts `moonrun` directly. This makes the script VM a
+directly cancellable child and prevents concurrent builds from sharing artifacts.
+Inline source is supplied to the compiler on stdin; the VM's stdin is closed.
+Compiler diagnostics are buffered until compilation finishes; script stdout
+and stderr stream as they become available. Temporary builds are removed before
+the job reaches its terminal state.
+
+There is a combined 1,048,576-byte script output limit (including delivered
+compiler diagnostics) and a 4,096-chunk limit per job. Internal compiler capture
+is separately limited to 1 MiB. Hitting an output bound stops the job and retains
+only the accepted prefix. Output snapshots are paginated, event delivery is
+backpressured through a 64-event queue, and request/history counts are bounded.
+
+The runner itself supports Wasm and native backends; scripts always run on Wasm.
+The toolchain is resolved from PATH and inherits the host environment. `cwd`
+selects a directory without restricting filesystem access. The runner is not
+a sandbox: direct VM cancellation does not guarantee termination of arbitrary
+descendant processes launched by scripts, nor cleanup after killing the runner
+itself. Host confinement and approvals belong to the future Codex adapter.
+Interactive stdin, detached/persistent jobs, and host sandbox policy are outside
+M2.

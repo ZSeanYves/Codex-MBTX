@@ -9,13 +9,22 @@ import {
 // Values
 pub async fn run(@runtime.Request) -> @runtime.RunResult
 
+pub async fn stream(@runtime.Request, Control, async (@runtime.Stream, String) -> Unit) -> (Int, Int64)
+
 // Errors
 pub(all) suberror RunnerError {
   TimedOut
+  Stopped
+  OutputLimitExceeded
   ExecutionFailed(String)
 } derive(@debug.Debug)
 
 // Types and methods
+pub struct Control {
+  // private fields
+}
+pub fn Control::new() -> Self
+pub fn Control::stop(Self) -> Unit
 
 // Type aliases
 

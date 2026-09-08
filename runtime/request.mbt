@@ -6,11 +6,13 @@ pub(all) enum Script {
 } derive(Debug, Eq)
 
 ///|
-/// A validated foreground execution request. Use `Request::new` to construct it.
+/// A validated execution request. Use `Request::new` to construct it.
 pub struct Request {
   id : String
   script : Script
   cwd : String
+  background : Bool
+  timeout_ms : Int
   priv arguments : Array[String]
 } derive(Debug)
 
@@ -35,9 +37,14 @@ pub fn Request::new(
   script : Script,
   args? : Array[String] = [],
   cwd? : String = ".",
+  background? : Bool = false,
+  timeout_ms? : Int = 30_000,
 ) -> Request raise RequestError {
   require_text(id, "id")
   require_text(cwd, "cwd")
+  if timeout_ms < 1 || timeout_ms > 600_000 {
+    raise InvalidRequest("timeout_ms must be an integer between 1 and 600000")
+  }
   match script {
     Source(source) => require_text(source, "source")
     Path(path) => {
@@ -52,7 +59,7 @@ pub fn Request::new(
       raise InvalidRequest("args must not contain NUL bytes")
     }
   }
-  { id, script, cwd, arguments: args.copy(), }
+  { id, script, cwd, background, timeout_ms, arguments: args.copy(), }
 }
 
 ///|

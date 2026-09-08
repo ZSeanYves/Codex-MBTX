@@ -37,7 +37,7 @@ async fn main {
   assert_eq(events[0].get("event"), Some("failed".to_json()))
   assert_eq(events[0].get("id"), Some(Json::null()))
   let terminal_ids : Array[String] = []
-  let streams : Array[(String, String)] = []
+  let streams : Map[String, String] = Map([])
   for event in events {
     let kind : String = @json.from_json(event.get("event").unwrap())
     if kind == "completed" {
@@ -52,16 +52,13 @@ async fn main {
       }
       terminal_ids.push(id)
     } else if kind == "stdout" {
-      streams.push((
-        @json.from_json(event.get("id").unwrap()),
-        @json.from_json(event.get("data").unwrap()),
-      ))
+      let id : String = @json.from_json(event.get("id").unwrap())
+      let data : String = @json.from_json(event.get("data").unwrap())
+      streams[id] = streams.get(id).unwrap_or("") + data
     }
   }
   assert_eq(terminal_ids, ["inline", "broken", "file"])
-  assert_eq(streams, [
-    ("inline", "42\n"),
-    ("file", "Hello, MBTX!\nHello, $(echo literal) | *!\n"),
-  ])
+  assert_eq(streams.get("inline"), Some("42\n"))
+  assert_eq(streams.get("file"), Some("Hello, MBTX!\nHello, $(echo literal) | *!\n"))
   println("MBTX JSONL smoke test passed")
 }

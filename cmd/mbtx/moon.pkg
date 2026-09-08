@@ -1,7 +1,5 @@
 import {
-  "ZSeanYves/Codex-MBTX/runtime",
-  "ZSeanYves/Codex-MBTX/protocol",
-  "ZSeanYves/Codex-MBTX/process",
+  "ZSeanYves/Codex-MBTX/session",
   "moonbitlang/async",
   "moonbitlang/async/stdio",
 }

@@ -13,22 +13,43 @@ pub(all) suberror RequestError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct Chunk {
+  seq : Int
+  stream : Stream
+  data : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Command {
+  Run(Request)
+  JobOutput(id~ : String, job_id~ : String, cursor~ : Int)
+  JobStop(id~ : String, job_id~ : String)
+} derive(@debug.Debug)
+
 pub(all) enum Event {
-  Started(id~ : String)
-  Stdout(id~ : String, data~ : String)
-  Stderr(id~ : String, data~ : String)
-  Completed(id~ : String, exit_code~ : Int, duration_ms~ : Int64)
-  Failed(id~ : String?, kind~ : String, message~ : String)
+  Started(id~ : String, job_id~ : String)
+  Output(id~ : String, job_id~ : String, chunk~ : Chunk)
+  Completed(id~ : String, job_id~ : String, exit_code~ : Int, duration_ms~ : Int64)
+  Stopped(id~ : String, job_id~ : String, duration_ms~ : Int64)
+  Failed(id~ : String?, job_id~ : String?, kind~ : String, message~ : String)
+  JobOutput(id~ : String, job_id~ : String, snapshot~ : Snapshot)
+  JobStop(id~ : String, job_id~ : String, state~ : State)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct JobFailure {
+  kind : String
+  message : String
 } derive(Eq, @debug.Debug)
 
 pub struct Request {
   id : String
   script : Script
   cwd : String
+  background : Bool
+  timeout_ms : Int
   // private fields
 } derive(@debug.Debug)
 pub fn Request::args(Self) -> Array[String]
-pub fn Request::new(String, Script, args? : Array[String], cwd? : String) -> Self raise RequestError
+pub fn Request::new(String, Script, args? : Array[String], cwd? : String, background? : Bool, timeout_ms? : Int) -> Self raise RequestError
 
 pub(all) struct RunResult {
   exit_code : Int
@@ -40,6 +61,29 @@ pub(all) struct RunResult {
 pub(all) enum Script {
   Source(String)
   Path(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Snapshot {
+  state : State
+  chunks : Array[Chunk]
+  next_cursor : Int
+  exit_code : Int?
+  duration_ms : Int64?
+  error : JobFailure?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum State {
+  Running
+  Stopping
+  Completed
+  Failed
+  Stopped
+} derive(Eq, @debug.Debug)
+pub fn State::is_terminal(Self) -> Bool
+
+pub(all) enum Stream {
+  Stdout
+  Stderr
 } derive(Eq, @debug.Debug)
 
 // Type aliases
