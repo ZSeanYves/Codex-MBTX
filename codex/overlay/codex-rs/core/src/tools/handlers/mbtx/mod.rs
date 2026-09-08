@@ -186,7 +186,6 @@ impl MbtxHandler {
                     justification: None,
                     prefix_rule: None,
                 };
-                let started = Instant::now();
                 let response = if args.background {
                     tokio::select! {
                         biased;
@@ -206,6 +205,10 @@ impl MbtxHandler {
                     .await
                 }
                 .map_err(error)?;
+                // Unified exec measures execution after approval and process startup.
+                let started = Instant::now()
+                    .checked_sub(response.wall_time)
+                    .unwrap_or_else(Instant::now);
                 let mut job = Job {
                     id: format!("mbtx-{}", Uuid::new_v4()),
                     process_id,

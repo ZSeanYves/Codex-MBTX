@@ -12,9 +12,10 @@ async fn command(args : Array[String], cwd : String) -> Unit {
 
 async fn copy_if_changed(source : String, destination : String) -> Unit {
   let content = @fs.read_file(source).binary()
-  if !@fs.exists(destination) || @fs.read_file(destination).binary() != content {
-    @fs.write_file(destination, content)
+  if @fs.exists(destination) {
+    if @fs.read_file(destination).binary() == content { return }
   }
+  @fs.write_file(destination, content)
 }
 
 async fn main {

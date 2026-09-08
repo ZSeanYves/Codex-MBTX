@@ -1,15 +1,19 @@
 diff --git a/codex-rs/.config/nextest.toml b/codex-rs/.config/nextest.toml
-index f3f3ca2..ebd54c9 100644
+index f3f3ca2..137ef89 100644
 --- a/codex-rs/.config/nextest.toml
 +++ b/codex-rs/.config/nextest.toml
-@@ -11,6 +11,11 @@ path = "junit.xml"
+@@ -11,6 +11,15 @@ path = "junit.xml"
  [profile.local]
  inherits = "default"
  
 +[profile.mbtx]
 +inherits = "default"
 +retries = 0
++test-threads = 2
 +leak-timeout = { period = "2s", result = "fail" }
++
++[profile.mbtx.junit]
++path = "junit.xml"
 +
  [test-groups.app_server_protocol_codegen]
  max-threads = 1

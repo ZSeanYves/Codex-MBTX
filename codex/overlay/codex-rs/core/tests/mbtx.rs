@@ -234,8 +234,10 @@ async fn mbtx_real_runner_under_mock_model() -> Result<()> {
     Ok(())
 }
 
+#[test_case::test_case(false; "denial_prevents_spawn")]
+#[test_case::test_case(true; "approval_wait_does_not_consume_deadline")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn mbtx_approval_denial_prevents_spawn_and_reviews_exact_request() -> Result<()> {
+async fn mbtx_approval_reviews_request_before_spawn(approve: bool) -> Result<()> {
     use codex_core::TurnInputRequest;
     use codex_protocol::protocol::AskForApproval;
     use codex_protocol::protocol::EventMsg;
@@ -248,9 +250,13 @@ async fn mbtx_approval_denial_prevents_spawn_and_reviews_exact_request() -> Resu
 
     let directory = tempfile::tempdir()?;
     let marker = directory.path().join("unapproved");
-    let command = fixture(&format!("record:{}", marker.display()));
+    let command = if approve {
+        fixture("sleep")
+    } else {
+        fixture(&format!("record:{}", marker.display()))
+    };
     let harness = harness(Some(command.clone())).await?;
-    let args = json!({"op":"run","source":"fn main { println(42) }","args":["literal;data"]});
+    let args = json!({"op":"run","source":"fn main { println(42) }","args":["literal;data"],"background":approve,"timeout_ms":1500});
     mount_sse_sequence(
         harness.server(),
         vec![
@@ -294,13 +300,20 @@ async fn mbtx_approval_denial_prevents_spawn_and_reviews_exact_request() -> Resu
                 let request: Value = serde_json::from_str(approval.command.last().unwrap())?;
                 assert_eq!(request["source"], args["source"]);
                 assert_eq!(request["args"], args["args"]);
+                if approve {
+                    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+                }
                 harness
                     .test()
                     .codex
                     .submit(Op::ExecApproval {
                         id: approval.effective_approval_id(),
                         turn_id: Some(approval.turn_id),
-                        decision: ReviewDecision::denied("denied by integration test"),
+                        decision: if approve {
+                            ReviewDecision::Approved
+                        } else {
+                            ReviewDecision::denied("denied by integration test")
+                        },
                     })
                     .await?;
             }
@@ -310,6 +323,22 @@ async fn mbtx_approval_denial_prevents_spawn_and_reviews_exact_request() -> Resu
     }
     assert_eq!(approvals, 1);
     assert!(!marker.exists());
+    if approve {
+        let started: Value = serde_json::from_str(&harness.function_call_stdout("approve").await)?;
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        let polled: Value = serde_json::from_str(
+            &call(
+                &harness,
+                "after-approval",
+                "mbtx",
+                json!({
+                    "op":"job_output","job_id":started["job_id"]
+                }),
+            )
+            .await?,
+        )?;
+        assert_eq!(polled["state"], "running", "{polled}");
+    }
     harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }

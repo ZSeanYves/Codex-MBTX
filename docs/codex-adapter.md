@@ -70,7 +70,8 @@ M2 JSONL controls: they do not expose M2's history cursor or its runner-local
 `--request JSON`; the runner consumes exactly one run and closes its input.
 Foreground waits for completion, while background returns a Codex-managed job.
 The runner still enforces the M2 execution deadline. Codex adds a two-second
-grace period before terminating an unresponsive runner. Explicit stop terminates
+grace period before terminating an unresponsive runner. Waiting for an execution
+approval does not consume the execution deadline. Explicit stop terminates
 the managed process through Codex's existing process manager. An in-flight
 output drain can delay host timeout cleanup by Codex's bounded poll interval.
 Admission and reads serialize within this backend; a foreground run cannot
@@ -118,7 +119,7 @@ exercise model-visible tool registration, shell coexistence, literal argv,
 background controls, malformed output, script failures, host deadlines,
 approval refusal, and real read-only sandbox enforcement.
 Every integration test explicitly closes its Codex session. The MBTX test
-profile disables retries and treats child-process output handles still open
+profile uses two concurrent tests, disables retries, and treats child-process output handles still open
 two seconds after test exit as a failure. Runner cancellation tests separately
 assert that the OS process has exited.
 

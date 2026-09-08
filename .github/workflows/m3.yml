@@ -71,7 +71,7 @@ jobs:
 
       - name: Affected Codex regression tests
         working-directory: _build/codex-upstream
-        run: just test --locked -p codex-core -p codex-config --lib -E 'package(codex-config) | test(config::) | test(tools::spec_plan::)'
+        run: just test --locked --profile default -p codex-core -p codex-config --lib -E 'package(codex-config) | test(config::) | test(tools::spec_plan::)'
 
       - name: Codex Clippy
         working-directory: _build/codex-upstream/codex-rs
