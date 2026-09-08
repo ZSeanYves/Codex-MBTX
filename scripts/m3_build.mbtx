@@ -27,6 +27,7 @@ async fn main {
   @fs.chmod("\{dist}/mbtx", 0o755)
   @fs.write_file("\{dist}/LICENSE", @fs.read_file("LICENSE"))
   @fs.write_file("\{dist}/CODEX-LICENSE", @fs.read_file("_build/codex-upstream/LICENSE"))
+  @fs.write_file("\{dist}/CODEX-NOTICE", @fs.read_file("_build/codex-upstream/NOTICE"))
   @fs.write_file("\{dist}/upstream.json", @fs.read_file("codex/upstream.json"))
   @fs.write_file("\{dist}/codex-adapter.md", @fs.read_file("docs/codex-adapter.md"))
   @shell.Cmd("\{dist}/codex", ["--version"]).run()
