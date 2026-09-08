@@ -117,6 +117,9 @@ Snapshots use states `running`, `stopping`, `completed`, `failed`, and
 `stopped`. Terminal snapshots contain numeric `duration_ms`, and either an
 exit code or error when applicable. JSON nullable fields are scalars or null.
 
+An incomplete UTF-8 suffix that has not yet been emitted may be discarded on
+timeout or cancellation; normal EOF flushes it using lossy decoding.
+
 The CLI exits normally after processing requests even when scripts fail.
 Clients inspect per-request terminal events, not just the CLI exit code.
 A fatal transport error can terminate the runner without delivering final

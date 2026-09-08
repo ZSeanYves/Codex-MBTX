@@ -39,7 +39,7 @@ pub async fn run(request : @runtime.Request) -> @runtime.RunResult {
 
 ///|
 /// Compile in a private build directory, then stream a directly managed VM.
-/// The deadline covers compilation and execution; callbacks apply backpressure.
+/// The deadline covers compilation, execution, and final output delivery.
 /// Callback failures and parent cancellation propagate after child cleanup.
 pub async fn stream(
   request : @runtime.Request,
@@ -48,7 +48,7 @@ pub async fn stream(
 ) -> (Int, Int64) {
   let started = @async.now()
   let capture = Capture::new(on_output)
-  let outcome = try
+  let code = try
     @async.with_task_group() <| group => {
       group.spawn_bg(no_wait=true, () => {
         control.wait()
@@ -61,28 +61,29 @@ pub async fn stream(
       if control.is_stopped() {
         raise Stopped
       }
-      execute(request, capture)
+      let outcome = try execute(request, capture) catch {
+        error => Err(error)
+      } noraise {
+        code => Ok(code)
+      }
+      match outcome {
+        Err(CallbackFailed(error)) => raise CallbackFailed(error)
+        Err(error) if @async.is_being_cancelled() ||
+          @async.is_cancellation_error(error) => raise error
+        _ => ()
+      }
+      capture.flush() catch {
+        OutputLimitExceeded if outcome is Err(_) => ()
+        error => raise error
+      }
+      match outcome {
+        Ok(code) => code
+        Err(error) => raise error
+      }
     }
   catch {
-    error => Err(error)
-  } noraise {
-    code => Ok(code)
-  }
-  match outcome {
-    Err(CallbackFailed(error)) => raise error
-    Err(error) if @async.is_being_cancelled() ||
-      @async.is_cancellation_error(error) => raise error
-    _ => ()
-  }
-  capture.flush() catch {
     CallbackFailed(error) => raise error
-    OutputLimitExceeded if outcome is Err(_) => ()
-    error => raise error
-  }
-  match outcome {
-    Ok(code) => (code, @async.now() - started)
-    Err(CallbackFailed(error)) => raise error
-    Err(error) => {
+    error => {
       if @async.is_being_cancelled() || @async.is_cancellation_error(error) {
         raise error
       }
@@ -93,6 +94,7 @@ pub async fn stream(
       }
     }
   }
+  (code, @async.now() - started)
 }
 
 ///|

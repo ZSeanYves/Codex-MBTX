@@ -35,6 +35,7 @@ async fn Capture::emit(
     }
     self.chunks += 1
     (self.on_output)(channel, data) catch {
+      error if @async.is_cancellation_error(error) => raise error
       error => raise CallbackFailed(error)
     }
   }

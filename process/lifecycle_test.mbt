@@ -87,6 +87,26 @@ async test "stop before startup never executes source" {
 }
 
 ///|
+async test "stop interrupts a blocked live output callback" {
+  let control = @process.Control::new()
+  try
+    @process.stream(
+      @runtime.Request::new("blocked-stop", Source("fn main { println(42) }")),
+      control,
+      (_, _) => {
+        control.stop()
+        @async.sleep(10000)
+      },
+    )
+  catch {
+    @process.Stopped => ()
+    error => raise error
+  } noraise {
+    _ => fail("a blocked output callback ignored cancellation")
+  }
+}
+
+///|
 async test "completion drains all buffered stdout and stderr" {
   let source =
     #|import { "moonbitlang/async", "moonbitlang/async/stdio" }
@@ -102,4 +122,29 @@ async test "completion drains all buffered stdout and stderr" {
   assert_eq(result.stderr.length(), 131072)
   assert_true(result.stdout.has_suffix("0123456789abcdef"))
   assert_true(result.stderr.has_suffix("0123456789abcdef"))
+}
+
+///|
+async test "deadline also covers final UTF-8 flush backpressure" {
+  let source =
+    #|import { "moonbitlang/async", "moonbitlang/async/stdio" }
+    #|async fn main { @stdio.stdout.write(b"\xe4") }
+  let mut flushing = false
+  try
+    @process.stream(
+      @runtime.Request::new("flush-timeout", Source(source), timeout_ms=5000),
+      @process.Control::new(),
+      (_, data) => {
+        assert_eq(data, "\u{fffd}")
+        flushing = true
+        @async.sleep(10000)
+      },
+    )
+  catch {
+    @process.TimedOut => ()
+    error => raise error
+  } noraise {
+    _ => fail("a final output callback escaped the deadline")
+  }
+  assert_true(flushing)
 }
