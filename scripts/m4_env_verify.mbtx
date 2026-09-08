@@ -18,9 +18,12 @@ async fn main {
     "source": "import { \"moonbitlang/async\", \"moonbitlang/async/fs\" }\nasync fn main { @fs.write_file(\"marker\", \"ok\") }",
   }
   let output = @shell.Cmd("sudo", ["-n", "-u", "mbtx-eval", "--", "/usr/bin/env", "-i",
-    "PATH=/opt/mbtx-eval-tools/moon/bin:/usr/local/bin:/usr/bin:/bin", "HOME=\{dir}/home", "MOON_HOME=/opt/mbtx-eval-tools/moon",
+    "PATH=/opt/mbtx-eval-tools/moon/bin:/usr/local/bin:/usr/bin:/bin", "HOME=\{dir}/home", "CODEX_HOME=\{dir}/home", "MOON_HOME=/opt/mbtx-eval-tools/moon",
+    "/opt/mbtx-eval-tools/bin/codex", "-c", "sandbox_mode=\"workspace-write\"",
+    "-c", "sandbox_workspace_write.writable_roots=[\"/opt/mbtx-eval-tools/moon/cache\"]",
+    "-c", "sandbox_workspace_write.network_access=true", "sandbox", "linux", "--",
     "/opt/mbtx-eval-tools/bin/mbtx", "--request", request.stringify()],
-    inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=45_000)
+    cwd="\{dir}/work", inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=45_000)
   let mut completed = false
   for line in output.stdout().split("\n") {
     if line.trim().is_empty() { continue }
@@ -31,5 +34,5 @@ async fn main {
   let access = @shell.Cmd("sudo", ["-n", "-u", "mbtx-eval", "--", "test", "-r", "\{dir}/private/marker"]).status()
   guard access == 1 else { fail("agent can read evaluator-private files") }
   @shell.Cmd("sudo", ["-n", "rm", "-rf", "--", dir]).run()
-  println("Isolated MBTX execution and private-file boundary passed; no API key used")
+  println("Isolated MBTX execution through the Codex Linux sandbox and private-file boundary passed; no API key used")
 }

@@ -37,6 +37,8 @@ The installed toolchain is read-only. Its separate dependency cache is owned by
 the agent account and is explicitly writable in the Codex sandbox because Moon
 requires a cache lock even when every dependency is already downloaded. This
 cache is shared between runs; each task's workspace and Codex home are fresh.
+Before using the API, CI executes an MBTX fixture as the isolated account
+through `codex sandbox linux` with the same workspace and cache policy.
 
 ## Local checks
 
