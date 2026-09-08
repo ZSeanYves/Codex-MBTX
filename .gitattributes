@@ -1,0 +1,2 @@
+# Unified patches require a leading space even on empty context lines.
+codex/integration.patch -whitespace
