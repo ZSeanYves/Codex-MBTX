@@ -22,9 +22,9 @@ M4 adds a fixed shell/MBTX comparison suite with deterministic grading,
 provider token accounting, backend-adherence checks, and a manual GitHub Actions
 workflow. See [the evaluation guide](docs/m4-evaluation.md) for remote runs using
 `OPENROUTER_ICU_API_KEY`; local validation needs no model credentials or GPU.
-The [M4 delivery report](docs/reports/m4-2026-09-09.md) records the completed
-24-rollout batch, passing engineering checks, and the live gate failure caused
-by relay balance exhaustion. MBTX remains opt-in.
+The [M4 delivery report](docs/reports/m4-2026-09-09.md) records all 24 pilot slots
+across two segments: MBTX completed 12/12, shell 9/12, with three relay 502 failures.
+Engineering checks pass; the live gates remain failed. MBTX remains opt-in.
 
 Build the modified Codex and runner with:
 
