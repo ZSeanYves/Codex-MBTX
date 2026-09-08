@@ -7,12 +7,12 @@ import {
   "moonbitlang/async/aqueue",
   "moonbitlang/core/buffer",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
 }
 
 supported_targets = "native+wasm"
 
 import {
-  "moonbitlang/core/json",
   "moonbitlang/async/fs",
 } for "test"
 

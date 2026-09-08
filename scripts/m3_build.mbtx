@@ -1,0 +1,35 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  @shell.Cmd("moon", ["run", "scripts/codex.mbtx"]).run()
+  @shell.Cmd(
+    "cargo",
+    ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+    cwd="\{root}/_build/codex-upstream/codex-rs",
+    env={ "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_INCREMENTAL": "0" },
+  ).run()
+  let build = @shell.Cmd("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"]).output()
+  guard build.exit_code() == 0 else { fail(build.stdout() + build.stderr()) }
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(runner)], .. } else {
+    fail("missing native MBTX artifact")
+  }
+  let dist = "\{root}/_build/m3-dist"
+  if !@fs.exists(dist) { @fs.mkdir(dist, recursive=true) }
+  @fs.write_file("\{dist}/codex", @fs.read_file("_build/codex-upstream/codex-rs/target/debug/codex"), permission=0o755)
+  @fs.write_file("\{dist}/mbtx", @fs.read_file(runner), permission=0o755)
+  @fs.chmod("\{dist}/codex", 0o755)
+  @fs.chmod("\{dist}/mbtx", 0o755)
+  @fs.write_file("\{dist}/LICENSE", @fs.read_file("LICENSE"))
+  @fs.write_file("\{dist}/CODEX-LICENSE", @fs.read_file("_build/codex-upstream/LICENSE"))
+  @fs.write_file("\{dist}/upstream.json", @fs.read_file("codex/upstream.json"))
+  @fs.write_file("\{dist}/codex-adapter.md", @fs.read_file("docs/codex-adapter.md"))
+  @shell.Cmd("\{dist}/codex", ["--version"]).run()
+  println("Built M3 binaries in \{dist}")
+  println("mbtx_command = [\{Json::string("\{dist}/mbtx").stringify()}]")
+}

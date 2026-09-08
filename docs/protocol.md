@@ -6,6 +6,11 @@ accepted. Each request line is limited to 1 MiB. Oversized records are discarded
 through the next newline; malformed JSON or UTF-8 produces an error and does
 not prevent later requests from being handled.
 
+The optional CLI form `mbtx --request JSON` accepts exactly one run request as a
+literal argument, allows formatted JSON, and drains its events without reading
+stdin. It rejects multiple records and control-only launches. This is the
+launch interface used by the Codex adapter; stdin JSONL mode remains available.
+
 ## Scheduling and lifetime
 
 A run defaults to foreground execution. Run submissions are processed in order;

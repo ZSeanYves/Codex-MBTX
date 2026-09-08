@@ -14,8 +14,21 @@ The project is intentionally being built in stages:
 M2 provides a standalone job runner with a JSONL interface. It accepts
 inline MoonBit source or a `.mbtx` file, passes literal arguments and cwd, and
 streams stdout and stderr, and reports exit code and elapsed time. Background
-jobs support output polling, cancellation, and configurable deadlines. Codex integration
-is planned for M3.
+jobs support output polling, cancellation, and configurable deadlines. M3 adds an
+opt-in MBTX tool to a pinned Codex build while retaining its shell backend,
+execution approvals and sandbox. See [the adapter guide](docs/codex-adapter.md).
+
+Build the modified Codex and runner with:
+
+```bash
+moon run scripts/m3_build.mbtx
+```
+
+Run the Codex integration tests without a model account or GPU:
+
+```bash
+moon run scripts/m3_test.mbtx
+```
 
 ## Run the runner
 

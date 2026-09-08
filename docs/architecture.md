@@ -40,8 +40,10 @@ sandbox. The runner must not become an alternate model client or agent loop.
 - `scripts/`: `.mbtx` automation, including the CLI smoke test.
 - `policy/` (planned): workspace, environment, executable, and argument restrictions.
 - `eval/` (planned): comparative evaluation tasks.
-- `codex/`: a pinned Codex source tree, added after the standalone protocol is
-  stable.
+- `codex/`: upstream revision, reproducible integration patch, and Rust adapter
+  source overlay. The prepared Codex source lives in `_build/codex-upstream`.
+- `adapter/`: standalone Rust contract tests and the fake-runner test binary;
+  its library target compiles the same protocol source used inside Codex.
 
 Dependencies flow from `cmd/mbtx` to `session`, then to `protocol` and `jobs`.
 Jobs use `process`; shared contracts live in `runtime`. None of these packages
@@ -98,12 +100,20 @@ environment and has no workspace isolation.
 Acceptance is covered by the process, jobs, protocol, and session test suites,
 plus `scripts/jobs_smoke.mbtx` against the actual CLI on Wasm and native backends.
 
-### M3: Codex adapter
+### M3: Codex adapter (implemented)
 
 - Add a replaceable MBTX execution backend in Codex.
 - Keep the existing shell backend and route the new `mbtx` tool through the
   adapter.
 - Test the tool call with a mock model and a fake runner.
+
+The opt-in `mbtx_command` configuration exposes a new `mbtx` function. The Rust
+adapter passes the complete request as literal argv to Codex's existing unified
+executor, retaining its approval, sandbox, streaming and process-lifetime
+handling. Shell tools remain available. Each run uses the runner's
+`--request JSON` entry point; adapter background jobs use Codex process ownership
+and opaque session-scoped IDs. See [the adapter guide](codex-adapter.md) for the
+configuration boundary, polling semantics, reproducible build and validation.
 
 ### M4: evaluation
 
@@ -116,6 +126,6 @@ plus `scripts/jobs_smoke.mbtx` against the actual CLI on Wasm and native backend
 
 CI runs MoonBit checks and tests for Wasm and native runners on Linux, the M1
 compatibility smoke script, and the M2 CLI lifecycle script. Generated interfaces
-and formatting are checked for drift. Rust checks and mock-model integration
-tests will be added with M3. Live model evaluations will be manually triggered
+and formatting are checked for drift. Rust contract and mock-model integration
+tests cover the Codex adapter with fake and real runners. Live model evaluations will be manually triggered
 and use repository secrets; they must not be required for a normal pull request.

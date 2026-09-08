@@ -1,0 +1,39 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  @shell.Cmd("moon", ["run", "scripts/codex.mbtx"]).run()
+  @shell.Cmd("cargo", ["build", "--locked", "--manifest-path", "adapter/Cargo.toml", "--bin", "mbtx-fake-runner"]).run()
+  let build = @shell.Cmd("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"]).output()
+  guard build.exit_code() == 0 else { fail(build.stdout() + build.stderr()) }
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(artifact)], .. } else {
+    fail("missing native MBTX artifact")
+  }
+  let runner = @fs.realpath(artifact)
+  let fake = @fs.realpath("adapter/target/debug/mbtx-fake-runner")
+  let environment : Map[String, String] = {
+    "CODEX_MBTX_TEST_RUNNER": fake,
+    "CODEX_MBTX_REAL_COMMAND": Json::array([runner.to_json()]).stringify(),
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+  }
+  @shell.Cmd(
+    "cargo",
+    ["build", "--locked", "-p", "codex-linux-sandbox", "--bin", "codex-linux-sandbox"],
+    cwd="\{root}/_build/codex-upstream/codex-rs",
+    env=environment,
+  ).run()
+  @shell.Cmd(
+    "just",
+    ["test", "--locked", "-p", "codex-core", "--test", "mbtx"],
+    cwd="\{root}/_build/codex-upstream",
+    env=environment,
+  ).run()
+}

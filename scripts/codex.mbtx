@@ -1,0 +1,77 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn command(args : Array[String], cwd : String) -> Unit {
+  @shell.Cmd(args[0], args[1:].to_owned(), cwd~).run()
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  let pin = @json.parse(@fs.read_file("codex/upstream.json").text())
+  guard pin is {
+    "repository": String(repository),
+    "revision": String(revision),
+    "directory": String(relative),
+    ..
+  } else { fail("invalid Codex pin") }
+  let checkout = "\{root}/\{relative}"
+  let mode = @env.args().get(1).unwrap_or("prepare")
+  if !@fs.exists("\{checkout}/.git") {
+    if !@fs.exists(checkout) { @fs.mkdir(checkout, recursive=true) }
+    command(["git", "init", checkout], root)
+    command(["git", "remote", "add", "origin", repository], checkout)
+    command(["git", "fetch", "--depth", "1", "origin", revision], checkout)
+    command(["git", "switch", "--detach", revision], checkout)
+  }
+  let head = @shell.Cmd("git", ["rev-parse", "HEAD"], cwd=checkout).output()
+  if head.exit_code() != 0 || head.stdout().trim() != revision {
+    fail("Codex checkout differs from the pinned revision")
+  }
+  if mode == "capture" {
+    let overlay = "\{root}/codex/overlay"
+    @fs.walk(overlay, (directory, entries) => {
+      let suffix = directory[overlay.length():].to_owned()
+      for name in entries {
+        let path = "\{directory}/\{name}"
+        if @fs.kind(path) != @fs.FileKind::Directory {
+          @fs.write_file(path, @fs.read_file("\{checkout}\{suffix}/\{name}"))
+        }
+      }
+    })
+    let diff = @shell.Cmd("git", ["diff", "--binary"], cwd=checkout).output()
+    if diff.exit_code() != 0 { fail("cannot capture Codex patch") }
+    @fs.write_file("\{root}/codex/integration.patch", diff.stdout())
+    println("Captured Codex integration patch")
+    return
+  }
+  if mode != "prepare" { fail("usage: moon run scripts/codex.mbtx [prepare|capture]") }
+  let patch = "\{root}/codex/integration.patch"
+  if @fs.exists(patch) {
+    let check = @shell.Cmd("git", ["apply", "--check", patch], cwd=checkout).output()
+    if check.exit_code() == 0 {
+      command(["git", "apply", patch], checkout)
+    } else {
+      let applied = @shell.Cmd("git", ["apply", "--reverse", "--check", patch], cwd=checkout).output()
+      if applied.exit_code() != 0 { fail("Codex patch conflicts with local edits") }
+    }
+  }
+  let overlay = "\{root}/codex/overlay"
+  @fs.walk(overlay, (directory, entries) => {
+    let suffix = directory[overlay.length():].to_owned()
+    if !@fs.exists("\{checkout}\{suffix}") {
+      @fs.mkdir("\{checkout}\{suffix}", recursive=true)
+    }
+    for name in entries {
+      let path = "\{directory}/\{name}"
+      if @fs.kind(path) != @fs.FileKind::Directory {
+        @fs.write_file("\{checkout}\{suffix}/\{name}", @fs.read_file(path))
+      }
+    }
+  })
+  println("Prepared Codex \{revision} in \{relative}")
+}
