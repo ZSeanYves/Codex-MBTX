@@ -69,6 +69,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   for path, value in case.inputs { put("\{workspace}/\{path}", value) }
   put("\{workspace}/MOONBIT.md", reference)
   let dumps : Array[String] = []
+  let request_dumps : Array[String] = []
   let mut events = ""
   let mut timed_out = false
   let mut exit_code = -1
@@ -106,6 +107,17 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
       exit_code = output.exit_code()
       events = output.stdout()
       if exit_code != 0 { diagnostic = output.stderr().replace(old=key, new="[REDACTED]") }
+      for line in events.split("\n") {
+        try {
+          let event = @json.parse(line)
+          if event is { "type": "error", "message": String(message), .. } {
+            diagnostic += message.replace(old=key, new="[REDACTED]") + "\n"
+          }
+          if event is { "type": "turn.failed", "error": { "message": String(message), .. }, .. } {
+            diagnostic += message.replace(old=key, new="[REDACTED]") + "\n"
+          }
+        } catch { _ => () }
+      }
       // Raw logs stay in the private temporary directory and are never uploaded.
       put("\{private_dir}/events.jsonl", output.stdout())
       put("\{private_dir}/stderr.txt", output.stderr())
@@ -117,9 +129,10 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     kill_agent()
     @async.sleep(300)
     for name in @fs.readdir("\{private_dir}/dumps", sort=true) {
-      if name.has_suffix("-request.json") { requests += 1 }
+      if name.has_suffix("-request.json") { requests += 1; request_dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text()) }
       if name.has_suffix("-response.json") { dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text()) }
     }
+    if exit_code != 0 { diagnostic += @fs.read_file("\{private_dir}/proxy.log").text().replace(old=key, new="[REDACTED]") }
     proxy.cancel()
   }
   let result = regular_text("\{workspace}/result.json")
@@ -128,7 +141,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   for path, _ in case.inputs {
     if regular_text("\{workspace}/\{path}") is Some(text) { inputs[path] = text }
   }
-  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "result": result.to_json(), "inputs": inputs.to_json(), "unexpected_file": unexpected_file.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
+  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "requests": request_dumps.to_json(), "result": result.to_json(), "inputs": inputs.to_json(), "unexpected_file": unexpected_file.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
   graded.check()
   guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "correct_output": correct, "inputs_preserved": inputs_ok, "failure_category": String(category), .. } else { fail("invalid evidence result") }

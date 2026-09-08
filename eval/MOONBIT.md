@@ -41,6 +41,6 @@ Use `moon ide doc '@fs.*'` or `moon ide doc '@shell.*'` to discover installed AP
 An MBTX run uses `{"op":"run","source":"...","background":false}`
 or `{"op":"run","script_path":"path.mbtx"}`. Source is MoonBit, not shell.
 For background work set `background:true`, retain the returned opaque `job_id`,
-then use `{"op":"job_output","job_id":"...","wait_ms":1000}` until done.
+then use `{"op":"job_output","job_id":"..."}` until done.
 For an external program in MBTX, invoke `@shell.Cmd(program, [literal, args])`
 from a MoonBit script. `args` on an MBTX request are arguments to that script.

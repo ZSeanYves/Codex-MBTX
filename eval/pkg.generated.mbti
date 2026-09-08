@@ -28,17 +28,21 @@ pub struct Audit {
   mut approval_requests : Int
   mut background_runs : Int
   mut tool_argument_errors : Int
+  mut command_failures : Int
+  mbtx_failures : Map[String, Int]
   tools : Map[String, Int]
   operations : Map[String, Int]
   models : Array[String]
   response_ids : Array[String]
   call_ids : Array[String]
+  output_ids : Array[String]
 } derive(ToJson)
 pub fn Audit::backend_ok(Self, String, Bool) -> Bool
 pub fn Audit::dump(Self, String) -> Unit
 pub fn Audit::event(Self, Json) -> Unit
 pub fn Audit::jsonl(Self, String) -> Unit
 pub fn Audit::new() -> Self
+pub fn Audit::request(Self, String) -> Unit
 pub fn Audit::sse(Self, String) -> Unit
 
 pub struct Case {

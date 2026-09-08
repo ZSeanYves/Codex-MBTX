@@ -12,11 +12,14 @@ pub struct Audit {
   mut approval_requests : Int
   mut background_runs : Int
   mut tool_argument_errors : Int
+  mut command_failures : Int
+  mbtx_failures : Map[String, Int]
   tools : Map[String, Int]
   operations : Map[String, Int]
   models : Array[String]
   response_ids : Array[String]
   call_ids : Array[String]
+  output_ids : Array[String]
 } derive(ToJson)
 
 ///|
@@ -34,11 +37,14 @@ pub fn Audit::new() -> Audit {
     approval_requests: 0,
     background_runs: 0,
     tool_argument_errors: 0,
+    command_failures: 0,
+    mbtx_failures: {},
     tools: {},
     operations: {},
     models: [],
     response_ids: [],
     call_ids: [],
+    output_ids: [],
   }
 }
 
@@ -195,9 +201,58 @@ pub fn Audit::jsonl(self : Audit, text : String) -> Unit {
       if event is { "item": { "status": "declined", .. }, .. } {
         self.approval_requests += 1
       }
+      if event
+        is {
+          "type": "item.completed",
+          "item": {
+            "type": "command_execution",
+            "exit_code": Number(code, ..),
+            ..
+          },
+          ..
+        } {
+        if code != 0 {
+          self.command_failures += 1
+        }
+      }
     } catch {
       _ => self.parse_errors += 1
     }
+  }
+}
+
+///|
+pub fn Audit::request(self : Audit, text : String) -> Unit {
+  try {
+    if @json.parse(text) is { "body": { "input": Array(items), .. }, .. } {
+      for item in items {
+        if item
+          is {
+            "type": "function_call_output",
+            "call_id": String(id),
+            "output": String(output),
+            ..
+          } {
+          if self.output_ids.contains(id) {
+            continue
+          }
+          self.output_ids.push(id)
+          // Shell output is plain text; only MBTX's structured terminal is counted here.
+          let terminal = @json.parse(output) catch { _ => continue }
+          let kind = match terminal {
+            { "state": "failed", "error": { "kind": String(kind), .. }, .. } =>
+              kind
+            { "state": "completed", "exit_code": Number(code, ..), .. } if code !=
+              0 => "script_exit"
+            _ => continue
+          }
+          self.mbtx_failures[kind] = self.mbtx_failures.get(kind).unwrap_or(0) +
+            1
+        }
+      }
+    }
+  } catch {
+    _ => self.parse_errors += 1
   }
 }
 

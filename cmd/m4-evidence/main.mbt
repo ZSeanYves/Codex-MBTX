@@ -4,6 +4,7 @@ struct Evidence {
   backend : String
   events : String
   dumps : Array[String]
+  requests : Array[String]
   result : String?
   inputs : Map[String, String]
   unexpected_file : Bool
@@ -33,6 +34,9 @@ async fn main {
       audit.jsonl(evidence.events)
       for dump in evidence.dumps {
         audit.dump(dump)
+      }
+      for request in evidence.requests {
+        audit.request(request)
       }
       let correct = match evidence.result {
         Some(s) => @eval.correct_output(case, s)

@@ -11,6 +11,7 @@ on:
         default: full
         type: choice
         options:
+          - probe
           - smoke
           - full
       model:
@@ -35,6 +36,31 @@ env:
   MOONBIT_INSTALL_VERSION: "0.10.11+6ff76a5f9"
 
 jobs:
+  probe:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'probe'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: moon update
+      - name: Probe Responses API
+        env:
+          OPENROUTER_ICU_API_KEY: ${{ secrets.OPENROUTER_ICU_API_KEY }}
+          M4_MODEL: ${{ inputs.model }}
+        run: moon run scripts/m4_probe.mbtx
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m4-probe-${{ github.run_id }}
+          path: _build/m4-results/probe.json
+
   offline:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -61,7 +87,7 @@ jobs:
           git diff --exit-code
 
   live:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'probe'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
