@@ -67,6 +67,19 @@ async test "compile errors preserve the toolchain diagnostics" {
 }
 
 ///|
+async test "compile warnings preserve diagnostics and still execute the script" {
+  let result = @process.run(
+    @runtime.Request::new(
+      "compile-warning",
+      Source("fn main { let unused = 1; println(42) }"),
+    ),
+  )
+  assert_eq(result.exit_code, 0)
+  assert_eq(result.stdout, "42\n")
+  assert_true(result.stderr.contains("unused"))
+}
+
+///|
 async test "invalid cwd is a runner failure" {
   let directory = @fs.tmpdir(prefix="codex-mbtx-missing-cwd")
   @fs.rmdir(directory)

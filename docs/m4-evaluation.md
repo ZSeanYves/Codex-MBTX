@@ -25,6 +25,11 @@ CLI rejects other shapes instead of classifying invalid evidence as a model
 failure. Earlier diagnostic scores affected by the array-wrapping bug are
 identified in the report and are excluded from the formal comparison.
 
+The process runner accepts warning JSON records that MoonBit may emit before
+its artifact record, preserving them as stderr diagnostics while selecting the
+artifact from the later JSON line. This keeps warning-producing scripts
+executable and prevents a runner protocol error from being attributed to MBTX.
+
 The task set covers structured JSON and JSONL processing, paths containing
 spaces and shell metacharacters, literal argv, a small MoonBit repair, and a
 background job. Tasks are run twice in `full` mode. Backend order alternates by

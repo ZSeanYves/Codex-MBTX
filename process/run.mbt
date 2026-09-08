@@ -127,9 +127,22 @@ async fn execute(request : @runtime.Request, capture : Capture) -> Int {
     }
     return build.exit_code()
   }
-  let artifact = match @json.parse(build.stdout()) {
-    { "artifacts_path": [String(path)], .. } => path
-    _ => raise ExecutionFailed("moon did not return exactly one Wasm artifact")
+  // Successful builds can emit diagnostic JSON lines before the artifact record.
+  let mut artifact : String? = None
+  for line in build.stdout().split("\n") {
+    if line.trim().is_empty() {
+      continue
+    }
+    match @json.parse(line) {
+      { "$message_type": "diagnostic", .. } =>
+        capture.accept(Stderr, @utf8.encode(line.to_owned() + "\n"))
+      { "artifacts_path": [String(path)], .. } if artifact is None =>
+        artifact = Some(path)
+      _ => raise ExecutionFailed("unexpected MoonBit build output record")
+    }
+  }
+  guard artifact is Some(artifact) else {
+    raise ExecutionFailed("moon did not return exactly one Wasm artifact")
   }
   let args = ["--", artifact]
   for arg in request.args() {
