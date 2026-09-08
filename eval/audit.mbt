@@ -14,6 +14,7 @@ pub struct Audit {
   mut background_runs : Int
   mut tool_argument_errors : Int
   mut command_failures : Int
+  command_diagnostics : Array[String]
   mbtx_failures : Map[String, Int]
   mbtx_diagnostics : Array[String]
   tools : Map[String, Int]
@@ -41,6 +42,7 @@ pub fn Audit::new() -> Audit {
     background_runs: 0,
     tool_argument_errors: 0,
     command_failures: 0,
+    command_diagnostics: [],
     mbtx_failures: {},
     mbtx_diagnostics: [],
     tools: {},
@@ -61,6 +63,14 @@ fn integer(value : Json, key : String) -> Int {
         _ => 0
       }
     _ => 0
+  }
+}
+
+///|
+fn retain_diagnostic(items : Array[String], text : String) -> Unit {
+  let text = String::from_iter(text.iter().take(2048))
+  if items.length() < 4 && !text.is_empty() && !items.contains(text) {
+    items.push(text)
   }
 }
 
@@ -221,6 +231,10 @@ pub fn Audit::jsonl(self : Audit, text : String) -> Unit {
         } {
         if code != 0 {
           self.command_failures += 1
+          if event
+            is { "item": { "aggregated_output": String(output), .. }, .. } {
+            retain_diagnostic(self.command_diagnostics, output)
+          }
         }
       }
     } catch {
@@ -256,17 +270,12 @@ pub fn Audit::request(self : Audit, text : String) -> Unit {
           }
           self.mbtx_failures[kind] = self.mbtx_failures.get(kind).unwrap_or(0) +
             1
-          if self.mbtx_diagnostics.length() < 4 {
-            let detail = match terminal {
-              { "stderr": String(stderr), .. } if !stderr.is_empty() => stderr
-              { "error": { "message": String(message), .. }, .. } => message
-              _ => ""
-            }
-            let detail = String::from_iter(detail.iter().take(2048))
-            if !detail.is_empty() && !self.mbtx_diagnostics.contains(detail) {
-              self.mbtx_diagnostics.push(detail)
-            }
+          let detail = match terminal {
+            { "stderr": String(stderr), .. } if !stderr.is_empty() => stderr
+            { "error": { "message": String(message), .. }, .. } => message
+            _ => ""
           }
+          retain_diagnostic(self.mbtx_diagnostics, detail)
         }
       }
     }

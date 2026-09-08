@@ -29,9 +29,11 @@ the private dump directory. Raw request/response dumps, prompts, and model
 text remain in a temporary private directory. The committed JSON and Markdown
 reports contain only task/backend/repetition, timing, sanitized tool counts,
 provider-reported token fields, model names, classifications, and bounded
-failure diagnostics. MBTX stderr is retained only for failed calls, with at
-most four distinct excerpts of 2,048 characters per rollout. Successful tool
-output and model reasoning are not published.
+failure diagnostics, and the observed `result.json` file from the public
+fixture workspace (null when absent). MBTX stderr and shell output are retained
+only for failed calls, with at most four distinct excerpts of 2,048 characters
+per backend per rollout. Successful tool output and model reasoning are not
+published.
 
 The installed toolchain is read-only. Its separate dependency cache is owned by
 the agent account and is explicitly writable in the Codex sandbox because Moon

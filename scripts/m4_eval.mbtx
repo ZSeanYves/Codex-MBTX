@@ -25,6 +25,7 @@ struct Result {
   human_interventions : Int
   requests : Int
   usage_complete : Bool
+  observed_result : Json
   diagnostic : String
   audit : Json
 } derive(ToJson)
@@ -164,7 +165,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     backend_compliant: compliant is True,
     failure_category: category,
     usage_complete: requests > 0 && requests == metric(audit, "responses") && requests == metric(audit, "usage_responses"),
-    human_interventions: 0, requests, diagnostic, audit }
+    human_interventions: 0, requests, observed_result: result.to_json(), diagnostic, audit }
 }
 
 fn markdown(results : Array[Result], model : String, effort : String, sha : String) -> String {

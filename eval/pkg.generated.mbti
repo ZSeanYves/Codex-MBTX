@@ -30,6 +30,7 @@ pub struct Audit {
   mut background_runs : Int
   mut tool_argument_errors : Int
   mut command_failures : Int
+  command_diagnostics : Array[String]
   mbtx_failures : Map[String, Int]
   mbtx_diagnostics : Array[String]
   tools : Map[String, Int]

@@ -223,6 +223,24 @@ test "MBTX failure diagnostics are bounded and omit successful output" {
 }
 
 ///|
+test "command failures retain a diagnostic without successful output" {
+  let audit = @eval.Audit::new()
+  for code in [0, 1] {
+    let event : Json = {
+      "type": "item.completed",
+      "item": {
+        "type": "command_execution",
+        "exit_code": code.to_json(),
+        "aggregated_output": code.to_string().to_json(),
+      },
+    }
+    audit.jsonl(event.stringify())
+  }
+  assert_eq(audit.command_failures, 1)
+  assert_eq(audit.command_diagnostics, ["1"])
+}
+
+///|
 test "recovered provider failure remains visible without failing a completed task" {
   let audit = completed_audit("exec_command")
   audit.event({
