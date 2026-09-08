@@ -1,9 +1,9 @@
 # M4 evaluation
 
-The [2026-09-08 delivery report](reports/m4-2026-09-08.md) records engineering
-checks, live relay diagnostics, and evaluator corrections. The full comparison
-requires a successful paired smoke; no backend performance claim is made from
-diagnostic attempts.
+The [delivery report reviewed on 2026-09-09](reports/m4-2026-09-09.md) records
+all 24 live rollouts and passing engineering checks. Each backend passed 6/12;
+the final nine rollouts failed with relay balance exhaustion. The live gate
+remains failed, and these results do not justify a default-backend change.
 
 CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
 Using the rolling `latest` changed dependency warnings during M4 development
