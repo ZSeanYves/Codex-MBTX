@@ -45,7 +45,8 @@ async fn main {
       }
       let correct = match evidence.result {
         String(s) => @eval.correct_output(case, s)
-        _ => false
+        Null => false
+        _ => fail("evidence.result must be a string or null")
       }
       let mut inputs_ok = !evidence.unexpected_file
       for path, _ in case.inputs {

@@ -1,8 +1,9 @@
 # M4 evaluation
 
-The [2026-09-08 delivery report](reports/m4-2026-09-08.md) records passing
-engineering checks and the live relay failures. The full comparison remains
-blocked until a paired smoke can finish; no backend performance claim is made.
+The [2026-09-08 delivery report](reports/m4-2026-09-08.md) records engineering
+checks, live relay diagnostics, and evaluator corrections. The full comparison
+requires a successful paired smoke; no backend performance claim is made from
+diagnostic attempts.
 
 CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
 Using the rolling `latest` changed dependency warnings during M4 development
@@ -14,6 +15,15 @@ tasks with a fresh workspace and home directory through the shell baseline and
 the MBTX tool, records one structured row per run, and grades the result against
 an answer key that is kept inside the evaluator. The model's final message is
 not treated as proof of success.
+
+Prompt revision 2 supplies the same `eval/MOONBIT.md` reference inline to both
+backends, in addition to placing it in the workspace. This gives the MBTX model
+the import and entrypoint syntax before its first tool call. Each workspace is
+an empty Git repository and both backends have ripgrep installed. Schema
+version 2 encodes observed file contents as a JSON string or null; the evidence
+CLI rejects other shapes instead of classifying invalid evidence as a model
+failure. Earlier diagnostic scores affected by the array-wrapping bug are
+identified in the report and are excluded from the formal comparison.
 
 The task set covers structured JSON and JSONL processing, paths containing
 spaces and shell metacharacters, literal argv, a small MoonBit repair, and a

@@ -16,6 +16,28 @@ async fn main {
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
   guard graded.exit_code() == 0 else { fail("evidence CLI failed: " + graded.stderr()) }
   guard @json.parse(graded.stdout()) is { "failure_category": "agent_error", .. } else { fail("incomplete evidence must not pass") }
+  guard cases[0] is { "inputs": inputs, "expected": expected, .. } else { fail("missing totals fixture") }
+  let response : Json = { "status": 200, "body": {
+    "type": "response.completed", "response": { "id": "regression", "usage": { "input_tokens": 12, "output_tokens": 8 },
+      "output": [{ "type": "function_call", "name": "exec_command", "call_id": "regression-call", "arguments": "{}" }] } } }
+  // Exercise the CLI boundary: Option[String] used to encode a present file as [text].
+  for result in [expected.stringify().to_json(), [expected.stringify()].to_json(), Json::null()] {
+    let evidence : Json = { "task": "json_totals", "backend": "shell", "events": "{\"type\":\"turn.completed\"}\n",
+      "dumps": [response.stringify().to_json()], "requests": [], "result": result, "inputs": inputs,
+      "unexpected_file": false, "timeout": false, "exit_code": 0 }
+    let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
+    if result is Array(_) {
+      guard graded.exit_code() != 0 && graded.stderr().contains("evidence.result must be a string or null") else { fail("array-wrapped result must be rejected as invalid evidence") }
+    } else {
+      guard graded.exit_code() == 0 else { fail("valid evidence CLI failed: " + graded.stderr()) }
+      let output = @json.parse(graded.stdout())
+      if result is String(_) {
+        guard output is { "correct_output": true, "failure_category": "none", .. } else { fail("correct file contents must pass: " + graded.stdout()) }
+      } else {
+        guard output is { "correct_output": false, "failure_category": "incorrect_output", .. } else { fail("a completed turn without a result file must fail grading") }
+      }
+    }
+  }
   let base = @fs.tmpdir(prefix="m4-fixtures-")
   let mut checked = 0
   for case in cases {
@@ -38,5 +60,5 @@ async fn main {
   }
   guard checked == 3 else { fail("expected three executable fixtures") }
   @fs.rmdir(base, recursive=true)
-  println("M4 executable fixtures: 3 passed; no API key used")
+  println("M4 executable fixtures: 3 passed; evidence CLI regressions passed; no API key used")
 }

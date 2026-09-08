@@ -83,6 +83,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   @fs.mkdir("\{private_dir}/dumps", permission=0o700)
   for path, value in case.inputs { put("\{workspace}/\{path}", value) }
   put("\{workspace}/MOONBIT.md", reference)
+  @shell.Cmd("git", ["init", "--quiet", "--initial-branch=main", workspace]).run()
   let dumps : Array[String] = []
   let request_dumps : Array[String] = []
   let mut events = ""
@@ -117,7 +118,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
       let output = @shell.Cmd("sudo", ["-n", "-u", "mbtx-eval", "--", "/usr/bin/env", "-i",
         "PATH=/opt/mbtx-eval-tools/moon/bin:/usr/local/bin:/usr/bin:/bin", "HOME=\{home}", "CODEX_HOME=\{home}", "MOON_HOME=/opt/mbtx-eval-tools/moon",
         "/opt/mbtx-eval-tools/bin/codex", "exec", "--json", "--strict-config", "--ephemeral", "--ignore-rules", "--skip-git-repo-check", "-C", workspace,
-        prompt.stdout()],
+        prompt.stdout() + "\n\n" + reference],
         inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=300_000, max_output_bytes=4_194_304)
       exit_code = output.exit_code()
       events = output.stdout()
@@ -156,7 +157,11 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   for path, _ in case.inputs {
     if regular_text("\{workspace}/\{path}") is Some(text) { inputs[path] = text }
   }
-  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "requests": request_dumps.to_json(), "result": result.to_json(), "inputs": inputs.to_json(), "unexpected_file": unexpected_file.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
+  let result_json = match result {
+    Some(text) => text.to_json()
+    None => Json::null()
+  }
+  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "requests": request_dumps.to_json(), "result": result_json, "inputs": inputs.to_json(), "unexpected_file": unexpected_file.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
   if graded.exit_code() != 0 { fail("evidence conversion failed: " + graded.stderr().replace(old=key, new="[REDACTED]")) }
   guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "correct_output": correct, "inputs_preserved": inputs_ok, "failure_category": String(category), .. } else { fail("invalid evidence result") }
@@ -165,7 +170,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     backend_compliant: compliant is True,
     failure_category: category,
     usage_complete: requests > 0 && requests == metric(audit, "responses") && requests == metric(audit, "usage_responses"),
-    human_interventions: 0, requests, observed_result: result.to_json(), diagnostic, audit }
+    human_interventions: 0, requests, observed_result: result_json, diagnostic, audit }
 }
 
 fn markdown(results : Array[Result], model : String, effort : String, sha : String) -> String {
@@ -236,7 +241,7 @@ async fn main {
         println("Running \{case.id} / \{backend} / \{repetition}")
         let row = run_case(case, backend, repetition, base, reference, key, model, effort, grader)
         results.push(row)
-        let report : Json = { "schema_version": 1, "implementation_sha": sha.to_json(), "binary_source": binary_source,
+        let report : Json = { "schema_version": 2, "prompt_revision": 2, "implementation_sha": sha.to_json(), "binary_source": binary_source,
           "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
           "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
           "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
