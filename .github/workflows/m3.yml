@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MOONBIT_INSTALL_VERSION: "0.10.11+6ff76a5f9"
+
 jobs:
   codex-adapter:
     runs-on: ubuntu-24.04

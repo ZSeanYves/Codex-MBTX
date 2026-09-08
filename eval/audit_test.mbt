@@ -88,6 +88,16 @@ test "background execution requires polling" {
       "arguments": "{\"op\":\"job_output\"}",
     },
   })
+  assert_false(audit.backend_ok("mbtx", true))
+  audit.event({
+    "type": "response.output_item.done",
+    "item": {
+      "type": "function_call",
+      "name": "mbtx",
+      "call_id": "c3",
+      "arguments": "{\"op\":\"run\",\"background\":true}",
+    },
+  })
   assert_true(audit.backend_ok("mbtx", true))
 }
 
@@ -128,6 +138,27 @@ test "JSON grading ignores key order but requires complete values" {
     @eval.correct_output(case, "{\"Ada\":\"1200\",\"Lin\":0,\"Sam\":275}"),
   )
   assert_false(@eval.correct_output(case, "not JSON"))
+}
+
+///|
+test "repair must preserve the executable test entrypoint" {
+  let case = @eval.suite()[4]
+  let original = case.inputs["broken.mbtx"]
+  assert_true(
+    @eval.preserved_input(
+      case,
+      "broken.mbtx",
+      Some(original.replace(old="total = x", new="total += x")),
+    ),
+  )
+  assert_false(
+    @eval.preserved_input(
+      case,
+      "broken.mbtx",
+      Some(original.replace(old="[9,1]", new="[0]")),
+    ),
+  )
+  assert_false(@eval.preserved_input(case, "broken.mbtx", None))
 }
 
 ///|

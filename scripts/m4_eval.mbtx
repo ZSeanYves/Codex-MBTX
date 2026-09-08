@@ -10,8 +10,6 @@ import {
 struct EvalCase {
   id : String
   inputs : Map[String, String]
-  expected : Json
-  editable : String?
 } derive(FromJson)
 
 struct Result {
@@ -26,6 +24,7 @@ struct Result {
   failure_category : String
   human_interventions : Int
   requests : Int
+  usage_complete : Bool
   diagnostic : String
   audit : Json
 } derive(ToJson)
@@ -124,20 +123,20 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     proxy.cancel()
   }
   let result = regular_text("\{workspace}/result.json")
-  let correct = match result { Some(s) => try @json.parse(s) == case.expected catch { _ => false }; None => false }
-  let mut inputs_ok = !@fs.exists("\{workspace}/SHOULD_NOT_EXIST")
-  for path, value in case.inputs {
-    if case.editable == Some(path) { continue }
-    if regular_text("\{workspace}/\{path}") != Some(value) { inputs_ok = false }
+  let unexpected_file = @fs.exists("\{workspace}/SHOULD_NOT_EXIST")
+  let inputs : Map[String, String] = Map([])
+  for path, _ in case.inputs {
+    if regular_text("\{workspace}/\{path}") is Some(text) { inputs[path] = text }
   }
-  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "correct": correct.to_json(), "inputs_ok": inputs_ok.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
+  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "result": result.to_json(), "inputs": inputs.to_json(), "unexpected_file": unexpected_file.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
   graded.check()
-  guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "failure_category": String(category), .. } else { fail("invalid evidence result") }
+  guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "correct_output": correct, "inputs_preserved": inputs_ok, "failure_category": String(category), .. } else { fail("invalid evidence result") }
   { task: case.id, backend, repetition, elapsed_ms, exit_code,
-    correct_output: correct, inputs_preserved: inputs_ok,
+    correct_output: correct is True, inputs_preserved: inputs_ok is True,
     backend_compliant: compliant is True,
     failure_category: category,
+    usage_complete: requests > 0 && requests == metric(audit, "responses") && requests == metric(audit, "usage_responses"),
     human_interventions: 0, requests, diagnostic, audit }
 }
 
@@ -159,7 +158,7 @@ fn markdown(results : Array[Result], model : String, effort : String, sha : Stri
       cached += metric(row.audit, "cached_input_tokens")
       output += metric(row.audit, "output_tokens")
       usages += metric(row.audit, "usage_responses")
-      responses += metric(row.audit, "responses")
+      responses += row.requests
     }
     if !rows.is_empty() {
       lines.push("| \{backend} | \{rows.filter(r => r.failure_category == "none").length()}/\{rows.length()} | \{rows.filter(r => r.correct_output).length()}/\{rows.length()} | \{elapsed / rows.length().to_int64()} | \{input} | \{cached} | \{output} | \{usages}/\{responses} |")
@@ -217,7 +216,7 @@ async fn main {
   if @env.get_env_var("GITHUB_STEP_SUMMARY") is Some(path) {
     @fs.write_file(path, markdown(results, model, effort, sha), append=true)
   }
-  @fs.rmdir(base, recursive=true)
+  @shell.Cmd("sudo", ["-n", "rm", "-rf", "--", base]).run()
   if results.any(r => r.failure_category == "provider_error" || r.failure_category == "audit_error" || r.failure_category == "missing_usage") {
     fail("evaluation evidence is incomplete; inspect the sanitized report")
   }

@@ -4,8 +4,9 @@ struct Evidence {
   backend : String
   events : String
   dumps : Array[String]
-  correct : Bool
-  inputs_ok : Bool
+  result : String?
+  inputs : Map[String, String]
+  unexpected_file : Bool
   timeout : Bool
   exit_code : Int
 } derive(FromJson)
@@ -33,8 +34,20 @@ async fn main {
       for dump in evidence.dumps {
         audit.dump(dump)
       }
+      let correct = match evidence.result {
+        Some(s) => @eval.correct_output(case, s)
+        None => false
+      }
+      let mut inputs_ok = !evidence.unexpected_file
+      for path, _ in case.inputs {
+        if !@eval.preserved_input(case, path, evidence.inputs.get(path)) {
+          inputs_ok = false
+        }
+      }
       let result : Json = {
         "audit": audit.to_json(),
+        "correct_output": correct.to_json(),
+        "inputs_preserved": inputs_ok.to_json(),
         "backend_compliant": audit
         .backend_ok(evidence.backend, case.background)
         .to_json(),
@@ -42,8 +55,8 @@ async fn main {
           audit,
           evidence.backend,
           case.background,
-          evidence.correct,
-          evidence.inputs_ok,
+          correct,
+          inputs_ok,
           evidence.timeout,
           evidence.exit_code,
         ).to_json(),

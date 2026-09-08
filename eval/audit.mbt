@@ -10,6 +10,8 @@ pub struct Audit {
   mut http_errors : Int
   mut parse_errors : Int
   mut approval_requests : Int
+  mut background_runs : Int
+  mut tool_argument_errors : Int
   tools : Map[String, Int]
   operations : Map[String, Int]
   models : Array[String]
@@ -30,6 +32,8 @@ pub fn Audit::new() -> Audit {
     http_errors: 0,
     parse_errors: 0,
     approval_requests: 0,
+    background_runs: 0,
+    tool_argument_errors: 0,
     tools: {},
     operations: {},
     models: [],
@@ -54,7 +58,8 @@ fn integer(value : Json, key : String) -> Int {
 fn Audit::item(self : Audit, item : Json) -> Unit {
   if item
     is {
-      "type": "function_call",
+      "type": "function_call"
+      | "custom_tool_call",
       "name": String(name),
       "call_id": String(id),
       ..
@@ -73,8 +78,11 @@ fn Audit::item(self : Audit, item : Json) -> Unit {
           if @json.parse(args) is { "op": String(op), .. } {
             self.operations[op] = self.operations.get(op).unwrap_or(0) + 1
           }
+          if @json.parse(args) is { "op": "run", "background": true, .. } {
+            self.background_runs += 1
+          }
         } catch {
-          _ => self.parse_errors += 1
+          _ => self.tool_argument_errors += 1
         }
       }
     }
@@ -214,11 +222,19 @@ pub fn Audit::backend_ok(
     }
     !background ||
     (
-      self.operations.get("run").unwrap_or(0) > 0 &&
+      self.background_runs > 0 &&
       self.operations.get("job_output").unwrap_or(0) > 0
     )
   } else {
-    self.tools.get("mbtx").unwrap_or(0) == 0 &&
+    if backend != "shell" {
+      return false
+    }
+    for
+      name in ["mbtx", "spawn_agent", "js", "js_exec", "shell", "shell_command"] {
+      if self.tools.get(name).unwrap_or(0) > 0 {
+        return false
+      }
+    }
     self.tools.get("exec_command").unwrap_or(0) > 0 &&
     (!background || self.tools.get("write_stdin").unwrap_or(0) > 0)
   }

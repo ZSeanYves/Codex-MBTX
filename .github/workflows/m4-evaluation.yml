@@ -31,6 +31,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MOONBIT_INSTALL_VERSION: "0.10.11+6ff76a5f9"
+
 jobs:
   offline:
     if: github.event_name != 'workflow_dispatch'
@@ -69,6 +72,8 @@ jobs:
       M4_EFFORT: ${{ inputs.reasoning_effort }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - name: Install host dependencies
         run: |
           sudo apt-get update
@@ -90,11 +95,14 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
         with:
+          cache-on-failure: true
           workspaces: |
             adapter -> target
             _build/codex-upstream/codex-rs -> target
       - name: Build pinned Codex tools
         run: moon run scripts/m4_build.mbtx
+      - name: Validate executable fixtures
+        run: moon run scripts/m4_verify.mbtx
       - name: Install isolated evaluator tools
         run: |
           sudo useradd --system --create-home --shell /usr/sbin/nologin mbtx-eval

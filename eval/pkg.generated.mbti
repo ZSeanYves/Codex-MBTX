@@ -6,6 +6,8 @@ pub fn correct_output(Case, String) -> Bool
 
 pub fn failure_category(Audit, String, Bool, Bool, Bool, Bool, Int) -> String
 
+pub fn preserved_input(Case, String, String?) -> Bool
+
 pub fn prompt(Case, String) -> String
 
 pub fn suite() -> Array[Case]
@@ -24,6 +26,8 @@ pub struct Audit {
   mut http_errors : Int
   mut parse_errors : Int
   mut approval_requests : Int
+  mut background_runs : Int
+  mut tool_argument_errors : Int
   tools : Map[String, Int]
   operations : Map[String, Int]
   models : Array[String]

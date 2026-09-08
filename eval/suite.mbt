@@ -105,6 +105,22 @@ pub fn correct_output(case : Case, text : String) -> Bool {
 }
 
 ///|
+pub fn preserved_input(case : Case, path : String, actual : String?) -> Bool {
+  guard case.inputs.get(path) is Some(original) && actual is Some(actual) else {
+    return false
+  }
+  if case.editable != Some(path) {
+    return original == actual
+  }
+  let parts = original.split("async fn main {").to_array()
+  guard parts.length() == 2 else { return false }
+  actual.has_prefix(
+    "import { \"moonbitlang/async\", \"moonbitlang/async/fs\" }",
+  ) &&
+  actual.has_suffix("async fn main {" + parts[1].to_owned())
+}
+
+///|
 pub fn prompt(case : Case, backend : String) -> String {
   let routing = if backend == "mbtx" {
     "Use the mbtx tool for ALL command and script execution. Never call exec_command, write_stdin, shell, shell_command or another execution backend. Write new automation in MoonBit .mbtx only. Inside mbtx, external programs may be invoked using moonbitlang/async/shell with literal argv. You may use apply_patch for editing."

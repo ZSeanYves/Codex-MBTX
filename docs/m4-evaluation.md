@@ -1,5 +1,10 @@
 # M4 evaluation
 
+CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
+Using the rolling `latest` changed dependency warnings during M4 development
+and contaminated stderr assertions. The installer honors
+`MOONBIT_INSTALL_VERSION`; local Codex configuration is never modified.
+
 M4 is a bounded, reproducible pilot for the M3 adapter. It runs the same six
 tasks with a fresh workspace and home directory through the shell baseline and
 the MBTX tool, records one structured row per run, and grades the result against
