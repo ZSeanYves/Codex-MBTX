@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "implementation_sha": "b51c3898b2c8c0a0076e4a9e1c63c2debd766c89",
+  "binary_source": {
+    "conclusion": "success",
+    "headSha": "8f1142da167970bb6c8deaee1b30c4ef0cdc4669",
+    "workflowName": "M3 Codex Adapter"
+  },
+  "binary_run": "34187141796",
+  "toolchain": "moon 0.1.20260827 (d0aaa07 2026-08-27) ~/.moon/bin/moon\nmoonc v0.10.11+6ff76a5f9 (2026-08-28) ~/.moon/bin/moonc\nmoonrun 0.1.20260827 (d0aaa07 2026-08-27) ~/.moon/bin/moonrun\n\nFeature flags enabled: rr_moon_mod,rr_moon_pkg\n",
+  "github_run_id": "34204802974",
+  "model": "gpt-5.6-terra",
+  "reasoning_effort": "medium",
+  "mode": "smoke",
+  "expected_rollouts": 2,
+  "deadline_ms": 300000,
+  "tool_mode": "direct",
+  "request_max_retries": 2,
+  "stream_max_retries": 1,
+  "results": [
+    {
+      "task": "json_totals",
+      "backend": "shell",
+      "repetition": 1,
+      "elapsed_ms": 27928,
+      "exit_code": 0,
+      "correct_output": false,
+      "inputs_preserved": true,
+      "backend_compliant": true,
+      "failure_category": "incorrect_output",
+      "human_interventions": 0,
+      "requests": 6,
+      "usage_complete": true,
+      "diagnostic": "",
+      "audit": {
+        "completed": true,
+        "input_tokens": 64054,
+        "cached_input_tokens": 53760,
+        "output_tokens": 673,
+        "reasoning_output_tokens": 105,
+        "usage_responses": 6,
+        "responses": 6,
+        "http_errors": 0,
+        "provider_errors": 0,
+        "parse_errors": 0,
+        "approval_requests": 0,
+        "background_runs": 0,
+        "tool_argument_errors": 0,
+        "command_failures": 1,
+        "mbtx_failures": {},
+        "tools": {
+          "exec_command": 4,
+          "apply_patch": 1
+        },
+        "operations": {},
+        "models": [
+          "gpt-5.6-terra"
+        ],
+        "response_ids": [
+          "resp_08e23a47626fa91e016a9fc7b1f53487d18c8e6d5c5467ac20",
+          "resp_08e23a47626fa91e016a9fc7b648c487d1b007592fde91a56c",
+          "resp_08e23a47626fa91e016a9fc7ba325087d1b1f1797450cbd64e",
+          "resp_08e23a47626fa91e016a9fc7be067087d1b5ba7422e268577d",
+          "resp_08e23a47626fa91e016a9fc7c2308087d18a845ccd111ffe5d",
+          "resp_08e23a47626fa91e016a9fc7c93cd487d1b261fabec485436f"
+        ],
+        "call_ids": [
+          "call_GzbjfpqmjxLuUC77orMkONnA",
+          "call_mQ3PNl5Ap9rqfUJGnNsilbLm",
+          "call_usJyZYglhcxdU6LRrCYARNnQ",
+          "call_fNtahmBIgXYvdg8SNhD5lON1",
+          "call_YudC4Z1ohuypNNBy7GWBLQLI"
+        ],
+        "output_ids": [
+          "call_GzbjfpqmjxLuUC77orMkONnA",
+          "call_mQ3PNl5Ap9rqfUJGnNsilbLm",
+          "call_usJyZYglhcxdU6LRrCYARNnQ",
+          "call_YudC4Z1ohuypNNBy7GWBLQLI"
+        ]
+      }
+    },
+    {
+      "task": "json_totals",
+      "backend": "mbtx",
+      "repetition": 1,
+      "elapsed_ms": 300101,
+      "exit_code": -1,
+      "correct_output": false,
+      "inputs_preserved": true,
+      "backend_compliant": true,
+      "failure_category": "timeout",
+      "human_interventions": 0,
+      "requests": 2,
+      "usage_complete": false,
+      "diagnostic": "responses-api-proxy listening on 127.0.0.1:33443\n",
+      "audit": {
+        "completed": false,
+        "input_tokens": 10487,
+        "cached_input_tokens": 3840,
+        "output_tokens": 109,
+        "reasoning_output_tokens": 32,
+        "usage_responses": 1,
+        "responses": 1,
+        "http_errors": 0,
+        "provider_errors": 0,
+        "parse_errors": 0,
+        "approval_requests": 0,
+        "background_runs": 0,
+        "tool_argument_errors": 0,
+        "command_failures": 0,
+        "mbtx_failures": {
+          "script_exit": 1
+        },
+        "tools": {
+          "mbtx": 1
+        },
+        "operations": {
+          "run": 1
+        },
+        "models": [
+          "gpt-5.6-terra"
+        ],
+        "response_ids": [
+          "resp_0bad836b4aaab552016a9fc85ec20887d29127304a78ee17ae"
+        ],
+        "call_ids": [
+          "call_dQeugRHVgpfJhiT4divb0pRy"
+        ],
+        "output_ids": [
+          "call_dQeugRHVgpfJhiT4divb0pRy"
+        ]
+      }
+    }
+  ]
+}

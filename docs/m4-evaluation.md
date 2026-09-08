@@ -1,5 +1,9 @@
 # M4 evaluation
 
+The [2026-09-08 delivery report](reports/m4-2026-09-08.md) records passing
+engineering checks and the live relay failures. The full comparison remains
+blocked until a paired smoke can finish; no backend performance claim is made.
+
 CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
 Using the rolling `latest` changed dependency warnings during M4 development
 and contaminated stderr assertions. The installer honors

@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "implementation_sha": "b51c3898b2c8c0a0076e4a9e1c63c2debd766c89",
+  "binary_source": {
+    "conclusion": "success",
+    "headSha": "8f1142da167970bb6c8deaee1b30c4ef0cdc4669",
+    "workflowName": "M3 Codex Adapter"
+  },
+  "binary_run": "34187141796",
+  "toolchain": "moon 0.1.20260827 (d0aaa07 2026-08-27) ~/.moon/bin/moon\nmoonc v0.10.11+6ff76a5f9 (2026-08-28) ~/.moon/bin/moonc\nmoonrun 0.1.20260827 (d0aaa07 2026-08-27) ~/.moon/bin/moonrun\n\nFeature flags enabled: rr_moon_mod,rr_moon_pkg\n",
+  "github_run_id": "34204006100",
+  "model": "gpt-5.6-terra",
+  "reasoning_effort": "xhigh",
+  "mode": "smoke",
+  "expected_rollouts": 2,
+  "deadline_ms": 300000,
+  "tool_mode": "direct",
+  "request_max_retries": 2,
+  "stream_max_retries": 1,
+  "results": [
+    {
+      "task": "json_totals",
+      "backend": "shell",
+      "repetition": 1,
+      "elapsed_ms": 202056,
+      "exit_code": 1,
+      "correct_output": false,
+      "inputs_preserved": true,
+      "backend_compliant": false,
+      "failure_category": "provider_error",
+      "human_interventions": 0,
+      "requests": 2,
+      "usage_complete": false,
+      "diagnostic": "Reading additional input from stdin...\nReconnecting... 1/1 (stream disconnected before completion: stream closed before response.completed)\nstream disconnected before completion: Too many pending requests, please retry later (request id: 202609080825039393757248268d9d6V8OcmnaM)\nstream disconnected before completion: Too many pending requests, please retry later (request id: 202609080825039393757248268d9d6V8OcmnaM)\nresponses-api-proxy listening on 127.0.0.1:36997\n",
+      "audit": {
+        "completed": false,
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "usage_responses": 0,
+        "responses": 0,
+        "http_errors": 0,
+        "provider_errors": 2,
+        "parse_errors": 0,
+        "approval_requests": 0,
+        "background_runs": 0,
+        "tool_argument_errors": 0,
+        "command_failures": 0,
+        "mbtx_failures": {},
+        "tools": {},
+        "operations": {},
+        "models": [],
+        "response_ids": [],
+        "call_ids": [],
+        "output_ids": []
+      }
+    },
+    {
+      "task": "json_totals",
+      "backend": "mbtx",
+      "repetition": 1,
+      "elapsed_ms": 124661,
+      "exit_code": 1,
+      "correct_output": false,
+      "inputs_preserved": true,
+      "backend_compliant": true,
+      "failure_category": "provider_error",
+      "human_interventions": 0,
+      "requests": 3,
+      "usage_complete": false,
+      "diagnostic": "Reading additional input from stdin...\nReconnecting... 1/1 (stream disconnected before completion: Our servers are currently overloaded. Please try again later.)\nstream disconnected before completion: Our servers are currently overloaded. Please try again later.\nstream disconnected before completion: Our servers are currently overloaded. Please try again later.\nresponses-api-proxy listening on 127.0.0.1:36005\n",
+      "audit": {
+        "completed": false,
+        "input_tokens": 10540,
+        "cached_input_tokens": 3840,
+        "output_tokens": 652,
+        "reasoning_output_tokens": 516,
+        "usage_responses": 1,
+        "responses": 1,
+        "http_errors": 0,
+        "provider_errors": 2,
+        "parse_errors": 0,
+        "approval_requests": 0,
+        "background_runs": 0,
+        "tool_argument_errors": 0,
+        "command_failures": 0,
+        "mbtx_failures": {
+          "script_exit": 1
+        },
+        "tools": {
+          "mbtx": 1
+        },
+        "operations": {
+          "run": 1
+        },
+        "models": [
+          "gpt-5.6-terra"
+        ],
+        "response_ids": [
+          "resp_0181000c7a086908016a9fc67aad7887d1a6a382d5a4365fcd"
+        ],
+        "call_ids": [
+          "call_9Hvf5dy3hCIYjznMVPYeXmZH"
+        ],
+        "output_ids": [
+          "call_9Hvf5dy3hCIYjznMVPYeXmZH"
+        ]
+      }
+    }
+  ]
+}

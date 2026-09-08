@@ -39,7 +39,8 @@ sandbox. The runner must not become an alternate model client or agent loop.
 - `examples/`: small runnable `.mbtx` scripts.
 - `scripts/`: `.mbtx` automation, including the CLI smoke test.
 - `policy/` (planned): workspace, environment, executable, and argument restrictions.
-- `eval/` (planned): comparative evaluation tasks.
+- `eval/`: fixed comparative tasks, output grading and provider/tool evidence audit.
+- `cmd/m4-evidence/`: local JSON interface to the evaluator for `.mbtx` automation.
 - `codex/`: upstream revision, reproducible integration patch, and Rust adapter
   source overlay. The prepared Codex source lives in `_build/codex-upstream`.
 - `adapter/`: standalone Rust contract tests and the fake-runner test binary;
