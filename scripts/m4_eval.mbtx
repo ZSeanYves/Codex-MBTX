@@ -144,8 +144,8 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     kill_agent()
     @async.sleep(300)
     for name in @fs.readdir("\{private_dir}/dumps", sort=true) {
-      if name.has_suffix("-request.json") { requests += 1; request_dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text()) }
-      if name.has_suffix("-response.json") { dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text()) }
+      if name.has_suffix("-request.json") { requests += 1; request_dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text().replace(old=key, new="[REDACTED]")) }
+      if name.has_suffix("-response.json") { dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text().replace(old=key, new="[REDACTED]")) }
     }
     if exit_code != 0 { diagnostic += @fs.read_file("\{private_dir}/proxy.log").text().replace(old=key, new="[REDACTED]") }
     proxy.cancel()
