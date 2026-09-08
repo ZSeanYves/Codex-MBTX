@@ -12,6 +12,19 @@ struct EvalCase {
   inputs : Map[String, String]
 } derive(FromJson)
 
+struct EvalSlot {
+  index : Int
+  task : String
+  backend : String
+  repetition : Int
+} derive(FromJson)
+
+struct EvalPlan {
+  planned_rollouts : Int
+  start_rollout : Int
+  rollouts : Array[EvalSlot]
+} derive(FromJson)
+
 struct Result {
   task : String
   backend : String
@@ -173,8 +186,9 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     human_interventions: 0, requests, observed_result: result_json, diagnostic, audit }
 }
 
-fn markdown(results : Array[Result], model : String, effort : String, sha : String) -> String {
+fn markdown(results : Array[Result], model : String, effort : String, sha : String, plan : EvalPlan) -> String {
   let lines = ["# M4 Pilot Evaluation", "", "Implementation: `\{sha}`. Model: `\{model}`. Reasoning: `\{effort}`.", "",
+    "Scope: rollout indices \{plan.start_rollout}–\{plan.planned_rollouts - 1}; \{results.length()}/\{plan.rollouts.length()} recorded in this segment. Original plan: \{plan.planned_rollouts}. A continuation does not replace or regrade earlier records.", "",
     "| Backend | Passed | Correct output | Mean wall ms | Input tokens | Cached input | Output tokens | Usage responses |",
     "| --- | --- | --- | --- | --- | --- | --- | --- |"]
   for backend in ["shell", "mbtx"] {
@@ -229,36 +243,34 @@ async fn main {
   suite_output.check()
   let suite_json = @json.parse(suite_output.stdout())
   let all_cases : Array[EvalCase] = @json.from_json(suite_json)
-  let cases = if args[1] == "smoke" { all_cases[:1].to_owned() } else { all_cases }
-  let repetitions = if args[1] == "smoke" { 1 } else { 2 }
+  let plan_output = @shell.Cmd(grader, ["plan", args[1], @env.get_env_var("M4_START_ROLLOUT").unwrap_or("0")]).output()
+  guard plan_output.exit_code() == 0 else { fail("invalid evaluation plan: " + plan_output.stderr()) }
+  let plan : EvalPlan = @json.from_json(@json.parse(plan_output.stdout()))
   let results : Array[Result] = []
   @fs.mkdir("_build/m4-results", recursive=true)
   put("_build/m4-results/suite.json", suite_json.stringify())
-  for repetition in 1..=repetitions {
-    for i, case in cases {
-      let backends = if (i + repetition) % 2 == 1 { ["shell", "mbtx"] } else { ["mbtx", "shell"] }
-      for backend in backends {
-        println("Running \{case.id} / \{backend} / \{repetition}")
-        let row = run_case(case, backend, repetition, base, reference, key, model, effort, grader)
-        results.push(row)
-        let report : Json = { "schema_version": 2, "prompt_revision": 2, "implementation_sha": sha.to_json(), "binary_source": binary_source,
-          "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
-          "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
-          "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
-          "expected_rollouts": (cases.length() * 2 * repetitions).to_json(), "deadline_ms": 300000,
-          "tool_mode": "direct", "request_max_retries": 2, "stream_max_retries": 1,
-          "results": results.to_json() }
-        put("_build/m4-results/report.json", report.stringify())
-        put("_build/m4-results/report.md", markdown(results, model, effort, sha))
-        println("Result: \{row.failure_category}; \{row.elapsed_ms} ms; \{row.requests} requests")
-        let mut tokens = 0
-        for row in results { tokens += metric(row.audit, "input_tokens") + metric(row.audit, "output_tokens") }
-        guard tokens <= 2_000_000 else { fail("observed 2M-token run budget reached; partial report retained") }
-      }
-    }
+  for slot in plan.rollouts {
+    guard all_cases.filter(c => c.id == slot.task).get(0) is Some(case) else { fail("unknown planned task") }
+    println("Running \{case.id} / \{slot.backend} / \{slot.repetition} (rollout \{slot.index})")
+    let row = run_case(case, slot.backend, slot.repetition, base, reference, key, model, effort, grader)
+    results.push(row)
+    let report : Json = { "schema_version": 2, "prompt_revision": 2, "implementation_sha": sha.to_json(), "binary_source": binary_source,
+      "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
+      "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
+      "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
+      "expected_rollouts": plan.rollouts.length().to_json(), "planned_rollouts": plan.planned_rollouts.to_json(),
+      "start_rollout": plan.start_rollout.to_json(), "observed_token_budget": 2000000, "deadline_ms": 300000,
+      "tool_mode": "direct", "request_max_retries": 2, "stream_max_retries": 1,
+      "results": results.to_json() }
+    put("_build/m4-results/report.json", report.stringify())
+    put("_build/m4-results/report.md", markdown(results, model, effort, sha, plan))
+    println("Result: \{row.failure_category}; \{row.elapsed_ms} ms; \{row.requests} requests")
+    let mut tokens = 0
+    for row in results { tokens += metric(row.audit, "input_tokens") + metric(row.audit, "output_tokens") }
+    guard tokens <= 2_000_000 else { fail("observed 2M-token run budget reached; partial report retained") }
   }
   if @env.get_env_var("GITHUB_STEP_SUMMARY") is Some(path) {
-    @fs.write_file(path, markdown(results, model, effort, sha), append=true)
+    @fs.write_file(path, markdown(results, model, effort, sha, plan), append=true)
   }
   @shell.Cmd("sudo", ["-n", "rm", "-rf", "--", base]).run()
   if args[1] == "smoke" && results.any(r => r.failure_category != "none") {

@@ -21,6 +21,15 @@ async fn main {
       println(audit.to_json().stringify())
     }
     [_, "suite"] => println(@eval.suite().to_json().stringify())
+    [_, "plan", mode, start] => {
+      guard @json.parse(start) is Number(n, ..) &&
+        n >= 0 &&
+        n <= 2147483647.0 &&
+        n == n.to_int().to_double() else {
+        fail("start_rollout must be a nonnegative integer")
+      }
+      println(@eval.plan(mode, n.to_int()).to_json().stringify())
+    }
     [_, "prompt", task, backend] => {
       guard @eval.suite().filter(c => c.id == task).get(0) is Some(case) else {
         fail("unknown task")
@@ -75,7 +84,7 @@ async fn main {
     }
     _ =>
       fail(
-        "usage: m4-evidence suite | prompt TASK BACKEND | audit < EVIDENCE_JSON | probe < RESPONSE_DUMP",
+        "usage: m4-evidence suite | plan MODE START | prompt TASK BACKEND | audit < EVIDENCE_JSON | probe < RESPONSE_DUMP",
       )
   }
 }

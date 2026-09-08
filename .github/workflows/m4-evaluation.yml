@@ -33,6 +33,11 @@ on:
         required: false
         default: ""
         type: string
+      start_rollout:
+        description: Zero-based starting rollout for a full continuation (0 runs all 24)
+        required: false
+        default: "0"
+        type: string
 
 permissions:
   contents: read
@@ -103,6 +108,7 @@ jobs:
       M4_MODEL: ${{ inputs.model }}
       M4_EFFORT: ${{ inputs.reasoning_effort }}
       M4_BINARY_RUN: ${{ inputs.binary_run }}
+      M4_START_ROLLOUT: ${{ inputs.start_rollout }}
     steps:
       - uses: actions/checkout@v5
         with:

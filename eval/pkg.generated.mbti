@@ -6,6 +6,8 @@ pub fn correct_output(Case, String) -> Bool
 
 pub fn failure_category(Audit, String, Bool, Bool, Bool, Bool, Int) -> String
 
+pub fn plan(String, Int) -> Plan raise
+
 pub fn preserved_input(Case, String, String?) -> Bool
 
 pub fn prompt(Case, String) -> String
@@ -56,6 +58,19 @@ pub struct Case {
   expected : Json
   editable : String?
   background : Bool
+} derive(ToJson)
+
+pub struct Plan {
+  planned_rollouts : Int
+  start_rollout : Int
+  rollouts : Array[Rollout]
+} derive(ToJson)
+
+pub struct Rollout {
+  index : Int
+  task : String
+  backend : String
+  repetition : Int
 } derive(ToJson)
 
 // Type aliases

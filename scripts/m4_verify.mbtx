@@ -12,6 +12,14 @@ async fn main {
   let output = @shell.Cmd(grader, ["suite"]).output()
   output.check()
   guard @json.parse(output.stdout()) is Array(cases) else { fail("invalid suite") }
+  let plan = @shell.Cmd(grader, ["plan", "full", "18"]).output()
+  plan.check()
+  guard @json.parse(plan.stdout()) is { "planned_rollouts": 24, "start_rollout": 18, "rollouts": Array(slots), .. } else {
+    fail("invalid continuation plan")
+  }
+  guard slots.length() == 6 && slots[0] is { "index": 18, "task": "literal_argv", "backend": "shell", "repetition": 2, .. } else {
+    fail("continuation CLI did not preserve the full plan")
+  }
   let evidence : Json = { "task": "json_totals", "backend": "shell", "events": "", "dumps": [], "requests": [], "result": Json::null(), "inputs": {}, "unexpected_file": false, "timeout": false, "exit_code": 1 }
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
   guard graded.exit_code() == 0 else { fail("evidence CLI failed: " + graded.stderr()) }

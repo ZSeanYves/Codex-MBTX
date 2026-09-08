@@ -34,7 +34,7 @@ The task set covers structured JSON and JSONL processing, paths containing
 spaces and shell metacharacters, literal argv, a small MoonBit repair, and a
 background job. Tasks are run twice in `full` mode. Backend order alternates by
 task and repetition. Each run has a 300 second wall limit and the complete
-pilot has a 2,000,000 observed-token budget. A run is classified as `none` only
+workflow invocation has a 2,000,000 observed-token budget. A run is classified as `none` only
 when the output is correct, inputs are preserved, required usage is present,
 the model completed, and the requested backend was actually used. Other
 categories include `incorrect_output`, `input_modified`, `backend_violation`,
@@ -98,6 +98,17 @@ sources with that run's commit; any difference rejects reuse. The built-in
 `codex responses-api-proxy` command provides the isolated credential proxy.
 Omitting `binary_run` builds from source. Reports include both the evaluator
 commit and binary provenance.
+
+If the observed-token guard stops a full batch, `start_rollout` can explicitly
+continue from an absolute zero-based index (for example, `18` runs only the last
+six slots). The original task/backend/repetition order is preserved; smoke
+always starts at zero and runs both backends. Reports distinguish the original
+`planned_rollouts` from the segment's `expected_rollouts` and `start_rollout`.
+Each invocation has its own guard, so continuing authorizes additional requests;
+aggregate usage across all segments and retain every earlier failure. A green
+continuation validates only that segment and does not change the previous
+workflow's result. Keep the same model, effort, prompt, suite and runner revision
+when combining segments, and record their separate workflow provenance.
 
 Example dispatch (the referenced binary source must still be available):
 
