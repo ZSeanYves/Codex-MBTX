@@ -21,7 +21,7 @@ async fn main {
     "PATH=/opt/mbtx-eval-tools/moon/bin:/usr/local/bin:/usr/bin:/bin", "HOME=\{dir}/home", "CODEX_HOME=\{dir}/home", "MOON_HOME=/opt/mbtx-eval-tools/moon",
     "/opt/mbtx-eval-tools/bin/codex", "-c", "sandbox_mode=\"workspace-write\"",
     "-c", "sandbox_workspace_write.writable_roots=[\"/opt/mbtx-eval-tools/moon/cache\"]",
-    "-c", "sandbox_workspace_write.network_access=true", "sandbox", "linux", "--",
+    "-c", "sandbox_workspace_write.network_access=true", "sandbox", "--",
     "/opt/mbtx-eval-tools/bin/mbtx", "--request", request.stringify()],
     cwd="\{dir}/work", inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=45_000)
   let mut completed = false
