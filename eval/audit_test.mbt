@@ -170,7 +170,7 @@ test "repeated request history does not duplicate MBTX failures" {
         {
           "type": "function_call_output",
           "call_id": "c1",
-          "output": "{\"state\":\"completed\",\"exit_code\":1}",
+          "output": "{\"state\":\"completed\",\"exit_code\":1,\"stderr\":\"compilation failed\"}",
         },
         {
           "type": "function_call_output",
@@ -189,7 +189,37 @@ test "repeated request history does not duplicate MBTX failures" {
   audit.request(request.stringify())
   assert_eq(audit.mbtx_failures.get("script_exit"), Some(1))
   assert_eq(audit.mbtx_failures.get("timeout"), Some(1))
+  assert_eq(audit.mbtx_diagnostics, ["compilation failed"])
   assert_eq(audit.parse_errors, 0)
+}
+
+///|
+test "MBTX failure diagnostics are bounded and omit successful output" {
+  let audit = @eval.Audit::new()
+  let items : Array[Json] = []
+  for i in 0..<8 {
+    let output : Json = {
+      "state": "completed",
+      "exit_code": if i == 0 {
+        0
+      } else {
+        1
+      },
+      "stderr": (i.to_string() + "e".repeat(3000)).to_json(),
+    }
+    items.push({
+      "type": "function_call_output",
+      "call_id": i.to_string().to_json(),
+      "output": output.stringify().to_json(),
+    })
+  }
+  let request : Json = { "body": { "input": items.to_json() } }
+  audit.request(request.stringify())
+  assert_eq(audit.mbtx_diagnostics.length(), 4)
+  assert_true(audit.mbtx_diagnostics[0].has_prefix("1"))
+  for detail in audit.mbtx_diagnostics {
+    assert_eq(detail.length(), 2048)
+  }
 }
 
 ///|

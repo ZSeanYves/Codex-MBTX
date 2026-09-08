@@ -31,6 +31,7 @@ pub struct Audit {
   mut tool_argument_errors : Int
   mut command_failures : Int
   mbtx_failures : Map[String, Int]
+  mbtx_diagnostics : Array[String]
   tools : Map[String, Int]
   operations : Map[String, Int]
   models : Array[String]

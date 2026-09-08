@@ -15,6 +15,7 @@ pub struct Audit {
   mut tool_argument_errors : Int
   mut command_failures : Int
   mbtx_failures : Map[String, Int]
+  mbtx_diagnostics : Array[String]
   tools : Map[String, Int]
   operations : Map[String, Int]
   models : Array[String]
@@ -41,6 +42,7 @@ pub fn Audit::new() -> Audit {
     tool_argument_errors: 0,
     command_failures: 0,
     mbtx_failures: {},
+    mbtx_diagnostics: [],
     tools: {},
     operations: {},
     models: [],
@@ -254,6 +256,17 @@ pub fn Audit::request(self : Audit, text : String) -> Unit {
           }
           self.mbtx_failures[kind] = self.mbtx_failures.get(kind).unwrap_or(0) +
             1
+          if self.mbtx_diagnostics.length() < 4 {
+            let detail = match terminal {
+              { "stderr": String(stderr), .. } if !stderr.is_empty() => stderr
+              { "error": { "message": String(message), .. }, .. } => message
+              _ => ""
+            }
+            let detail = String::from_iter(detail.iter().take(2048))
+            if !detail.is_empty() && !self.mbtx_diagnostics.contains(detail) {
+              self.mbtx_diagnostics.push(detail)
+            }
+          }
         }
       }
     }
