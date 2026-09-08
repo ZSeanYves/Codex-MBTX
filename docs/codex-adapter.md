@@ -28,6 +28,10 @@ permission settings. MoonBit's `moon` and `moonrun` must remain on its PATH.
 Removing `mbtx_command` disables the new tool. The installed Codex desktop
 application is not modified.
 
+On Linux, Codex's sandbox requires bubblewrap and working unprivileged user
+namespaces. CI enables the same kernel settings as the pinned Codex CI and
+checks namespace creation before compiling.
+
 `mbtx_command` is an argv array, not a shell string. Its first element must be an
 absolute executable path. Trusted prefix arguments are supported, for example
 a `moonrun` binary followed by a compiled Wasm runner artifact. Only user,

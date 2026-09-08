@@ -26,6 +26,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential pkg-config libssl-dev libcap-dev bubblewrap
 
+      - name: Enable Codex sandbox namespaces
+        run: |
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 kernel.apparmor_restrict_unprivileged_userns=0
+          bwrap --unshare-user --unshare-net --ro-bind / / /usr/bin/true
+
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
@@ -33,7 +38,12 @@ jobs:
 
       - uses: taiki-e/install-action@44c6d64aa62cd779e873306675c7a58e86d6d532
         with:
-          tool: just,cargo-nextest
+          tool: just
+
+      - uses: taiki-e/install-action@44c6d64aa62cd779e873306675c7a58e86d6d532
+        with:
+          tool: nextest
+          version: 0.9.143
 
       - name: Prepare pinned Codex source
         run: |
