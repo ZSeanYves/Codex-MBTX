@@ -14,7 +14,7 @@ not treated as proof of success.
 The task set covers structured JSON and JSONL processing, paths containing
 spaces and shell metacharacters, literal argv, a small MoonBit repair, and a
 background job. Tasks are run twice in `full` mode. Backend order alternates by
-task and repetition. Each run has a 180 second wall limit and the complete
+task and repetition. Each run has a 300 second wall limit and the complete
 pilot has a 2,000,000 observed-token budget. A run is classified as `none` only
 when the output is correct, inputs are preserved, required usage is present,
 the model completed, and the requested backend was actually used. Other
@@ -82,3 +82,12 @@ for those runs. Reported model names and tokens come from the relay; no model
 identity or relay price is inferred from them. This pilot is not an adversarial
 grader or a measurement of interactive human intervention: all runs use
 approval `never`, with intervention requests counted separately.
+
+The pinned Terra catalog forces `code_mode_only` even when feature flags are
+false. M4 uses the supported `model_catalog_json` override with exactly one
+catalog change: `tool_mode=direct`, identical for both backends. This pilot
+therefore measures direct tool execution, not the JavaScript Code Mode host.
+The M3 two-binary archive does not include that host. The gateway also showed
+long first-byte waits and transient overload; before the formal baseline, the
+run deadline was set to 300 seconds, with two request retries and one stream
+retry. All attempts remain in the usage audit.

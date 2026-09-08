@@ -193,6 +193,20 @@ test "repeated request history does not duplicate MBTX failures" {
 }
 
 ///|
+test "recovered provider failure remains visible without failing a completed task" {
+  let audit = completed_audit("exec_command")
+  audit.event({
+    "type": "response.failed",
+    "response": { "error": { "code": "server_error" } },
+  })
+  assert_eq(audit.provider_errors, 1)
+  assert_eq(
+    @eval.failure_category(audit, "shell", false, true, true, false, 0),
+    "none",
+  )
+}
+
+///|
 test "malformed provider evidence is never a passing result" {
   let audit = @eval.Audit::new()
   audit.dump("{\"status\":500,\"body\":\"upstream unavailable\"}")

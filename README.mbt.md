@@ -18,6 +18,11 @@ jobs support output polling, cancellation, and configurable deadlines. M3 adds a
 opt-in MBTX tool to a pinned Codex build while retaining its shell backend,
 execution approvals and sandbox. See [the adapter guide](docs/codex-adapter.md).
 
+M4 adds a fixed shell/MBTX comparison suite with deterministic grading,
+provider token accounting, backend-adherence checks, and a manual GitHub Actions
+workflow. See [the evaluation guide](docs/m4-evaluation.md) for remote runs using
+`OPENROUTER_ICU_API_KEY`; local validation needs no model credentials or GPU.
+
 Build the modified Codex and runner with:
 
 ```bash
@@ -81,7 +86,7 @@ compatibility and M2 interactive controls. Tests require no model account,
 API key, or GPU.
 
 The `CI` GitHub Actions workflow runs Wasm and native jobs on Linux for pushes and
-pull requests. It installs the current stable MoonBit toolchain and records its
+pull requests. It pins MoonBit to `0.10.11+6ff76a5f9` and records its
 version in the log. Local development was validated with `moon 0.1.20260827`
 and `moonc v0.10.11+6ff76a5f9`; `moonbitlang/async` is declared at `0.21.2`.
 

@@ -53,8 +53,22 @@ async fn kill_agent() -> Unit {
 }
 
 fn config(port : Int, backend : String, model : String, effort : String) -> String {
-  let mbtx = if backend == "mbtx" { "mbtx_command = [\"/opt/mbtx-eval-tools/bin/mbtx\"]\n" } else { "" }
-  "\{mbtx}model_provider = \"M4Relay\"\nmodel = \{model.to_json().stringify()}\nmodel_reasoning_effort = \{effort.to_json().stringify()}\napproval_policy = \"never\"\nsandbox_mode = \"workspace-write\"\nweb_search = \"disabled\"\n[agents]\nenabled = false\n[features]\nshell_snapshot = false\nshell_snapshot_v2 = false\ncode_mode = false\ncode_mode_only = false\ngoals = false\n[sandbox_workspace_write]\nnetwork_access = true\n[model_providers.M4Relay]\nname = \"M4 relay via isolated proxy\"\nbase_url = \"http://127.0.0.1:\{port}/v1\"\nwire_api = \"responses\"\nrequires_openai_auth = false\nsupports_websockets = false\nrequest_max_retries = 0\nstream_max_retries = 0\n"
+  let lines : Array[String] = []
+  if backend == "mbtx" { lines.push("mbtx_command = [\"/opt/mbtx-eval-tools/bin/mbtx\"]") }
+  lines.append([
+    "model_provider = \"M4Relay\"",
+    "model_catalog_json = \"/opt/mbtx-eval-tools/models.json\"",
+    "model = \{model.to_json().stringify()}",
+    "model_reasoning_effort = \{effort.to_json().stringify()}",
+    "approval_policy = \"never\"", "sandbox_mode = \"workspace-write\"", "web_search = \"disabled\"",
+    "[agents]", "enabled = false",
+    "[features]", "shell_snapshot = false", "shell_snapshot_v2 = false", "code_mode = false", "code_mode_only = false", "goals = false",
+    "[sandbox_workspace_write]", "network_access = true",
+    "[model_providers.M4Relay]", "name = \"M4 relay via isolated proxy\"",
+    "base_url = \"http://127.0.0.1:\{port}/v1\"", "wire_api = \"responses\"",
+    "requires_openai_auth = false", "supports_websockets = false", "request_max_retries = 2", "stream_max_retries = 1",
+  ])
+  lines.join("\n") + "\n"
 }
 
 async fn run_case(case : EvalCase, backend : String, repetition : Int, base : String, reference : String, key : String, model : String, effort : String, grader : String) -> Result {
@@ -103,7 +117,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
         "PATH=/opt/mbtx-eval-tools/moon/bin:/usr/local/bin:/usr/bin:/bin", "HOME=\{home}", "CODEX_HOME=\{home}", "MOON_HOME=/opt/mbtx-eval-tools/moon",
         "/opt/mbtx-eval-tools/bin/codex", "exec", "--json", "--strict-config", "--ephemeral", "--ignore-rules", "--skip-git-repo-check", "-C", workspace,
         prompt.stdout()],
-        inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=180_000, max_output_bytes=4_194_304)
+        inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=300_000, max_output_bytes=4_194_304)
       exit_code = output.exit_code()
       events = output.stdout()
       if exit_code != 0 { diagnostic = output.stderr().replace(old=key, new="[REDACTED]") }
@@ -225,7 +239,8 @@ async fn main {
           "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
           "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
           "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
-          "expected_rollouts": (cases.length() * 2 * repetitions).to_json(), "deadline_ms": 180000,
+          "expected_rollouts": (cases.length() * 2 * repetitions).to_json(), "deadline_ms": 300000,
+          "tool_mode": "direct", "request_max_retries": 2, "stream_max_retries": 1,
           "results": results.to_json() }
         put("_build/m4-results/report.json", report.stringify())
         put("_build/m4-results/report.md", markdown(results, model, effort, sha))
@@ -240,6 +255,9 @@ async fn main {
     @fs.write_file(path, markdown(results, model, effort, sha), append=true)
   }
   @shell.Cmd("sudo", ["-n", "rm", "-rf", "--", base]).run()
+  if args[1] == "smoke" && results.any(r => r.failure_category != "none") {
+    fail("smoke did not pass both backends; full evaluation has not been validated")
+  }
   if results.any(r => r.failure_category == "provider_error" || r.failure_category == "audit_error" || r.failure_category == "missing_usage") {
     fail("evaluation evidence is incomplete; inspect the sanitized report")
   }

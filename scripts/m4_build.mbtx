@@ -23,4 +23,11 @@ async fn main {
     @fs.write_file("_build/m3-dist/binary-source.json", metadata.stdout())
     println("Reused verified M3 binary from \{sha}")
   }
+  let model = @env.get_env_var("M4_MODEL").unwrap_or("gpt-5.6-terra")
+  guard @json.parse(@fs.read_file("_build/codex-upstream/codex-rs/models-manager/models.json").text()) is { "models": Array(models), .. } else { fail("invalid pinned model catalog") }
+  let selected = models.filter(info => info is { "slug": String(slug), .. } && slug == model)
+  guard selected is [Object(info)] else { fail("evaluation model must exist in the pinned Codex catalog") }
+  info["tool_mode"] = "direct".to_json()
+  let catalog : Json = { "models": selected.to_json() }
+  @fs.write_file("_build/m3-dist/m4-models.json", catalog.stringify())
 }

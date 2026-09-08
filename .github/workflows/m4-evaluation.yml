@@ -146,8 +146,11 @@ jobs:
           sudo install -d -m 0755 /opt/mbtx-eval-tools/bin /opt/mbtx-eval-tools/moon
           sudo install -m 0755 _build/m3-dist/codex /opt/mbtx-eval-tools/bin/codex
           sudo install -m 0755 _build/m3-dist/mbtx /opt/mbtx-eval-tools/bin/mbtx
+          sudo install -m 0644 _build/m3-dist/m4-models.json /opt/mbtx-eval-tools/models.json
           sudo cp -a "$HOME/.moon/." /opt/mbtx-eval-tools/moon/
           sudo chmod -R a+rX /opt/mbtx-eval-tools
+      - name: Verify isolated runtime before API use
+        run: moon run scripts/m4_env_verify.mbtx
       - name: Run live pilot
         env:
           OPENROUTER_ICU_API_KEY: ${{ secrets.OPENROUTER_ICU_API_KEY }}
