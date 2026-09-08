@@ -12,6 +12,10 @@ async fn main {
   let output = @shell.Cmd(grader, ["suite"]).output()
   output.check()
   guard @json.parse(output.stdout()) is Array(cases) else { fail("invalid suite") }
+  let evidence : Json = { "task": "json_totals", "backend": "shell", "events": "", "dumps": [], "requests": [], "result": Json::null(), "inputs": {}, "unexpected_file": false, "timeout": false, "exit_code": 1 }
+  let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
+  guard graded.exit_code() == 0 else { fail("evidence CLI failed: " + graded.stderr()) }
+  guard @json.parse(graded.stdout()) is { "failure_category": "agent_error", .. } else { fail("incomplete evidence must not pass") }
   let base = @fs.tmpdir(prefix="m4-fixtures-")
   let mut checked = 0
   for case in cases {

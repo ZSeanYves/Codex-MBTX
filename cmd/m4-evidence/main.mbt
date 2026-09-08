@@ -5,7 +5,7 @@ struct Evidence {
   events : String
   dumps : Array[String]
   requests : Array[String]
-  result : String?
+  result : Json
   inputs : Map[String, String]
   unexpected_file : Bool
   timeout : Bool
@@ -39,8 +39,8 @@ async fn main {
         audit.request(request)
       }
       let correct = match evidence.result {
-        Some(s) => @eval.correct_output(case, s)
-        None => false
+        String(s) => @eval.correct_output(case, s)
+        _ => false
       }
       let mut inputs_ok = !evidence.unexpected_file
       for path, _ in case.inputs {

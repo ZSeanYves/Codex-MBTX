@@ -44,6 +44,9 @@ moon run scripts/m4_verify.mbtx
 
 The live command `moon run scripts/m4_eval.mbtx smoke` requires the isolated
 Linux CI tools and the repository secret; it does not use local Codex auth.
+The `.mbtx` scripts drive processes; `cmd/m4-evidence` is the local, testable
+JSON evidence transformer. Script mode resolves registry modules, so the
+unpublished evaluator package is accessed through this command.
 
 ## Remote run
 
@@ -55,3 +58,27 @@ the model and reasoning inputs to the exact values being compared, for example
 general performance improvement from this small pilot. A default backend should
 only be changed after a larger task set, repeated runs, cost data, and review of
 the raw private evidence. Until then MBTX remains an explicit opt-in.
+
+`probe` makes one bounded Responses request without starting an agent, reports
+HTTP and transport diagnostics, and is excluded from the evaluation score.
+`binary_run` may reference a successful M3 workflow in this repository. Before
+reusing its artifact, the builder compares all Codex patches and MBTX runtime
+sources with that run's commit; any difference rejects reuse. The built-in
+`codex responses-api-proxy` command provides the isolated credential proxy.
+Omitting `binary_run` builds from source. Reports include both the evaluator
+commit and binary provenance.
+
+Example dispatch (the referenced binary source must still be available):
+
+```text
+gh workflow run m4-evaluation.yml --ref codex/m4-evaluation -f mode=full -f model=gpt-5.6-terra -f reasoning_effort=xhigh -f binary_run=34187141796
+```
+
+The comparison is instruction-routed: MBTX is enabled only in the candidate,
+and shell tools remain visible as in M3. Calling them in the MBTX group is a
+backend violation, even if file output is correct. `usage_complete=false`
+explicitly marks incomplete accounting. Token totals are observed lower bounds
+for those runs. Reported model names and tokens come from the relay; no model
+identity or relay price is inferred from them. This pilot is not an adversarial
+grader or a measurement of interactive human intervention: all runs use
+approval `never`, with intervention requests counted separately.

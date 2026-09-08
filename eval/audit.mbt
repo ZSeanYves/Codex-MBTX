@@ -81,10 +81,11 @@ fn Audit::item(self : Audit, item : Json) -> Unit {
     if name == "mbtx" {
       if item is { "arguments": String(args), .. } {
         try {
-          if @json.parse(args) is { "op": String(op), .. } {
+          let args = @json.parse(args)
+          if args is { "op": String(op), .. } {
             self.operations[op] = self.operations.get(op).unwrap_or(0) + 1
           }
-          if @json.parse(args) is { "op": "run", "background": true, .. } {
+          if args is { "op": "run", "background": true, .. } {
             self.background_runs += 1
           }
         } catch {

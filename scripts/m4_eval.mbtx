@@ -16,7 +16,7 @@ struct Result {
   task : String
   backend : String
   repetition : Int
-  elapsed_ms : Int64
+  elapsed_ms : Int
   exit_code : Int
   correct_output : Bool
   inputs_preserved : Bool
@@ -73,7 +73,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   let mut events = ""
   let mut timed_out = false
   let mut exit_code = -1
-  let mut elapsed_ms = 0L
+  let mut elapsed_ms = 0
   let mut requests = 0
   let mut diagnostic = ""
   @async.with_task_group() <| group => {
@@ -125,7 +125,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
       @async.TimeoutError => timed_out = true
       _ => { exit_code = -1; diagnostic = "command launch or output collection failed" }
     }
-    elapsed_ms = @async.now() - started
+    elapsed_ms = (@async.now() - started).to_int()
     kill_agent()
     @async.sleep(300)
     for name in @fs.readdir("\{private_dir}/dumps", sort=true) {
@@ -143,7 +143,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   }
   let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "requests": request_dumps.to_json(), "result": result.to_json(), "inputs": inputs.to_json(), "unexpected_file": unexpected_file.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
-  graded.check()
+  if graded.exit_code() != 0 { fail("evidence conversion failed: " + graded.stderr().replace(old=key, new="[REDACTED]")) }
   guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "correct_output": correct, "inputs_preserved": inputs_ok, "failure_category": String(category), .. } else { fail("invalid evidence result") }
   { task: case.id, backend, repetition, elapsed_ms, exit_code,
     correct_output: correct is True, inputs_preserved: inputs_ok is True,
@@ -166,7 +166,7 @@ fn markdown(results : Array[Result], model : String, effort : String, sha : Stri
     let mut usages = 0
     let mut responses = 0
     for row in rows {
-      elapsed += row.elapsed_ms
+      elapsed += row.elapsed_ms.to_int64()
       input += metric(row.audit, "input_tokens")
       cached += metric(row.audit, "cached_input_tokens")
       output += metric(row.audit, "output_tokens")
@@ -194,6 +194,11 @@ async fn main {
   guard @env.get_env_var("OPENROUTER_ICU_API_KEY") is Some(key) && !key.is_empty() else { fail("OPENROUTER_ICU_API_KEY repository secret is required") }
   @env.unset_env_var("OPENROUTER_ICU_API_KEY")
   let sha = @shell.Cmd("git", ["rev-parse", "HEAD"]).output().stdout().trim().to_owned()
+  let toolchain = @shell.Cmd("moon", ["version", "--all"]).output()
+  toolchain.check()
+  let binary_source = if @fs.exists("_build/m3-dist/binary-source.json") {
+    @json.parse(@fs.read_file("_build/m3-dist/binary-source.json").text())
+  } else { { "headSha": sha.to_json(), "workflowName": "M4 source build" } }
   let base = @fs.tmpdir(prefix="codex-m4-")
   @fs.chmod(base, 0o755)
   let reference = @fs.read_file("eval/MOONBIT.md").text()
@@ -216,7 +221,12 @@ async fn main {
         println("Running \{case.id} / \{backend} / \{repetition}")
         let row = run_case(case, backend, repetition, base, reference, key, model, effort, grader)
         results.push(row)
-        let report : Json = { "schema_version": 1, "implementation_sha": sha.to_json(), "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(), "results": results.to_json() }
+        let report : Json = { "schema_version": 1, "implementation_sha": sha.to_json(), "binary_source": binary_source,
+          "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
+          "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
+          "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
+          "expected_rollouts": (cases.length() * 2 * repetitions).to_json(), "deadline_ms": 180000,
+          "results": results.to_json() }
         put("_build/m4-results/report.json", report.stringify())
         put("_build/m4-results/report.md", markdown(results, model, effort, sha))
         println("Result: \{row.failure_category}; \{row.elapsed_ms} ms; \{row.requests} requests")
