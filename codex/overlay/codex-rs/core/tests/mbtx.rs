@@ -314,15 +314,20 @@ async fn mbtx_approval_denial_prevents_spawn_and_reviews_exact_request() -> Resu
     Ok(())
 }
 
+#[test_case::test_case(false; "runner_can_execute")]
+#[test_case::test_case(true; "workspace_write_is_denied")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn mbtx_read_only_sandbox_prevents_workspace_write() -> Result<()> {
+async fn mbtx_read_only_sandbox_enforces_policy(attempt_write: bool) -> Result<()> {
     use codex_protocol::models::PermissionProfile;
-    let builder = test_codex().with_model("gpt-5.4").with_config(|config| {
-        config.mbtx_command = Some(fixture(&format!(
-            "record:{}",
-            config.cwd.join("blocked").display()
-        )));
-    });
+    let builder = test_codex()
+        .with_model("gpt-5.4")
+        .with_config(move |config| {
+            config.mbtx_command = Some(if attempt_write {
+                fixture(&format!("record:{}", config.cwd.join("blocked").display()))
+            } else {
+                fixture("echo")
+            });
+        });
     let harness = TestCodexHarness::with_auto_env_builder(builder).await?;
     mount_sse_sequence(
         harness.server(),
@@ -351,7 +356,11 @@ async fn mbtx_read_only_sandbox_prevents_workspace_write() -> Result<()> {
         .await?;
     assert!(!harness.path("blocked").exists());
     let output = harness.function_call_stdout("sandboxed").await;
-    assert!(!output.contains("\"state\":\"completed\""));
+    assert_eq!(
+        output.contains("\"state\":\"completed\""),
+        !attempt_write,
+        "{output}"
+    );
     harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }

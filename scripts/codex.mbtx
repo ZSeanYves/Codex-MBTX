@@ -10,6 +10,13 @@ async fn command(args : Array[String], cwd : String) -> Unit {
   @shell.Cmd(args[0], args[1:].to_owned(), cwd~).run()
 }
 
+async fn copy_if_changed(source : String, destination : String) -> Unit {
+  let content = @fs.read_file(source).binary()
+  if !@fs.exists(destination) || @fs.read_file(destination).binary() != content {
+    @fs.write_file(destination, content)
+  }
+}
+
 async fn main {
   let root = @fs.realpath(".")
   let pin = @json.parse(@fs.read_file("codex/upstream.json").text())
@@ -39,7 +46,7 @@ async fn main {
       for name in entries {
         let path = "\{directory}/\{name}"
         if @fs.kind(path) != @fs.FileKind::Directory {
-          @fs.write_file(path, @fs.read_file("\{checkout}\{suffix}/\{name}"))
+          copy_if_changed("\{checkout}\{suffix}/\{name}", path)
         }
       }
     })
@@ -69,7 +76,7 @@ async fn main {
     for name in entries {
       let path = "\{directory}/\{name}"
       if @fs.kind(path) != @fs.FileKind::Directory {
-        @fs.write_file("\{checkout}\{suffix}/\{name}", @fs.read_file(path))
+        copy_if_changed(path, "\{checkout}\{suffix}/\{name}")
       }
     }
   })

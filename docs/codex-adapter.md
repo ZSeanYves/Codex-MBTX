@@ -118,8 +118,9 @@ exercise model-visible tool registration, shell coexistence, literal argv,
 background controls, malformed output, script failures, host deadlines,
 approval refusal, and real read-only sandbox enforcement.
 Every integration test explicitly closes its Codex session. The MBTX test
-profile disables retries and treats leaked child-process output handles as a
-failure.
+profile disables retries and treats child-process output handles still open
+two seconds after test exit as a failure. Runner cancellation tests separately
+assert that the OS process has exited.
 
 CI also runs the M1/M2 Wasm/native suites, Rust format/Clippy checks, affected
 upstream config/tool regression tests, builds the modified Codex executable and
