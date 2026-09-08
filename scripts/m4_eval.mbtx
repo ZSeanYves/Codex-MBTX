@@ -1,0 +1,224 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+struct EvalCase {
+  id : String
+  inputs : Map[String, String]
+  expected : Json
+  editable : String?
+} derive(FromJson)
+
+struct Result {
+  task : String
+  backend : String
+  repetition : Int
+  elapsed_ms : Int64
+  exit_code : Int
+  correct_output : Bool
+  inputs_preserved : Bool
+  backend_compliant : Bool
+  failure_category : String
+  human_interventions : Int
+  requests : Int
+  diagnostic : String
+  audit : Json
+} derive(ToJson)
+
+fn metric(audit : Json, name : String) -> Int {
+  match audit { Object(fields) => match fields.get(name) { Some(Number(n, ..)) => n.to_int(); _ => 0 }; _ => 0 }
+}
+
+async fn put(path : String, text : String) -> Unit {
+  let parts = path.split("/").to_array()
+  let parent = parts[:parts.length() - 1].map(x => x.to_owned()).join("/")
+  if !@fs.exists(parent) { @fs.mkdir(parent, recursive=true) }
+  @fs.write_file(path, text)
+}
+
+async fn regular_text(path : String) -> String? {
+  if !@fs.exists(path) { return None }
+  if @fs.kind(path, follow_symlink=false) != @fs.Regular { return None }
+  if @fs.file_size(path) > 1_048_576L { return None }
+  Some(@fs.read_file(path).text())
+}
+
+async fn kill_agent() -> Unit {
+  let status = @shell.Cmd("sudo", ["-n", "pkill", "-KILL", "-u", "mbtx-eval"], stdout=Discard, stderr=Discard).status()
+  guard status == 0 || status == 1 else { fail("could not clean up evaluation processes") }
+}
+
+fn config(port : Int, backend : String, model : String, effort : String) -> String {
+  let mbtx = if backend == "mbtx" { "mbtx_command = [\"/opt/mbtx-eval-tools/bin/mbtx\"]\n" } else { "" }
+  "\{mbtx}model_provider = \"M4Relay\"\nmodel = \{model.to_json().stringify()}\nmodel_reasoning_effort = \{effort.to_json().stringify()}\napproval_policy = \"never\"\nsandbox_mode = \"workspace-write\"\nweb_search = \"disabled\"\n[agents]\nenabled = false\n[features]\nshell_snapshot = false\nshell_snapshot_v2 = false\ncode_mode = false\ncode_mode_only = false\ngoals = false\n[sandbox_workspace_write]\nnetwork_access = true\n[model_providers.M4Relay]\nname = \"M4 relay via isolated proxy\"\nbase_url = \"http://127.0.0.1:\{port}/v1\"\nwire_api = \"responses\"\nrequires_openai_auth = false\nsupports_websockets = false\nrequest_max_retries = 0\nstream_max_retries = 0\n"
+}
+
+async fn run_case(case : EvalCase, backend : String, repetition : Int, base : String, reference : String, key : String, model : String, effort : String, grader : String) -> Result {
+  let dir = "\{base}/\{case.id}-\{backend}-\{repetition}"
+  let workspace = "\{dir}/workspace"
+  let home = "\{dir}/home"
+  let private_dir = "\{dir}/private"
+  @fs.mkdir(workspace, recursive=true, permission=0o755)
+  @fs.mkdir(home, permission=0o755)
+  @fs.mkdir(private_dir, permission=0o700)
+  @fs.mkdir("\{private_dir}/dumps", permission=0o700)
+  for path, value in case.inputs { put("\{workspace}/\{path}", value) }
+  put("\{workspace}/MOONBIT.md", reference)
+  let dumps : Array[String] = []
+  let mut events = ""
+  let mut timed_out = false
+  let mut exit_code = -1
+  let mut elapsed_ms = 0L
+  let mut requests = 0
+  let mut diagnostic = ""
+  @async.with_task_group() <| group => {
+    let (input, writer) = @process.write_to_process()
+    let proxy_log = @process.redirect_to_file("\{private_dir}/proxy.log", permission=0o600)
+    defer proxy_log.close()
+    let proxy = @process.spawn(group, "/opt/mbtx-eval-tools/bin/codex-responses-api-proxy",
+      ["--server-info", "\{private_dir}/server.json", "--upstream-url", "https://tokenadvent.com/v1/responses", "--dump-dir", "\{private_dir}/dumps"],
+      inherit_env=false, extra_env={ "PATH": "/usr/bin:/bin" }, stdin=input, stdout=proxy_log, stderr=proxy_log, no_wait=true)
+    writer.write(key + "\n")
+    writer.close()
+    let port = @async.with_timeout(10_000, () => {
+      for ; !@fs.exists("\{private_dir}/server.json"); {
+        if proxy.try_wait() is Some(_) { fail("API proxy exited before startup") }
+        @async.sleep(100)
+      }
+      guard @json.parse(@fs.read_file("\{private_dir}/server.json").text()) is { "port": Number(port, ..), .. } else { fail("invalid proxy server info") }
+      port.to_int()
+    })
+    put("\{home}/config.toml", config(port, backend, model, effort))
+    @shell.Cmd("sudo", ["-n", "chown", "-R", "mbtx-eval:mbtx-eval", workspace, home]).run()
+    let prompt = @shell.Cmd(grader, ["prompt", case.id, backend]).output()
+    prompt.check()
+    let started = @async.now()
+    try {
+      let output = @shell.Cmd("sudo", ["-n", "-u", "mbtx-eval", "--", "/usr/bin/env", "-i",
+        "PATH=/opt/mbtx-eval-tools/moon/bin:/usr/local/bin:/usr/bin:/bin", "HOME=\{home}", "CODEX_HOME=\{home}", "MOON_HOME=/opt/mbtx-eval-tools/moon",
+        "/opt/mbtx-eval-tools/bin/codex", "exec", "--json", "--strict-config", "--ephemeral", "--ignore-rules", "--skip-git-repo-check", "-C", workspace,
+        prompt.stdout()],
+        inherit_env=false, env={ "PATH": "/usr/bin:/bin" }).output(timeout_ms=180_000, max_output_bytes=4_194_304)
+      exit_code = output.exit_code()
+      events = output.stdout()
+      if exit_code != 0 { diagnostic = output.stderr().replace(old=key, new="[REDACTED]") }
+      // Raw logs stay in the private temporary directory and are never uploaded.
+      put("\{private_dir}/events.jsonl", output.stdout())
+      put("\{private_dir}/stderr.txt", output.stderr())
+    } catch {
+      @async.TimeoutError => timed_out = true
+      _ => { exit_code = -1; diagnostic = "command launch or output collection failed" }
+    }
+    elapsed_ms = @async.now() - started
+    kill_agent()
+    @async.sleep(300)
+    for name in @fs.readdir("\{private_dir}/dumps", sort=true) {
+      if name.has_suffix("-request.json") { requests += 1 }
+      if name.has_suffix("-response.json") { dumps.push(@fs.read_file("\{private_dir}/dumps/\{name}").text()) }
+    }
+    proxy.cancel()
+  }
+  let result = regular_text("\{workspace}/result.json")
+  let correct = match result { Some(s) => try @json.parse(s) == case.expected catch { _ => false }; None => false }
+  let mut inputs_ok = !@fs.exists("\{workspace}/SHOULD_NOT_EXIST")
+  for path, value in case.inputs {
+    if case.editable == Some(path) { continue }
+    if regular_text("\{workspace}/\{path}") != Some(value) { inputs_ok = false }
+  }
+  let evidence : Json = { "task": case.id.to_json(), "backend": backend.to_json(), "events": events.to_json(), "dumps": dumps.to_json(), "correct": correct.to_json(), "inputs_ok": inputs_ok.to_json(), "timeout": timed_out.to_json(), "exit_code": exit_code.to_json() }
+  let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
+  graded.check()
+  guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "failure_category": String(category), .. } else { fail("invalid evidence result") }
+  { task: case.id, backend, repetition, elapsed_ms, exit_code,
+    correct_output: correct, inputs_preserved: inputs_ok,
+    backend_compliant: compliant is True,
+    failure_category: category,
+    human_interventions: 0, requests, diagnostic, audit }
+}
+
+fn markdown(results : Array[Result], model : String, effort : String, sha : String) -> String {
+  let lines = ["# M4 Pilot Evaluation", "", "Implementation: `\{sha}`. Model: `\{model}`. Reasoning: `\{effort}`.", "",
+    "| Backend | Passed | Correct output | Mean wall ms | Input tokens | Cached input | Output tokens | Usage responses |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+  for backend in ["shell", "mbtx"] {
+    let rows = results.filter(r => r.backend == backend)
+    let mut elapsed = 0L
+    let mut input = 0
+    let mut cached = 0
+    let mut output = 0
+    let mut usages = 0
+    let mut responses = 0
+    for row in rows {
+      elapsed += row.elapsed_ms
+      input += metric(row.audit, "input_tokens")
+      cached += metric(row.audit, "cached_input_tokens")
+      output += metric(row.audit, "output_tokens")
+      usages += metric(row.audit, "usage_responses")
+      responses += metric(row.audit, "responses")
+    }
+    if !rows.is_empty() {
+      lines.push("| \{backend} | \{rows.filter(r => r.failure_category == "none").length()}/\{rows.length()} | \{rows.filter(r => r.correct_output).length()}/\{rows.length()} | \{elapsed / rows.length().to_int64()} | \{input} | \{cached} | \{output} | \{usages}/\{responses} |")
+    }
+  }
+  lines.push("")
+  lines.push("| Task | Backend | Repeat | Wall ms | Result | Requests |")
+  lines.push("| --- | --- | --- | --- | --- | --- |")
+  for r in results { lines.push("| \{r.task} | \{r.backend} | \{r.repetition} | \{r.elapsed_ms} | \{r.failure_category} | \{r.requests} |") }
+  lines.push("")
+  lines.push("Human interventions: 0 (unattended, approval=never); requested interventions are counted separately in audit. Tokens are provider-reported, reasoning is a subset of output. Missing usage is not zero cost. Latency includes Codex/tool execution, excludes build and grading. Each run has a fresh workspace and home; toolchain/package caches are shared. Orders alternate by task and repetition. No statistical or price claim is made from this small pilot. MBTX remains opt-in pending broader evidence.")
+  lines.join("\n") + "\n"
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 && (args[1] == "smoke" || args[1] == "full") else { fail("usage: moon run scripts/m4_eval.mbtx smoke|full (isolated Linux CI only)") }
+  let model = @env.get_env_var("M4_MODEL").unwrap_or("gpt-5.6-terra")
+  let effort = @env.get_env_var("M4_EFFORT").unwrap_or("xhigh")
+  guard @env.get_env_var("OPENROUTER_ICU_API_KEY") is Some(key) && !key.is_empty() else { fail("OPENROUTER_ICU_API_KEY repository secret is required") }
+  @env.unset_env_var("OPENROUTER_ICU_API_KEY")
+  let sha = @shell.Cmd("git", ["rev-parse", "HEAD"]).output().stdout().trim().to_owned()
+  let base = @fs.tmpdir(prefix="codex-m4-")
+  @fs.chmod(base, 0o755)
+  let reference = @fs.read_file("eval/MOONBIT.md").text()
+  let build = @shell.Cmd("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/m4-evidence"]).output()
+  build.check()
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(grader)], .. } else { fail("missing evidence binary") }
+  let suite_output = @shell.Cmd(grader, ["suite"]).output()
+  suite_output.check()
+  let suite_json = @json.parse(suite_output.stdout())
+  let all_cases : Array[EvalCase] = @json.from_json(suite_json)
+  let cases = if args[1] == "smoke" { all_cases[:1].to_owned() } else { all_cases }
+  let repetitions = if args[1] == "smoke" { 1 } else { 2 }
+  let results : Array[Result] = []
+  @fs.mkdir("_build/m4-results", recursive=true)
+  put("_build/m4-results/suite.json", suite_json.stringify())
+  for repetition in 1..=repetitions {
+    for i, case in cases {
+      let backends = if (i + repetition) % 2 == 1 { ["shell", "mbtx"] } else { ["mbtx", "shell"] }
+      for backend in backends {
+        println("Running \{case.id} / \{backend} / \{repetition}")
+        let row = run_case(case, backend, repetition, base, reference, key, model, effort, grader)
+        results.push(row)
+        let report : Json = { "schema_version": 1, "implementation_sha": sha.to_json(), "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(), "results": results.to_json() }
+        put("_build/m4-results/report.json", report.stringify())
+        put("_build/m4-results/report.md", markdown(results, model, effort, sha))
+        println("Result: \{row.failure_category}; \{row.elapsed_ms} ms; \{row.requests} requests")
+        let mut tokens = 0
+        for row in results { tokens += metric(row.audit, "input_tokens") + metric(row.audit, "output_tokens") }
+        guard tokens <= 2_000_000 else { fail("observed 2M-token run budget reached; partial report retained") }
+      }
+    }
+  }
+  if @env.get_env_var("GITHUB_STEP_SUMMARY") is Some(path) {
+    @fs.write_file(path, markdown(results, model, effort, sha), append=true)
+  }
+  @fs.rmdir(base, recursive=true)
+  if results.any(r => r.failure_category == "provider_error" || r.failure_category == "audit_error" || r.failure_category == "missing_usage") {
+    fail("evaluation evidence is incomplete; inspect the sanitized report")
+  }
+}

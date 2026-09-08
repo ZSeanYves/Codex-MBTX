@@ -1,0 +1,120 @@
+name: M4 Evaluation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Evaluation size
+        required: true
+        default: full
+        type: choice
+        options:
+          - smoke
+          - full
+      model:
+        description: Relay model id
+        required: true
+        default: gpt-5.6-terra
+        type: string
+      reasoning_effort:
+        description: Codex reasoning effort
+        required: true
+        default: xhigh
+        type: choice
+        options:
+          - medium
+          - high
+          - xhigh
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: moon update
+      - name: Check and test evaluator
+        run: |
+          moon check --deny-warn
+          moon test --target wasm
+          moon test --target native
+          moon run --build-only scripts/m4_eval.mbtx
+          moon run scripts/m4_verify.mbtx
+      - name: Verify formatting and interfaces
+        run: |
+          moon info
+          moon fmt
+          git diff --exit-code
+
+  live:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
+      CARGO_BUILD_JOBS: "2"
+      M4_MODEL: ${{ inputs.model }}
+      M4_EFFORT: ${{ inputs.reasoning_effort }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libssl-dev libcap-dev bubblewrap
+      - name: Enable Codex sandbox namespaces
+        run: |
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 kernel.apparmor_restrict_unprivileged_userns=0
+          bwrap --unshare-user --unshare-net --ro-bind / / /usr/bin/true
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Prepare pinned Codex source
+        run: |
+          moon update
+          moon run scripts/codex.mbtx
+      - name: Install pinned Rust toolchain
+        working-directory: _build/codex-upstream/codex-rs
+        run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            adapter -> target
+            _build/codex-upstream/codex-rs -> target
+      - name: Build pinned Codex tools
+        run: moon run scripts/m4_build.mbtx
+      - name: Install isolated evaluator tools
+        run: |
+          sudo useradd --system --create-home --shell /usr/sbin/nologin mbtx-eval
+          sudo install -d -m 0755 /opt/mbtx-eval-tools/bin /opt/mbtx-eval-tools/moon
+          sudo install -m 0755 _build/m3-dist/codex /opt/mbtx-eval-tools/bin/codex
+          sudo install -m 0755 _build/m3-dist/mbtx /opt/mbtx-eval-tools/bin/mbtx
+          sudo install -m 0755 _build/m3-dist/codex-responses-api-proxy /opt/mbtx-eval-tools/bin/codex-responses-api-proxy
+          sudo cp -a "$HOME/.moon/." /opt/mbtx-eval-tools/moon/
+          sudo chmod -R a+rX /opt/mbtx-eval-tools
+      - name: Run live pilot
+        env:
+          OPENROUTER_ICU_API_KEY: ${{ secrets.OPENROUTER_ICU_API_KEY }}
+          M4_MODE: ${{ inputs.mode }}
+        run: moon run scripts/m4_eval.mbtx "$M4_MODE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m4-evaluation-${{ github.run_id }}
+          path: |
+            _build/m4-results/report.json
+            _build/m4-results/report.md
+            _build/m4-results/suite.json
+          if-no-files-found: warn

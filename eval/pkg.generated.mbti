@@ -1,0 +1,51 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "ZSeanYves/Codex-MBTX/eval"
+
+// Values
+pub fn correct_output(Case, String) -> Bool
+
+pub fn failure_category(Audit, String, Bool, Bool, Bool, Bool, Int) -> String
+
+pub fn prompt(Case, String) -> String
+
+pub fn suite() -> Array[Case]
+
+// Errors
+
+// Types and methods
+pub struct Audit {
+  mut completed : Bool
+  mut input_tokens : Int
+  mut cached_input_tokens : Int
+  mut output_tokens : Int
+  mut reasoning_output_tokens : Int
+  mut usage_responses : Int
+  mut responses : Int
+  mut http_errors : Int
+  mut parse_errors : Int
+  mut approval_requests : Int
+  tools : Map[String, Int]
+  operations : Map[String, Int]
+  models : Array[String]
+  response_ids : Array[String]
+  call_ids : Array[String]
+} derive(ToJson)
+pub fn Audit::backend_ok(Self, String, Bool) -> Bool
+pub fn Audit::dump(Self, String) -> Unit
+pub fn Audit::event(Self, Json) -> Unit
+pub fn Audit::jsonl(Self, String) -> Unit
+pub fn Audit::new() -> Self
+pub fn Audit::sse(Self, String) -> Unit
+
+pub struct Case {
+  id : String
+  prompt : String
+  inputs : Map[String, String]
+  expected : Json
+  editable : String?
+  background : Bool
+} derive(ToJson)
+
+// Type aliases
+
+// Traits

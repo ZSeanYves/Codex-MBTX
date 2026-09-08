@@ -1,0 +1,15 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+}
+
+async fn main {
+  @shell.Cmd("moon", ["run", "scripts/m3_build.mbtx"]).run()
+  @shell.Cmd("cargo", ["build", "--locked", "-p", "codex-responses-api-proxy"],
+    cwd="_build/codex-upstream/codex-rs",
+    env={ "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_INCREMENTAL": "0" }).run()
+  let dest = "_build/m3-dist/codex-responses-api-proxy"
+  @fs.write_file(dest, @fs.read_file("_build/codex-upstream/codex-rs/target/debug/codex-responses-api-proxy"), permission=0o755)
+  @fs.chmod(dest, 0o755)
+}

@@ -122,6 +122,11 @@ configuration boundary, polling semantics, reproducible build and validation.
   failure category.
 - Use the baseline to decide whether MBTX should become the default backend.
 
+The [M4 evaluation guide](m4-evaluation.md) defines the fixed task suite,
+instruction-routed shell/MBTX comparison, deterministic grading, sanitized
+evidence and manual live workflow. MBTX remains opt-in until measurements
+justify changing the default.
+
 ## Validation
 
 CI runs MoonBit checks and tests for Wasm and native runners on Linux, the M1

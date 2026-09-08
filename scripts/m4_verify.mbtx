@@ -1,0 +1,38 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let build = @shell.Cmd("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/m4-evidence"]).output()
+  build.check()
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(grader)], .. } else { fail("missing grader") }
+  let output = @shell.Cmd(grader, ["suite"]).output()
+  output.check()
+  guard @json.parse(output.stdout()) is Array(cases) else { fail("invalid suite") }
+  let base = @fs.tmpdir(prefix="m4-fixtures-")
+  let mut checked = 0
+  for case in cases {
+    guard case is { "id": String(id), "inputs": Object(inputs), "expected": expected, .. } else { fail("invalid case") }
+    let workspace = "\{base}/\{id}"
+    @fs.mkdir(workspace)
+    for path, value in inputs {
+      if !path.has_suffix(".mbtx") { continue }
+      guard value is String(source) else { fail("invalid source") }
+      let source = if id == "repair_moon" { source.replace(old="total = x", new="total += x") } else { source }
+      @fs.write_file("\{workspace}/\{path}", source)
+      let args = ["run", path]
+      if id == "literal_argv" { args.append(["alpha beta", "quote'\"$", "$(touch SHOULD_NOT_EXIST)"]) }
+      @shell.Cmd("moon", args, cwd=workspace).run(timeout_ms=30_000)
+      let result = @json.parse(@fs.read_file("\{workspace}/result.json").text())
+      guard result == expected else { fail("fixture \{id} produced an unexpected result: \{result.stringify()}") }
+      guard !@fs.exists("\{workspace}/SHOULD_NOT_EXIST") else { fail("literal argv was expanded") }
+      checked += 1
+    }
+  }
+  guard checked == 3 else { fail("expected three executable fixtures") }
+  @fs.rmdir(base, recursive=true)
+  println("M4 executable fixtures: 3 passed; no API key used")
+}
