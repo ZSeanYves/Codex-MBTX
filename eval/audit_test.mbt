@@ -162,6 +162,37 @@ test "repair must preserve the executable test entrypoint" {
 }
 
 ///|
+test "repeated request history does not duplicate MBTX failures" {
+  let audit = @eval.Audit::new()
+  let request : Json = {
+    "body": {
+      "input": [
+        {
+          "type": "function_call_output",
+          "call_id": "c1",
+          "output": "{\"state\":\"completed\",\"exit_code\":1}",
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "c2",
+          "output": "{\"state\":\"failed\",\"error\":{\"kind\":\"timeout\"}}",
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "c3",
+          "output": "plain shell output",
+        },
+      ],
+    },
+  }
+  audit.request(request.stringify())
+  audit.request(request.stringify())
+  assert_eq(audit.mbtx_failures.get("script_exit"), Some(1))
+  assert_eq(audit.mbtx_failures.get("timeout"), Some(1))
+  assert_eq(audit.parse_errors, 0)
+}
+
+///|
 test "malformed provider evidence is never a passing result" {
   let audit = @eval.Audit::new()
   audit.dump("{\"status\":500,\"body\":\"upstream unavailable\"}")
