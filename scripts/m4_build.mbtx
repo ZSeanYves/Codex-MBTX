@@ -2,14 +2,25 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
 }
 
 async fn main {
-  @shell.Cmd("moon", ["run", "scripts/m3_build.mbtx"]).run()
-  @shell.Cmd("cargo", ["build", "--locked", "-p", "codex-responses-api-proxy"],
-    cwd="_build/codex-upstream/codex-rs",
-    env={ "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_INCREMENTAL": "0" }).run()
-  let dest = "_build/m3-dist/codex-responses-api-proxy"
-  @fs.write_file(dest, @fs.read_file("_build/codex-upstream/codex-rs/target/debug/codex-responses-api-proxy"), permission=0o755)
-  @fs.chmod(dest, 0o755)
+  let run = @env.get_env_var("M4_BINARY_RUN").unwrap_or("")
+  if run.is_empty() {
+    @shell.Cmd("moon", ["run", "scripts/m3_build.mbtx"]).run()
+  } else {
+    let metadata = @shell.Cmd("gh", ["run", "view", run, "--repo", "ZSeanYves/Codex-MBTX", "--json", "headSha,conclusion,workflowName"]).output()
+    metadata.check()
+    guard @json.parse(metadata.stdout()) is { "headSha": String(sha), "conclusion": "success", "workflowName": "M3 Codex Adapter", .. } else { fail("binary source must be a successful M3 run in this repository") }
+    @shell.Cmd("git", ["fetch", "--depth", "1", "origin", sha]).run()
+    @shell.Cmd("git", ["diff", "--exit-code", sha, "HEAD", "--", "codex", "adapter", "runtime", "process", "protocol", "jobs", "session", "cmd/mbtx", "moon.mod", "scripts/m3_build.mbtx", "scripts/codex.mbtx"]).run()
+    @fs.mkdir("_build/m4-binaries", recursive=true)
+    @shell.Cmd("gh", ["run", "download", run, "--repo", "ZSeanYves/Codex-MBTX", "-n", "codex-mbtx-linux-x86_64", "-D", "_build/m4-binaries"]).run()
+    @fs.mkdir("_build/m3-dist", recursive=true)
+    @shell.Cmd("tar", ["-xzf", "_build/m4-binaries/codex-mbtx-linux-x86_64.tar.gz", "-C", "_build/m3-dist"]).run()
+    @fs.write_file("_build/m3-dist/binary-source.json", metadata.stdout())
+    println("Reused verified M3 binary from \{sha}")
+  }
 }

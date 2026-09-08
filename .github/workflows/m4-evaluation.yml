@@ -28,9 +28,15 @@ on:
           - medium
           - high
           - xhigh
+      binary_run:
+        description: Optional successful M3 run to reuse after source comparison
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 env:
   MOONBIT_INSTALL_VERSION: "0.10.11+6ff76a5f9"
@@ -96,6 +102,7 @@ jobs:
       CARGO_BUILD_JOBS: "2"
       M4_MODEL: ${{ inputs.model }}
       M4_EFFORT: ${{ inputs.reasoning_effort }}
+      M4_BINARY_RUN: ${{ inputs.binary_run }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -117,15 +124,19 @@ jobs:
           moon update
           moon run scripts/codex.mbtx
       - name: Install pinned Rust toolchain
+        if: inputs.binary_run == ''
         working-directory: _build/codex-upstream/codex-rs
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
+        if: inputs.binary_run == ''
         with:
           cache-on-failure: true
           workspaces: |
             adapter -> target
             _build/codex-upstream/codex-rs -> target
       - name: Build pinned Codex tools
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: moon run scripts/m4_build.mbtx
       - name: Validate executable fixtures
         run: moon run scripts/m4_verify.mbtx
@@ -135,7 +146,6 @@ jobs:
           sudo install -d -m 0755 /opt/mbtx-eval-tools/bin /opt/mbtx-eval-tools/moon
           sudo install -m 0755 _build/m3-dist/codex /opt/mbtx-eval-tools/bin/codex
           sudo install -m 0755 _build/m3-dist/mbtx /opt/mbtx-eval-tools/bin/mbtx
-          sudo install -m 0755 _build/m3-dist/codex-responses-api-proxy /opt/mbtx-eval-tools/bin/codex-responses-api-proxy
           sudo cp -a "$HOME/.moon/." /opt/mbtx-eval-tools/moon/
           sudo chmod -R a+rX /opt/mbtx-eval-tools
       - name: Run live pilot

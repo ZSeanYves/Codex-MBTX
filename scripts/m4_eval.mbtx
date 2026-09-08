@@ -80,8 +80,8 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
     let (input, writer) = @process.write_to_process()
     let proxy_log = @process.redirect_to_file("\{private_dir}/proxy.log", permission=0o600)
     defer proxy_log.close()
-    let proxy = @process.spawn(group, "/opt/mbtx-eval-tools/bin/codex-responses-api-proxy",
-      ["--server-info", "\{private_dir}/server.json", "--upstream-url", "https://tokenadvent.com/v1/responses", "--dump-dir", "\{private_dir}/dumps"],
+    let proxy = @process.spawn(group, "/opt/mbtx-eval-tools/bin/codex",
+      ["responses-api-proxy", "--server-info", "\{private_dir}/server.json", "--upstream-url", "https://tokenadvent.com/v1/responses", "--dump-dir", "\{private_dir}/dumps"],
       inherit_env=false, extra_env={ "PATH": "/usr/bin:/bin" }, stdin=input, stdout=proxy_log, stderr=proxy_log, no_wait=true)
     writer.write(key + "\n")
     writer.close()
