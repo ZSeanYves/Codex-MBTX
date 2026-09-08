@@ -149,6 +149,7 @@ jobs:
           sudo install -m 0644 _build/m3-dist/m4-models.json /opt/mbtx-eval-tools/models.json
           sudo cp -a "$HOME/.moon/." /opt/mbtx-eval-tools/moon/
           sudo chmod -R a+rX /opt/mbtx-eval-tools
+          sudo chown -R mbtx-eval:mbtx-eval /opt/mbtx-eval-tools/moon/cache
       - name: Verify isolated runtime before API use
         run: moon run scripts/m4_env_verify.mbtx
       - name: Run live pilot

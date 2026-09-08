@@ -63,7 +63,7 @@ fn config(port : Int, backend : String, model : String, effort : String) -> Stri
     "approval_policy = \"never\"", "sandbox_mode = \"workspace-write\"", "web_search = \"disabled\"",
     "[agents]", "enabled = false",
     "[features]", "shell_snapshot = false", "shell_snapshot_v2 = false", "code_mode = false", "code_mode_only = false", "goals = false",
-    "[sandbox_workspace_write]", "network_access = true",
+    "[sandbox_workspace_write]", "network_access = true", "writable_roots = [\"/opt/mbtx-eval-tools/moon/cache\"]",
     "[model_providers.M4Relay]", "name = \"M4 relay via isolated proxy\"",
     "base_url = \"http://127.0.0.1:\{port}/v1\"", "wire_api = \"responses\"",
     "requires_openai_auth = false", "supports_websockets = false", "request_max_retries = 2", "stream_max_retries = 1",

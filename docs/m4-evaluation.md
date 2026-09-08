@@ -30,6 +30,11 @@ text remain in a temporary private directory. The committed JSON and Markdown
 reports contain only task/backend/repetition, timing, sanitized tool counts,
 provider-reported token fields, model names, and classifications.
 
+The installed toolchain is read-only. Its separate dependency cache is owned by
+the agent account and is explicitly writable in the Codex sandbox because Moon
+requires a cache lock even when every dependency is already downloaded. This
+cache is shared between runs; each task's workspace and Codex home are fresh.
+
 ## Local checks
 
 The evaluator package and its parser tests are part of the ordinary MoonBit
