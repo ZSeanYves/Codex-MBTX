@@ -297,7 +297,12 @@ async fn mbtx_approval_reviews_request_before_spawn(approve: bool) -> Result<()>
                 assert!(!marker.exists());
                 assert_eq!(&approval.command[..command.len()], command.as_slice());
                 assert_eq!(approval.command[command.len()], "--request");
-                let request: Value = serde_json::from_str(approval.command.last().unwrap())?;
+                let request: Value = serde_json::from_str(
+                    approval
+                        .command
+                        .last()
+                        .expect("approval includes runner request"),
+                )?;
                 assert_eq!(request["source"], args["source"]);
                 assert_eq!(request["args"], args["args"]);
                 if approve {
