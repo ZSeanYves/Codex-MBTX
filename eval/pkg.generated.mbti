@@ -25,6 +25,7 @@ pub struct Audit {
   mut responses : Int
   mut http_errors : Int
   mut provider_errors : Int
+  provider_diagnostics : Array[String]
   mut parse_errors : Int
   mut approval_requests : Int
   mut background_runs : Int

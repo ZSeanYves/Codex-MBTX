@@ -9,6 +9,7 @@ pub struct Audit {
   mut responses : Int
   mut http_errors : Int
   mut provider_errors : Int
+  provider_diagnostics : Array[String]
   mut parse_errors : Int
   mut approval_requests : Int
   mut background_runs : Int
@@ -37,6 +38,7 @@ pub fn Audit::new() -> Audit {
     responses: 0,
     http_errors: 0,
     provider_errors: 0,
+    provider_diagnostics: [],
     parse_errors: 0,
     approval_requests: 0,
     background_runs: 0,
@@ -114,6 +116,14 @@ fn Audit::item(self : Audit, item : Json) -> Unit {
 pub fn Audit::event(self : Audit, event : Json) -> Unit {
   if event is { "type": "response.failed" | "error", .. } {
     self.provider_errors += 1
+    let message = match event {
+      { "message": String(message), .. } => message
+      { "error": { "message": String(message), .. }, .. } => message
+      { "response": { "error": { "message": String(message), .. }, .. }, .. } =>
+        message
+      _ => ""
+    }
+    retain_diagnostic(self.provider_diagnostics, message)
   }
   if event is { "type": "response.output_item.done", "item": item, .. } {
     self.item(item)
@@ -192,6 +202,13 @@ pub fn Audit::dump(self : Audit, text : String) -> Unit {
     if parsed is { "status": Number(status, ..), "body": body, .. } {
       if status < 200 || status >= 300 {
         self.http_errors += 1
+        let error_body = match body {
+          String(s) => @json.parse(s) catch { _ => Json::null() }
+          other => other
+        }
+        if error_body is { "error": { "message": String(message), .. }, .. } {
+          retain_diagnostic(self.provider_diagnostics, message)
+        }
       }
       match body {
         String(s) => self.sse(s)

@@ -264,3 +264,18 @@ test "malformed provider evidence is never a passing result" {
     "provider_error",
   )
 }
+
+///|
+test "provider diagnostics omit relay metadata and retain bounded errors" {
+  let audit = @eval.Audit::new()
+  audit.sse(
+    "data: {\"type\":\"codex.response.metadata\",\"headers\":{\"private\":\"not-for-report\"}}\n\ndata: {\"type\":\"error\",\"message\":\"overloaded\"}\n\n",
+  )
+  audit.dump(
+    "{\"status\":429,\"body\":\"{\\\"error\\\":{\\\"message\\\":\\\"no available channel\\\",\\\"private\\\":\\\"not-for-report\\\"}}\"}",
+  )
+  assert_eq(audit.provider_errors, 1)
+  assert_eq(audit.http_errors, 1)
+  assert_eq(audit.provider_diagnostics, ["overloaded", "no available channel"])
+  assert_false(audit.to_json().stringify().contains("not-for-report"))
+}

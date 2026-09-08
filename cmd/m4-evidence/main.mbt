@@ -15,6 +15,11 @@ struct Evidence {
 ///|
 async fn main {
   match @env.args() {
+    [_, "probe"] => {
+      let audit = @eval.Audit::new()
+      audit.dump(@stdio.stdin.read_all().text())
+      println(audit.to_json().stringify())
+    }
     [_, "suite"] => println(@eval.suite().to_json().stringify())
     [_, "prompt", task, backend] => {
       guard @eval.suite().filter(c => c.id == task).get(0) is Some(case) else {
@@ -69,7 +74,7 @@ async fn main {
     }
     _ =>
       fail(
-        "usage: m4-evidence suite | prompt TASK BACKEND | audit < EVIDENCE_JSON",
+        "usage: m4-evidence suite | prompt TASK BACKEND | audit < EVIDENCE_JSON | probe < RESPONSE_DUMP",
       )
   }
 }
