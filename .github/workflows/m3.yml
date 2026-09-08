@@ -66,7 +66,7 @@ jobs:
         if: always()
         with:
           name: m3-integration-results
-          path: _build/codex-upstream/codex-rs/target/nextest/local/junit.xml
+          path: _build/codex-upstream/codex-rs/target/nextest/mbtx/junit.xml
           if-no-files-found: warn
 
       - name: Affected Codex regression tests

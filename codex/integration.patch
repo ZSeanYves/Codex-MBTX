@@ -1,3 +1,19 @@
+diff --git a/codex-rs/.config/nextest.toml b/codex-rs/.config/nextest.toml
+index f3f3ca2..19249e3 100644
+--- a/codex-rs/.config/nextest.toml
++++ b/codex-rs/.config/nextest.toml
+@@ -11,6 +11,11 @@ path = "junit.xml"
+ [profile.local]
+ inherits = "default"
+ 
++[profile.mbtx]
++inherits = "default"
++retries = 0
++leak-timeout = { period = "200ms", result = "fail" }
++
+ [test-groups.app_server_protocol_codegen]
+ max-threads = 1
+ 
 diff --git a/codex-rs/Cargo.lock b/codex-rs/Cargo.lock
 index e217b70..ca93c94 100644
 --- a/codex-rs/Cargo.lock

@@ -32,7 +32,7 @@ async fn main {
   ).run()
   @shell.Cmd(
     "just",
-    ["test", "--locked", "-p", "codex-core", "--test", "mbtx"],
+    ["test", "--locked", "--profile", "mbtx", "-p", "codex-core", "--test", "mbtx"],
     cwd="\{root}/_build/codex-upstream",
     env=environment,
   ).run()

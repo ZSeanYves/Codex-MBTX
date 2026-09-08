@@ -74,6 +74,7 @@ async fn mbtx_mock_model_reaches_runner_and_shell_still_works() -> Result<()> {
     let requests = harness.request_bodies().await;
     let tools = requests[0]["tools"].to_string();
     assert!(tools.contains("\"mbtx\"") && tools.contains("\"exec_command\""));
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
@@ -131,6 +132,7 @@ async fn mbtx_background_poll_stop_and_session_ownership() -> Result<()> {
         .await?,
     )?;
     assert_eq!(repeated, stopped);
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
@@ -150,6 +152,7 @@ async fn mbtx_runner_failures_are_not_reported_as_success() -> Result<()> {
         )
         .await?;
         assert!(output.contains(expected), "{mode}: {output}");
+        harness.test().codex.shutdown_and_wait().await?;
     }
     for (mode, state) in [("failure", "completed"), ("timeout", "failed")] {
         let harness = harness(Some(fixture(mode))).await?;
@@ -168,6 +171,7 @@ async fn mbtx_runner_failures_are_not_reported_as_success() -> Result<()> {
         } else {
             assert_eq!(output["error"]["kind"], "timeout");
         }
+        harness.test().codex.shutdown_and_wait().await?;
     }
     Ok(())
 }
@@ -185,6 +189,7 @@ async fn mbtx_disabled_by_default_and_invalid_input_never_launches() -> Result<(
     assert!(output.contains("unsupported") || output.contains("not found"));
     let tools = disabled.request_bodies().await[0]["tools"].to_string();
     assert!(!tools.contains("\"mbtx\""));
+    disabled.test().codex.shutdown_and_wait().await?;
     let directory = tempfile::tempdir()?;
     let marker = directory.path().join("spawned");
     let harness = harness(Some(fixture(&format!("record:{}", marker.display())))).await?;
@@ -201,6 +206,7 @@ async fn mbtx_disabled_by_default_and_invalid_input_never_launches() -> Result<(
         assert!(!output.contains("\"state\":\"completed\""));
     }
     assert!(!marker.exists());
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
@@ -224,6 +230,7 @@ async fn mbtx_real_runner_under_mock_model() -> Result<()> {
     assert_eq!(output["state"], "completed");
     assert_eq!(output["exit_code"], 0);
     assert_eq!(output["stdout"], "42\n");
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
@@ -345,6 +352,7 @@ async fn mbtx_read_only_sandbox_prevents_workspace_write() -> Result<()> {
     assert!(!harness.path("blocked").exists());
     let output = harness.function_call_stdout("sandboxed").await;
     assert!(!output.contains("\"state\":\"completed\""));
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
@@ -363,6 +371,7 @@ async fn mbtx_host_deadline_reaps_a_runner_that_ignores_its_timeout() -> Result<
     assert!(output.contains("runner exited with code 124"), "{output}");
     let pid = std::fs::read_to_string(&marker)?;
     core_test_support::process::wait_for_process_exit(&pid).await?;
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
@@ -410,6 +419,7 @@ async fn mbtx_background_deadline_is_not_blocked_by_a_foreground_call() -> Resul
     )?;
     assert_eq!(output["state"], "failed");
     assert_eq!(output["error"]["kind"], "runner_timeout");
+    harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }
 
