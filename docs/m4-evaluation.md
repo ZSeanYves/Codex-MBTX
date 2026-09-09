@@ -6,6 +6,12 @@ behavior, but it is not evidence for transparent process replacement. The
 current M4 plan is a fresh shell/transparent comparison; its report is kept
 separate so the two questions cannot be conflated.
 
+The first full transparent comparison is recorded in
+[m4-transparent-2026-09-09](reports/m4-transparent-2026-09-09.md). It is a
+complete 24-row observation set, but the workflow failed its evidence gate on
+relay overload and therefore does not support a performance or reliability
+claim.
+
 CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
 Using the rolling `latest` changed dependency warnings during M4 development
 and contaminated stderr assertions. The installer honors

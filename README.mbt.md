@@ -25,8 +25,11 @@ provider token accounting, backend-adherence checks, and a manual GitHub Actions
 workflow. See [the evaluation guide](docs/m4-evaluation.md) for remote runs using
 `OPENROUTER_ICU_API_KEY`; local validation needs no model credentials or GPU.
 The earlier [M4 delivery report](docs/reports/m4-2026-09-09.md) is an explicit-tool
-cohort and is not evidence for transparent replacement. The transparent report
-will be published after the fresh remote run. Transparent MBTX remains opt-in.
+cohort and is not evidence for transparent replacement. The first
+[transparent comparison report](docs/reports/m4-transparent-2026-09-09.md) is a
+complete 24-row observation set, but relay overload prevented a green evidence
+gate, so it does not establish a performance or reliability advantage.
+Transparent MBTX remains opt-in.
 
 Build the modified Codex and runner with:
 
