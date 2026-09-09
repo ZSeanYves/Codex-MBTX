@@ -16,10 +16,14 @@ pub struct Plan {
 ///|
 /// Continue at an absolute zero-based rollout index without changing pair order.
 pub fn plan(mode : String, start_rollout : Int) -> Plan raise {
-  guard mode == "smoke" || mode == "full" else {
+  guard mode == "smoke" || mode == "full" || mode == "backend" else {
     fail("invalid evaluation mode")
   }
-  let cases = suite()
+  let cases = if mode == "backend" {
+    suite().filter(c => c.workload == "process")
+  } else {
+    suite()
+  }
   let count = if mode == "smoke" { 1 } else { cases.length() }
   let repetitions = if mode == "smoke" { 1 } else { 2 }
   let planned_rollouts = count * 2 * repetitions

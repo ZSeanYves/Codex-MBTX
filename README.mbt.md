@@ -22,7 +22,9 @@ only at final process launch. See [the adapter guide](docs/codex-adapter.md).
 
 M4 adds a fixed shell/transparent comparison suite with deterministic grading,
 provider token accounting, backend-adherence checks, and a manual GitHub Actions
-workflow. See [the evaluation guide](docs/m4-evaluation.md) for remote runs using
+workflow. The suite separates six host-process tasks from six deliberate
+MoonBit-script tasks; `backend` measures the former alone and `full` runs both.
+See [the evaluation guide](docs/m4-evaluation.md) for remote runs using
 `OPENROUTER_ICU_API_KEY`; local validation needs no model credentials or GPU.
 The earlier [M4 delivery report](docs/reports/m4-2026-09-09.md) is an explicit-tool
 cohort and is not evidence for transparent replacement. The first

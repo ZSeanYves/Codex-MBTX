@@ -13,6 +13,7 @@ on:
         options:
           - probe
           - smoke
+          - backend
           - full
       model:
         description: Relay model id
@@ -34,7 +35,7 @@ on:
         default: ""
         type: string
       start_rollout:
-        description: Zero-based starting rollout for a full continuation (0 runs all 24)
+        description: Zero-based starting rollout for a continuation (full has 48; backend has 24)
         required: false
         default: "0"
         type: string

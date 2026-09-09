@@ -9,6 +9,7 @@ import {
 
 struct EvalCase {
   id : String
+  workload : String
   inputs : Map[String, String]
 } derive(FromJson)
 
@@ -27,6 +28,7 @@ struct EvalPlan {
 
 struct Result {
   task : String
+  workload : String
   backend : String
   repetition : Int
   elapsed_ms : Int
@@ -184,7 +186,7 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
   let graded = @shell.Cmd(grader, ["audit"], stdin=Text(evidence.stringify())).output()
   if graded.exit_code() != 0 { fail("evidence conversion failed: " + graded.stderr().replace(old=key, new="[REDACTED]")) }
   guard @json.parse(graded.stdout()) is { "audit": audit, "backend_compliant": compliant, "correct_output": correct, "inputs_preserved": inputs_ok, "failure_category": String(category), .. } else { fail("invalid evidence result") }
-  { task: case.id, backend, repetition, elapsed_ms, exit_code,
+  { task: case.id, workload: case.workload, backend, repetition, elapsed_ms, exit_code,
     correct_output: correct is True, inputs_preserved: inputs_ok is True,
     backend_compliant: compliant is True,
     failure_category: category,
@@ -195,10 +197,11 @@ async fn run_case(case : EvalCase, backend : String, repetition : Int, base : St
 fn markdown(results : Array[Result], model : String, effort : String, sha : String, plan : EvalPlan) -> String {
   let lines = ["# M4 Pilot Evaluation", "", "Implementation: `\{sha}`. Model: `\{model}`. Reasoning: `\{effort}`.", "",
     "Scope: rollout indices \{plan.start_rollout}–\{plan.planned_rollouts - 1}; \{results.length()}/\{plan.rollouts.length()} recorded in this segment. Original plan: \{plan.planned_rollouts}. A continuation does not replace or regrade earlier records.", "",
-    "| Backend | Passed | Correct output | Mean wall ms | Input tokens | Cached input | Output tokens | Usage responses |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |"]
-  for backend in ["shell", "transparent"] {
-    let rows = results.filter(r => r.backend == backend)
+    "| Workload | Backend | Passed | Correct output | Mean wall ms | Input tokens | Cached input | Output tokens | Usage responses |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+  for workload in ["process", "script"] {
+    for backend in ["shell", "transparent"] {
+      let rows = results.filter(r => r.workload == workload && r.backend == backend)
     let mut elapsed = 0L
     let mut input = 0
     let mut cached = 0
@@ -213,22 +216,23 @@ fn markdown(results : Array[Result], model : String, effort : String, sha : Stri
       usages += metric(row.audit, "usage_responses")
       responses += row.requests
     }
-    if !rows.is_empty() {
-      lines.push("| \{backend} | \{rows.filter(r => r.failure_category == "none").length()}/\{rows.length()} | \{rows.filter(r => r.correct_output).length()}/\{rows.length()} | \{elapsed / rows.length().to_int64()} | \{input} | \{cached} | \{output} | \{usages}/\{responses} |")
+      if !rows.is_empty() {
+        lines.push("| \{workload} | \{backend} | \{rows.filter(r => r.failure_category == "none").length()}/\{rows.length()} | \{rows.filter(r => r.correct_output).length()}/\{rows.length()} | \{elapsed / rows.length().to_int64()} | \{input} | \{cached} | \{output} | \{usages}/\{responses} |")
+      }
     }
   }
   lines.push("")
-  lines.push("| Task | Backend | Repeat | Wall ms | Result | Requests |")
-  lines.push("| --- | --- | --- | --- | --- | --- |")
-  for r in results { lines.push("| \{r.task} | \{r.backend} | \{r.repetition} | \{r.elapsed_ms} | \{r.failure_category} | \{r.requests} |") }
+  lines.push("| Task | Workload | Backend | Repeat | Wall ms | Result | Requests |")
+  lines.push("| --- | --- | --- | --- | --- | --- | --- |")
+  for r in results { lines.push("| \{r.task} | \{r.workload} | \{r.backend} | \{r.repetition} | \{r.elapsed_ms} | \{r.failure_category} | \{r.requests} |") }
   lines.push("")
-  lines.push("Human interventions: 0 (unattended, approval=never); requested interventions are counted separately in audit. Tokens are provider-reported, reasoning is a subset of output. Missing usage is not zero cost. Latency includes Codex/tool execution, excludes build and grading. Each run has a fresh workspace and home; toolchain/package caches are shared. Orders alternate by task and repetition. Shell and transparent cohorts receive the same model-visible tools; transparent mode only changes the post-approval launcher. This small pilot does not support a statistical or price claim.")
+  lines.push("Human interventions: 0 (unattended, approval=never); requested interventions are counted separately in audit. Tokens are provider-reported, reasoning is a subset of output. Missing usage is not zero cost. Latency includes Codex/tool execution, excludes build and grading. Each run has a fresh workspace and home; toolchain/package caches are shared. Orders alternate by task and repetition. Shell and transparent cohorts receive the same model-visible tools; transparent mode only changes the post-approval launcher. Process rows use prewritten host helpers; script rows deliberately include MoonBit authoring or execution. This bounded pilot does not support a statistical or price claim.")
   lines.join("\n") + "\n"
 }
 
 async fn main {
   let args = @env.args()
-  guard args.length() == 2 && (args[1] == "smoke" || args[1] == "full") else { fail("usage: moon run scripts/m4_eval.mbtx smoke|full (isolated Linux CI only)") }
+  guard args.length() == 2 && (args[1] == "smoke" || args[1] == "backend" || args[1] == "full") else { fail("usage: moon run scripts/m4_eval.mbtx smoke|backend|full (isolated Linux CI only)") }
   let model = @env.get_env_var("M4_MODEL").unwrap_or("gpt-5.6-terra")
   let effort = @env.get_env_var("M4_EFFORT").unwrap_or("xhigh")
   guard @env.get_env_var("OPENROUTER_ICU_API_KEY") is Some(key) && !key.is_empty() else { fail("OPENROUTER_ICU_API_KEY repository secret is required") }
@@ -260,12 +264,13 @@ async fn main {
     println("Running \{case.id} / \{slot.backend} / \{slot.repetition} (rollout \{slot.index})")
     let row = run_case(case, slot.backend, slot.repetition, base, reference, key, model, effort, grader)
     results.push(row)
-    let report : Json = { "schema_version": 3, "prompt_revision": 3, "implementation_sha": sha.to_json(), "binary_source": binary_source,
+    let token_budget = if args[1] == "full" { 4_000_000 } else { 2_000_000 }
+    let report : Json = { "schema_version": 4, "prompt_revision": 3, "implementation_sha": sha.to_json(), "binary_source": binary_source,
       "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
       "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
       "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
       "expected_rollouts": plan.rollouts.length().to_json(), "planned_rollouts": plan.planned_rollouts.to_json(),
-      "start_rollout": plan.start_rollout.to_json(), "observed_token_budget": 2000000, "deadline_ms": 300000,
+      "start_rollout": plan.start_rollout.to_json(), "observed_token_budget": token_budget, "deadline_ms": 300000,
       "tool_mode": "exec_command", "backend_mode": "transparent", "request_max_retries": 2, "stream_max_retries": 1,
       "results": results.to_json() }
     put("_build/m4-results/report.json", report.stringify())
@@ -273,7 +278,7 @@ async fn main {
     println("Result: \{row.failure_category}; \{row.elapsed_ms} ms; \{row.requests} requests")
     let mut tokens = 0
     for row in results { tokens += metric(row.audit, "input_tokens") + metric(row.audit, "output_tokens") }
-    guard tokens <= 2_000_000 else { fail("observed 2M-token run budget reached; partial report retained") }
+    guard tokens <= token_budget else { fail("observed token budget reached; partial report retained") }
   }
   if @env.get_env_var("GITHUB_STEP_SUMMARY") is Some(path) {
     @fs.write_file(path, markdown(results, model, effort, sha, plan), append=true)

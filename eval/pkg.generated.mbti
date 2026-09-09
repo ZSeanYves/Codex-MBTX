@@ -53,6 +53,7 @@ pub fn Audit::sse(Self, String) -> Unit
 
 pub struct Case {
   id : String
+  workload : String
   prompt : String
   inputs : Map[String, String]
   expected : Json
