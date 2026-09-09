@@ -27,7 +27,7 @@ expected `quote'"$`; its second repetition passed, with no command failure or
 backend violation. That pattern is consistent with model/task stochasticity,
 not a deterministic launcher transformation.
 
-No completed row in either cohort used the `mbtx` tool. Every completed
+In this comparison, no completed row in either cohort used the `mbtx` tool. Every completed
 transparent row used the normal `exec_command` contract (and the background
 case also used `write_stdin`). Rows that ended before a completed response are
 marked non-compliant by the evidence schema because backend use cannot be
