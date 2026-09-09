@@ -31,6 +31,8 @@ cohort and is not evidence for transparent replacement. The first
 [transparent comparison report](docs/reports/m4-transparent-2026-09-09.md) is a
 complete 24-row observation set, but relay overload prevented a green evidence
 gate, so it does not establish a performance or reliability advantage.
+The process-only [backend report](docs/reports/m4-backend-2026-09-09.md) has
+the expanded 24-row cohort and the same evidence boundary.
 Transparent MBTX remains opt-in.
 
 Build the modified Codex and runner with:

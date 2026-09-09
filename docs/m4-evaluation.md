@@ -19,6 +19,11 @@ six host-process tasks that do not ask the model to create, edit, or run a
 MoonBit-script tasks), two backends, and two repetitions: 48 rollouts. The
 `backend` mode contains only the six process tasks: 24 rollouts.
 
+The completed backend-only observation is recorded in
+[m4-backend-2026-09-09](reports/m4-backend-2026-09-09.md). Its 24 rows are
+complete, but relay overload and stream disconnects prevent a performance or
+reliability claim.
+
 CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
 Using the rolling `latest` changed dependency warnings during M4 development
 and contaminated stderr assertions. The installer honors
