@@ -86,7 +86,7 @@ pub fn suite() -> Array[Case] {
     },
     {
       id: "background_job",
-      prompt: "Start worker.mbtx (moon run worker.mbtx) as a background process and poll it until completion. In the MBTX backend use mbtx op=run background=true followed by job_output; in the shell backend use exec_command with a short yield_time_ms then write_stdin. Verify result.json. Do not modify worker.mbtx or write result.json yourself.",
+      prompt: "Start worker.mbtx (moon run worker.mbtx) as a background process and poll it until completion using the available command execution tools. Verify result.json. Do not modify worker.mbtx or write result.json yourself.",
       inputs: {
         "worker.mbtx": "import {\n  \"moonbitlang/async\",\n  \"moonbitlang/async/fs\",\n}\nasync fn main {\n  println(\"started\")\n  @async.sleep(3500)\n  let result : Json = { \"state\": \"complete\", \"steps\": 3 }\n  @fs.write_file(\"result.json\", result.stringify())\n  println(\"complete\")\n}\n",
       },
@@ -122,10 +122,10 @@ pub fn preserved_input(case : Case, path : String, actual : String?) -> Bool {
 
 ///|
 pub fn prompt(case : Case, backend : String) -> String {
-  let routing = if backend == "mbtx" {
-    "Use the mbtx tool for ALL command and script execution. Never call exec_command, write_stdin, shell, shell_command or another execution backend. Write new automation in MoonBit .mbtx only. Inside mbtx, external programs may be invoked using moonbitlang/async/shell with literal argv. You may use apply_patch for editing."
-  } else {
-    "Use exec_command and write_stdin for command and script execution. You may use apply_patch for editing."
-  }
+  // Shell and transparent runs expose the same Codex tools to the model. The
+  // backend difference is applied after command approval, so the prompt must
+  // not teach the model a backend-specific scripting language.
+  let _ = backend
+  let routing = "Use exec_command and write_stdin for command and script execution. You may use apply_patch for editing."
   "\{routing}\nWork only inside the task workspace. Do not inspect other home directories, evaluation infrastructure or answer keys. Do not use the network, delegate to another agent, or ask for human input. Read MOONBIT.md if you need MoonBit syntax. Complete and verify the task before your final response.\n\n\{case.prompt}"
 }

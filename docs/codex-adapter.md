@@ -1,5 +1,10 @@
 # M3 Codex adapter
 
+The adapter supports two intentionally different modes. Use transparent mode
+when the question is whether MBTX can replace process launching without
+changing the agent's workflow. Use the explicit tool when the question is how
+well a model can author MoonBit automation.
+
 ## Build and run
 
 M3 pins OpenAI Codex `rust-v0.153.4` at
@@ -23,10 +28,33 @@ user Codex configuration, or pass it through Codex's `-c` option:
 mbtx_command = ["/absolute/path/to/mbtx"]
 ```
 
+For transparent execution, add the backend selector:
+
+```toml
+mbtx_command = ["/absolute/path/to/mbtx"]
+mbtx_backend = "transparent"
+```
+
+In this mode the model still calls `exec_command` and `write_stdin`. After the
+command has been parsed, approved, and prepared for the host sandbox, Codex
+launches:
+
+```text
+/absolute/path/to/mbtx exec -- <original resolved argv>
+```
+
+The original command remains the input to policy checks, approval messages,
+hooks, events, and exit-status reporting. MBTX forwards the attached standard
+streams to the child. Ordinary commands do not produce MoonBit source and do
+not invoke `moon run`; this path therefore does not require the model to know
+MoonBit syntax or APIs. Transparent mode is local-only because the launcher is
+inserted by the local unified executor.
+
 Run the built `codex` executable with your usual workspace, model login and
 permission settings. MoonBit's `moon` and `moonrun` must remain on its PATH.
-Removing `mbtx_command` disables the new tool. The installed Codex desktop
-application is not modified.
+Removing `mbtx_command` disables both MBTX modes. Omitting
+`mbtx_backend` preserves the explicit `mbtx` tool behavior. The installed
+Codex desktop application is not modified.
 
 On Linux, Codex's sandbox requires bubblewrap and working unprivileged user
 namespaces. CI enables the same kernel settings as the pinned Codex CI and
@@ -38,10 +66,10 @@ a `moonrun` binary followed by a compiled Wasm runner artifact. Only user,
 system, managed or runtime configuration may select this command; project-local
 configuration is explicitly excluded.
 
-## Tool contract
+## Explicit `mbtx` tool contract
 
-The model sees one `mbtx` function alongside the existing `exec_command` and
-`write_stdin` tools:
+When `mbtx_backend` is omitted, the model sees one `mbtx` function alongside
+the existing `exec_command` and `write_stdin` tools:
 
 ```json
 {"op":"run","source":"fn main { println(42) }","args":[],"background":false,"timeout_ms":30000}
@@ -83,12 +111,14 @@ hold up another job's watchdog. Completed jobs cancel their watchdog timers.
 
 ## Host integration
 
-The adapter constructs a direct argv request for Codex's unified executor.
-The full canonical MBTX request is present in the approval action before
-execution. Existing execution policy, approval routing, environment filtering,
-sandbox selection, live execution events and session shutdown apply to the
-runner. The adapter neither spawns a process with an independent unrestricted
-launcher nor implements another model loop.
+The explicit adapter constructs a direct argv request for Codex's unified
+executor. The full canonical MBTX request is present in the approval action
+before execution. Transparent mode instead carries the original resolved
+`exec_command` argv through the same executor and adds its launcher only after
+approval and sandbox planning. Existing execution policy, approval routing,
+environment filtering, sandbox selection, live execution events and session
+shutdown apply in both modes. The adapter neither spawns a process with an
+independent unrestricted launcher nor implements another model loop.
 
 The tool is exposed only when shell execution and unified execution are enabled,
 with exactly one local environment. Reviewer-only sessions, remote executors,
@@ -106,7 +136,7 @@ terminates that job instead of attempting to reconstruct missing events.
 The host sandbox is the isolation boundary. A force-stopped runner may not run
 its own temporary-file cleanup. MBTX does not add persistence, container
 deployment or guarantees beyond Codex's existing host confinement. M4 will
-measure shell/MBTX outcomes with actual model tasks; M3 does not establish a
+measure shell/transparent outcomes with actual model tasks; M3 does not establish a
 performance or model-quality improvement.
 
 ## Validation without a model account

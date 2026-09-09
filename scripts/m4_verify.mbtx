@@ -6,6 +6,14 @@ import {
 }
 
 async fn main {
+  let build = @shell.Cmd(
+    "moon",
+    ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"],
+  ).output()
+  build.check()
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(mbtx)], .. } else {
+    fail("missing native MBTX artifact")
+  }
   let build = @shell.Cmd("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/m4-evidence"]).output()
   build.check()
   guard @json.parse(build.stdout()) is { "artifacts_path": [String(grader)], .. } else { fail("missing grader") }
@@ -68,5 +76,13 @@ async fn main {
   }
   guard checked == 3 else { fail("expected three executable fixtures") }
   @fs.rmdir(base, recursive=true)
+  let transparent = @shell.Cmd(
+    mbtx,
+    ["exec", "--", "/bin/sh", "-c", "printf proxy-ok; printf proxy-err >&2; exit 7"],
+  ).output()
+  guard transparent.exit_code() == 7 else { fail("transparent launcher lost child exit status") }
+  guard transparent.stdout() == "proxy-ok" && transparent.stderr() == "proxy-err" else {
+    fail("transparent launcher did not preserve child streams")
+  }
   println("M4 executable fixtures: 3 passed; evidence CLI regressions passed; no API key used")
 }

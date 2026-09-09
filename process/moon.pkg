@@ -3,6 +3,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/shell",
   "moonbitlang/async/process" @child,
+  "moonbitlang/async/stdio",
   "moonbitlang/async/cond_var",
   "moonbitlang/async/fs",
   "moonbitlang/core/json",

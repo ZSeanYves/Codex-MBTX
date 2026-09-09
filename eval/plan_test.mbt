@@ -17,8 +17,8 @@ test "continuations preserve the original task and backend order" {
       "\{r.task}/\{r.backend}/\{r.repetition}"
     }),
     [
-      "literal_argv/shell/2", "literal_argv/mbtx/2", "repair_moon/mbtx/2", "repair_moon/shell/2",
-      "background_job/shell/2", "background_job/mbtx/2",
+      "literal_argv/shell/2", "literal_argv/transparent/2", "repair_moon/transparent/2",
+      "repair_moon/shell/2", "background_job/shell/2", "background_job/transparent/2",
     ],
   )
   let smoke = @eval.plan("smoke", 0)

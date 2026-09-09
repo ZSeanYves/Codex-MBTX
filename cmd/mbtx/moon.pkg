@@ -1,5 +1,6 @@
 import {
   "ZSeanYves/Codex-MBTX/session",
+  "ZSeanYves/Codex-MBTX/process",
   "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbitlang/core/env",

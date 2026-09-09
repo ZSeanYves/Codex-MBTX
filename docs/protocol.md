@@ -11,6 +11,13 @@ literal argument, allows formatted JSON, and drains its events without reading
 stdin. It rejects multiple records and control-only launches. This is the
 launch interface used by the Codex adapter; stdin JSONL mode remains available.
 
+The transparent CLI form `mbtx exec -- COMMAND ARGUMENT...` is a separate host
+launcher used by Codex's transparent backend. It forwards the literal argv and
+the caller's standard streams to the child, then exits with the child's status.
+It does not parse shell syntax, generate MoonBit source, invoke `moon run`, or
+use the JSONL script-job protocol. The caller has already performed command
+resolution, approval, and sandbox planning before this form is launched.
+
 ## Scheduling and lifetime
 
 A run defaults to foreground execution. Run submissions are processed in order;

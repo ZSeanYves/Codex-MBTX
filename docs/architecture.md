@@ -3,28 +3,37 @@
 ## Goal
 
 Preserve Codex's model orchestration, agent loop, sessions, automation,
-approval flow, and event handling while adding MBTX as a script execution
-backend.
+approval flow, and event handling while adding MBTX as an execution backend.
 
-The first integration must keep the existing shell execution path available.
-This makes the two execution paths comparable and gives the experiment a
-reliable fallback.
+The existing shell execution path remains available. The experiment has two
+separate MBTX modes: an explicit `mbtx` tool for MoonBit-script workflows, and
+the primary transparent mode, which keeps Codex's existing `exec_command`
+contract and changes only the post-approval process launcher. Keeping these
+modes separate prevents a model's MoonBit knowledge from being confused with
+the effect of replacing the host executor.
 
 ## Execution boundary
 
 ```text
 Model
   -> Codex agent loop
-  -> mbtx tool
-  -> Rust MBTX adapter
-  -> MBTX runner
-  -> JSONL execution events
+  -> exec_command (unchanged model-visible contract)
+  -> policy, approval, and sandbox planning
+  -> MBTX `exec --` launcher (transparent mode)
+  -> original resolved argv
   -> Codex tool result and context
+
+Explicit compatibility path:
+
+Model -> mbtx tool -> Rust adapter -> MBTX JSONL runner -> tool result
 ```
 
-The MBTX runner owns script execution and job lifecycle. Codex remains the
-authority for model interaction, workspace selection, approvals, and the host
-sandbox. The runner must not become an alternate model client or agent loop.
+The MBTX runner owns MoonBit script compilation and script-job lifecycle.
+Codex remains the authority for model interaction, workspace selection,
+approvals, and the host sandbox. In transparent mode MBTX does not receive
+MoonBit source: it validates the trusted launcher, attaches the caller's
+standard streams, and forwards the already-resolved literal argv to the child.
+The runner must not become an alternate model client or agent loop.
 
 ## Packages
 
@@ -104,29 +113,35 @@ plus `scripts/jobs_smoke.mbtx` against the actual CLI on Wasm and native backend
 ### M3: Codex adapter (implemented)
 
 - Add a replaceable MBTX execution backend in Codex.
-- Keep the existing shell backend and route the new `mbtx` tool through the
-  adapter.
+- Keep the existing shell backend and route both explicit and transparent
+  modes through the unified executor.
 - Test the tool call with a mock model and a fake runner.
 
-The opt-in `mbtx_command` configuration exposes a new `mbtx` function. The Rust
-adapter passes the complete request as literal argv to Codex's existing unified
-executor, retaining its approval, sandbox, streaming and process-lifetime
-handling. Shell tools remain available. Each run uses the runner's
-`--request JSON` entry point; adapter background jobs use Codex process ownership
-and opaque session-scoped IDs. See [the adapter guide](codex-adapter.md) for the
-configuration boundary, polling semantics, reproducible build and validation.
+The opt-in `mbtx_command` configuration selects the trusted MBTX executable.
+With `mbtx_backend = "transparent"`, the Rust adapter leaves the model's
+command, policy input, approval display, events, streams, and exit status
+unchanged, then prefixes the final launch argv with `mbtx exec --`. No
+generated MoonBit source or MBTX compilation occurs on this path. Without the
+backend selector, `mbtx_command` exposes the explicit `mbtx` function; that
+path accepts MoonBit source or `.mbtx` files and therefore requires the caller
+to know the MBTX protocol and MoonBit syntax. See [the adapter guide](codex-adapter.md)
+for the configuration boundary and validation.
 
 ### M4: evaluation
 
-- Run the same task set through shell and MBTX execution.
+- Run the same task set through shell and transparent execution with identical
+  model-visible prompts and tools.
 - Record success, latency, output correctness, token use, intervention, and
   failure category.
-- Use the baseline to decide whether MBTX should become the default backend.
+- Keep explicit-MBTX results as a separate compatibility cohort; do not use
+  them as evidence for transparent replacement.
+- Use the direct comparison to decide whether transparent MBTX should become
+  a default backend.
 
 The [M4 evaluation guide](m4-evaluation.md) defines the fixed task suite,
-instruction-routed shell/MBTX comparison, deterministic grading, sanitized
-evidence and manual live workflow. MBTX remains opt-in until measurements
-justify changing the default.
+same-prompt shell/transparent comparison, deterministic grading, sanitized
+evidence and manual live workflow. Transparent MBTX remains opt-in until
+measurements justify changing the default.
 
 ## Validation
 

@@ -325,10 +325,7 @@ pub fn Audit::backend_ok(
       self.background_runs > 0 &&
       self.operations.get("job_output").unwrap_or(0) > 0
     )
-  } else {
-    if backend != "shell" {
-      return false
-    }
+  } else if backend == "shell" || backend == "transparent" {
     for
       name in [
         "mbtx", "spawn_agent", "js", "js_exec", "exec", "shell", "shell_command",
@@ -339,6 +336,8 @@ pub fn Audit::backend_ok(
     }
     self.tools.get("exec_command").unwrap_or(0) > 0 &&
     (!background || self.tools.get("write_stdin").unwrap_or(0) > 0)
+  } else {
+    false
   }
 }
 

@@ -1,6 +1,7 @@
 use serde_json::Value;
 use serde_json::json;
 use std::io::Write;
+use std::process::Stdio;
 use std::time::Duration;
 
 fn emit(value: Value) {
@@ -10,6 +11,18 @@ fn emit(value: Value) {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("exec") {
+        assert_eq!(args.get(2).map(String::as_str), Some("--"));
+        let command = args.get(3).expect("transparent proxy command");
+        let status = std::process::Command::new(command)
+            .args(&args[4..])
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .expect("launch transparent proxy command");
+        std::process::exit(status.code().unwrap_or(1));
+    }
     assert_eq!(args[args.len() - 2], "--request");
     let request: Value = serde_json::from_str(args.last().unwrap()).unwrap();
     assert_eq!(request["op"], "run");

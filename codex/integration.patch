@@ -1344,41 +1344,50 @@ index e217b70..ca93c94 100644
   "anyhow",
   "codex-login",
 diff --git a/codex-rs/config/src/config_toml.rs b/codex-rs/config/src/config_toml.rs
-index 5f0cc99..568f18e 100644
+index 5f0cc99..a814bc7 100644
 --- a/codex-rs/config/src/config_toml.rs
 +++ b/codex-rs/config/src/config_toml.rs
-@@ -153,6 +153,9 @@ pub struct OrchestratorFeatureToml {
+@@ -153,6 +153,13 @@ pub struct OrchestratorFeatureToml {
  #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, JsonSchema)]
  #[schemars(deny_unknown_fields)]
  pub struct ConfigToml {
-+    /// Trusted MBTX runner argv. Omit to disable the experimental mbtx tool.
++    /// Trusted MBTX runner argv. Omit to disable MBTX execution backends.
 +    pub mbtx_command: Option<Vec<String>>,
++
++    /// Selects the MBTX execution boundary. `transparent` routes the existing
++    /// exec_command tool through MBTX without exposing MoonBit source to the model.
++    pub mbtx_backend: Option<String>,
 +
      /// Optional override of model selection.
      pub model: Option<String>,
      /// Review model override used by the `/review` feature.
 diff --git a/codex-rs/config/src/loader/mod.rs b/codex-rs/config/src/loader/mod.rs
-index 48ea0d3..dc38416 100644
+index 48ea0d3..12514b8 100644
 --- a/codex-rs/config/src/loader/mod.rs
 +++ b/codex-rs/config/src/loader/mod.rs
-@@ -73,6 +73,7 @@ const DEFAULT_PROGRAM_DATA_DIR_WINDOWS: &str = r"C:\ProgramData";
+@@ -73,6 +73,8 @@ const DEFAULT_PROGRAM_DATA_DIR_WINDOWS: &str = r"C:\ProgramData";
  // These settings are still supported from user, system, managed, and runtime
  // config layers.
  const PROJECT_LOCAL_CONFIG_DENYLIST: &[&str] = &[
 +    "mbtx_command",
++    "mbtx_backend",
      "openai_base_url",
      "chatgpt_base_url",
      "apps_mcp_product_sku",
 diff --git a/codex-rs/core/config.schema.json b/codex-rs/core/config.schema.json
-index 24d7988..b71a60a 100644
+index 24d7988..0c31296 100644
 --- a/codex-rs/core/config.schema.json
 +++ b/codex-rs/core/config.schema.json
-@@ -6493,6 +6493,13 @@
+@@ -6493,6 +6493,17 @@
        "description": "User-level marketplace entries keyed by marketplace name.",
        "type": "object"
      },
++    "mbtx_backend": {
++      "description": "Selects the MBTX execution boundary. `transparent` routes the existing exec_command tool through MBTX without exposing MoonBit source to the model.",
++      "type": "string"
++    },
 +    "mbtx_command": {
-+      "description": "Trusted MBTX runner argv. Omit to disable the experimental mbtx tool.",
++      "description": "Trusted MBTX runner argv. Omit to disable MBTX execution backends.",
 +      "items": {
 +        "type": "string"
 +      },
@@ -1388,44 +1397,51 @@ index 24d7988..b71a60a 100644
        "description": "Optional fixed port for the local HTTP callback server used during MCP OAuth login. When unset, Codex will bind to an ephemeral port chosen by the OS.",
        "format": "uint16",
 diff --git a/codex-rs/core/src/config/config_loader_tests.rs b/codex-rs/core/src/config/config_loader_tests.rs
-index bb25c2c..f36c0fe 100644
+index bb25c2c..9fb7474 100644
 --- a/codex-rs/core/src/config/config_loader_tests.rs
 +++ b/codex-rs/core/src/config/config_loader_tests.rs
-@@ -3731,6 +3731,7 @@ async fn project_layer_ignores_unsupported_config_keys() -> std::io::Result<()>
+@@ -3731,6 +3731,8 @@ async fn project_layer_ignores_unsupported_config_keys() -> std::io::Result<()>
          dot_codex.join(CONFIG_TOML_FILE),
          r#"
  model = "project-model"
 +mbtx_command = ["/tmp/untrusted-runner"]
++mbtx_backend = "transparent"
  model_instructions_file = "instructions.md"
  openai_base_url = "https://attacker.example/v1"
  chatgpt_base_url = "https://attacker.example/backend-api"
-@@ -3796,6 +3797,7 @@ wire_api = "responses"
+@@ -3796,6 +3798,8 @@ wire_api = "responses"
          .expect("expected project layer");
  
      let ignored_project_config_keys = vec![
 +        "mbtx_command",
++        "mbtx_backend",
          "openai_base_url",
          "chatgpt_base_url",
          "apps_mcp_product_sku",
 diff --git a/codex-rs/core/src/config/mod.rs b/codex-rs/core/src/config/mod.rs
-index dca329a..1590ca3 100644
+index dca329a..568fa09 100644
 --- a/codex-rs/core/src/config/mod.rs
 +++ b/codex-rs/core/src/config/mod.rs
-@@ -605,6 +605,9 @@ pub enum ThreadStoreConfig {
+@@ -605,6 +605,13 @@ pub enum ThreadStoreConfig {
  /// Application configuration loaded from disk and merged with overrides.
  #[derive(Debug, Clone, PartialEq)]
  pub struct Config {
-+    /// Trusted MBTX runner argv; independent of the existing shell backend.
++    /// Trusted MBTX runner argv used by the selected execution backend.
 +    pub mbtx_command: Option<Vec<String>>,
++
++    /// Optional MBTX execution backend. `transparent` replaces the host process
++    /// launcher behind the existing exec_command tool.
++    pub mbtx_backend: Option<String>,
 +
      /// Provenance for how this [`Config`] was derived (merged layers + enforced
      /// requirements).
      pub config_layer_stack: ConfigLayerStack,
-@@ -4130,6 +4133,7 @@ impl Config {
+@@ -4130,6 +4137,8 @@ impl Config {
          .map_err(std::io::Error::from)?;
          let otel = otel::resolve_config(cfg.otel.unwrap_or_default(), &mut startup_warnings);
          let config = Self {
 +            mbtx_command: cfg.mbtx_command,
++            mbtx_backend: cfg.mbtx_backend,
              model,
              service_tier,
              review_model,
@@ -1449,15 +1465,204 @@ index 25a2ae1..d8f9757 100644
  pub use mcp::McpHandler;
  pub use mcp_resource::ListMcpResourceTemplatesHandler;
  pub use mcp_resource::ListMcpResourcesHandler;
+diff --git a/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs b/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
+index 8b97ff0..401f026 100644
+--- a/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
++++ b/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
+@@ -242,8 +242,20 @@ impl ExecCommandHandler {
+             &turn_environment.selection.environment_id,
+         )
+         .await;
+-        let shell_mode =
+-            shell_mode_for_environment(&turn.unified_exec_shell_mode, environment.as_ref());
++        let transparent_mbtx = turn.config.mbtx_backend.as_deref() == Some("transparent");
++        if transparent_mbtx && environment.is_remote() {
++            return Err(FunctionCallError::RespondToModel(
++                "transparent MBTX backend requires a local execution environment".to_string(),
++            ));
++        }
++        // The zsh-fork optimization has its own launch protocol. Transparent
++        // MBTX wraps the ordinary unified-exec launch after policy checks, so
++        // use the direct shell path for this backend.
++        let shell_mode = if transparent_mbtx {
++            codex_tools::UnifiedExecShellMode::Direct
++        } else {
++            shell_mode_for_environment(&turn.unified_exec_shell_mode, environment.as_ref())
++        };
+         // Remote environments may use a different OS and must build commands with their native
+         // shell; fall back to the session shell when the environment did not report one.
+         let shell = turn_environment
+@@ -270,7 +282,6 @@ impl ExecCommandHandler {
+                 )));
+             }
+         }
+-        let process_id = manager.allocate_process_id().await;
+         let resolved_command = get_command(
+             &args,
+             shell,
+@@ -280,6 +291,26 @@ impl ExecCommandHandler {
+         .map_err(FunctionCallError::RespondToModel)?;
+         let command = resolved_command.command;
+         let shell_type = resolved_command.shell_type;
++        let mbtx_launcher = if transparent_mbtx {
++            let launcher = turn.config.mbtx_command.clone().ok_or_else(|| {
++                FunctionCallError::RespondToModel(
++                    "transparent MBTX backend requires mbtx_command".to_string(),
++                )
++            })?;
++            if launcher.is_empty()
++                || !Path::new(&launcher[0]).is_absolute()
++                || launcher.iter().any(|arg| arg.contains('\0'))
++            {
++                return Err(FunctionCallError::RespondToModel(
++                    "mbtx_command must start with an absolute executable path and contain no NUL"
++                        .to_string(),
++                ));
++            }
++            Some(launcher)
++        } else {
++            None
++        };
++        let process_id = manager.allocate_process_id().await;
+         let ExecCommandArgs {
+             mut tty,
+             yield_time_ms,
+@@ -404,6 +435,7 @@ impl ExecCommandHandler {
+         emit_unified_exec_tty_metric(&turn.session_telemetry, tty);
+         let request = ExecCommandRequest {
+             command,
++            mbtx_launcher,
+             shell_type,
+             hook_command: hook_command.clone(),
+             process_id,
+diff --git a/codex-rs/core/src/tools/runtimes/unified_exec.rs b/codex-rs/core/src/tools/runtimes/unified_exec.rs
+index aea36d9..e7072f9 100644
+--- a/codex-rs/core/src/tools/runtimes/unified_exec.rs
++++ b/codex-rs/core/src/tools/runtimes/unified_exec.rs
+@@ -65,6 +65,8 @@ const REMOTE_NETWORK_POLICY_DECISION_MARGIN: Duration = Duration::from_secs(10);
+ #[derive(Clone, Debug)]
+ pub struct UnifiedExecRequest {
+     pub command: Vec<String>,
++    /// Trusted MBTX launcher applied only at the final process launch.
++    pub mbtx_launcher: Option<Vec<String>>,
+     pub shell_type: ShellType,
+     pub hook_command: String,
+     pub process_id: i32,
+@@ -144,6 +146,34 @@ fn build_unified_exec_sandbox_command(
+     })
+ }
+ 
++/// Prefix a fully prepared command with the trusted transparent MBTX launcher.
++///
++/// This is intentionally applied after approvals, shell policy, and sandbox
++/// transforms have inspected the original command. Keeping the launcher out of
++/// `UnifiedExecRequest::command` preserves the command shown to the user and
++/// used by approval, policy, network, and telemetry paths.
++pub(crate) fn apply_mbtx_launcher(
++    launcher: Option<&[String]>,
++    command: Vec<String>,
++) -> Result<Vec<String>, ToolError> {
++    let Some(launcher) = launcher else {
++        return Ok(command);
++    };
++    if launcher.is_empty()
++        || !std::path::Path::new(&launcher[0]).is_absolute()
++        || launcher.iter().any(|arg| arg.contains('\0'))
++    {
++        return Err(ToolError::Rejected(
++            "mbtx_command must start with an absolute executable path and contain no NUL"
++                .to_string(),
++        ));
++    }
++    let mut launched = launcher.to_vec();
++    launched.extend(["exec".to_string(), "--".to_string()]);
++    launched.extend(command);
++    Ok(launched)
++}
++
+ impl<'a> UnifiedExecRuntime<'a> {
+     /// Creates a runtime bound to the shared unified-exec process manager.
+     pub fn new(manager: &'a UnifiedExecProcessManager, shell_mode: UnifiedExecShellMode) -> Self {
+@@ -413,6 +443,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+         } else {
+             command
+         };
++        let command = apply_mbtx_launcher(req.mbtx_launcher.as_deref(), command)?;
+         let sidecar_permissions = metrics_sidecar
+             .as_ref()
+             .map(PluginMetricsSidecar::additional_permissions);
+@@ -617,6 +648,45 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn transparent_launcher_is_added_after_the_original_command() {
++        let original = vec![
++            "/bin/zsh".to_string(),
++            "-lc".to_string(),
++            "printf '%s' '$(touch SHOULD_NOT_EXIST)'".to_string(),
++        ];
++        assert_eq!(
++            apply_mbtx_launcher(None, original.clone()).expect("no launcher preserves command"),
++            original
++        );
++        assert_eq!(
++            apply_mbtx_launcher(Some(&["/opt/mbtx".to_string()]), original.clone())
++                .expect("trusted launcher prefixes command"),
++            vec![
++                "/opt/mbtx".to_string(),
++                "exec".to_string(),
++                "--".to_string(),
++                "/bin/zsh".to_string(),
++                "-lc".to_string(),
++                "printf '%s' '$(touch SHOULD_NOT_EXIST)'".to_string(),
++            ]
++        );
++    }
++
++    #[test]
++    fn transparent_launcher_rejects_untrusted_shape() {
++        for launcher in [
++            Vec::new(),
++            vec!["mbtx".to_string()],
++            vec!["/opt/mbtx\0bad".to_string()],
++        ] {
++            assert!(matches!(
++                apply_mbtx_launcher(Some(&launcher), vec!["echo".to_string()]),
++                Err(ToolError::Rejected(message)) if message.contains("mbtx_command")
++            ));
++        }
++    }
++
+     #[tokio::test]
+     async fn approval_key_includes_environment_id() {
+         let manager = UnifiedExecProcessManager::default();
+@@ -654,6 +724,7 @@ mod tests {
+         let runtime = UnifiedExecRuntime::new(&manager, UnifiedExecShellMode::Direct);
+         let request = UnifiedExecRequest {
+             command: vec!["pwd".to_string()],
++            mbtx_launcher: None,
+             shell_type: ShellType::Sh,
+             hook_command: "pwd".to_string(),
+             process_id: 1000,
+@@ -757,6 +828,7 @@ mod tests {
+             .expect("current dir is absolute");
+         UnifiedExecRequest {
+             command: vec!["zsh".to_string(), "-c".to_string(), "echo hi".to_string()],
++            mbtx_launcher: None,
+             shell_type: ShellType::Zsh,
+             hook_command: "echo hi".to_string(),
+             process_id: 1000,
 diff --git a/codex-rs/core/src/tools/spec_plan.rs b/codex-rs/core/src/tools/spec_plan.rs
-index 908bb14..4993008 100644
+index 908bb14..f44d362 100644
 --- a/codex-rs/core/src/tools/spec_plan.rs
 +++ b/codex-rs/core/src/tools/spec_plan.rs
-@@ -1098,6 +1098,15 @@ fn add_shell_tools(context: &CoreToolPlanContext<'_>, registry: &mut ToolRegistr
+@@ -1098,6 +1098,16 @@ fn add_shell_tools(context: &CoreToolPlanContext<'_>, registry: &mut ToolRegistr
      if features.enabled(Feature::UnifiedExec) {
          registry.add(ExecCommandHandler::new(options));
          registry.add(WriteStdinHandler);
-+        if turn_context.config.mbtx_command.is_some()
++        if turn_context.config.mbtx_backend.as_deref() != Some("transparent")
++            && turn_context.config.mbtx_command.is_some()
 +            && context.environments.turn_environments().count() == 1
 +            && context
 +                .environments
@@ -1469,3 +1674,41 @@ index 908bb14..4993008 100644
      } else {
          // Managed requirements are the only configuration path that can keep
          // unified exec disabled. Preserve command execution without exposing a
+diff --git a/codex-rs/core/src/unified_exec/mod.rs b/codex-rs/core/src/unified_exec/mod.rs
+index 8dc8f35..701da1f 100644
+--- a/codex-rs/core/src/unified_exec/mod.rs
++++ b/codex-rs/core/src/unified_exec/mod.rs
+@@ -107,6 +107,9 @@ impl UnifiedExecContext {
+ #[derive(Debug)]
+ pub(crate) struct ExecCommandRequest {
+     pub command: Vec<String>,
++    /// Trusted MBTX launcher applied only after approval and sandbox planning.
++    /// The user-visible command remains in `command` for policy and events.
++    pub mbtx_launcher: Option<Vec<String>>,
+     pub shell_type: ShellType,
+     pub hook_command: String,
+     pub process_id: i32,
+diff --git a/codex-rs/core/src/unified_exec/process_manager.rs b/codex-rs/core/src/unified_exec/process_manager.rs
+index 2121857..3e450cb 100644
+--- a/codex-rs/core/src/unified_exec/process_manager.rs
++++ b/codex-rs/core/src/unified_exec/process_manager.rs
+@@ -1407,6 +1407,7 @@ impl UnifiedExecProcessManager {
+             .await;
+         let req = UnifiedExecToolRequest {
+             command: request.command.clone(),
++            mbtx_launcher: request.mbtx_launcher.clone(),
+             shell_type: request.shell_type,
+             hook_command: request.hook_command.clone(),
+             process_id: request.process_id,
+diff --git a/codex-rs/core/src/unified_exec/process_manager_tests.rs b/codex-rs/core/src/unified_exec/process_manager_tests.rs
+index 523e7eb..eb74a4c 100644
+--- a/codex-rs/core/src/unified_exec/process_manager_tests.rs
++++ b/codex-rs/core/src/unified_exec/process_manager_tests.rs
+@@ -424,6 +424,7 @@ async fn failed_initial_end_for_unstored_process_uses_fallback_output() {
+             "-lc".to_string(),
+             "echo before".to_string(),
+         ],
++        mbtx_launcher: None,
+         shell_type: crate::shell::ShellType::Sh,
+         hook_command: "echo before".to_string(),
+         process_id: 123,

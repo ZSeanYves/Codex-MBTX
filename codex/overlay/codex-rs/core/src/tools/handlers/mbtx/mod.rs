@@ -169,6 +169,7 @@ impl MbtxHandler {
                 let process_id = manager.allocate_process_id().await;
                 let request = ExecCommandRequest {
                     command,
+                    mbtx_launcher: None,
                     shell_type: ShellType::Sh,
                     hook_command,
                     process_id,

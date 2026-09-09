@@ -69,6 +69,12 @@ async fn kill_agent() -> Unit {
 fn config(port : Int, backend : String, model : String, effort : String) -> String {
   let lines : Array[String] = []
   if backend == "mbtx" { lines.push("mbtx_command = [\"/opt/mbtx-eval-tools/bin/mbtx\"]") }
+  if backend == "transparent" {
+    lines.append([
+      "mbtx_command = [\"/opt/mbtx-eval-tools/bin/mbtx\"]",
+      "mbtx_backend = \"transparent\"",
+    ])
+  }
   lines.append([
     "model_provider = \"M4Relay\"",
     "model_catalog_json = \"/opt/mbtx-eval-tools/models.json\"",
@@ -191,7 +197,7 @@ fn markdown(results : Array[Result], model : String, effort : String, sha : Stri
     "Scope: rollout indices \{plan.start_rollout}–\{plan.planned_rollouts - 1}; \{results.length()}/\{plan.rollouts.length()} recorded in this segment. Original plan: \{plan.planned_rollouts}. A continuation does not replace or regrade earlier records.", "",
     "| Backend | Passed | Correct output | Mean wall ms | Input tokens | Cached input | Output tokens | Usage responses |",
     "| --- | --- | --- | --- | --- | --- | --- | --- |"]
-  for backend in ["shell", "mbtx"] {
+  for backend in ["shell", "transparent"] {
     let rows = results.filter(r => r.backend == backend)
     let mut elapsed = 0L
     let mut input = 0
@@ -216,7 +222,7 @@ fn markdown(results : Array[Result], model : String, effort : String, sha : Stri
   lines.push("| --- | --- | --- | --- | --- | --- |")
   for r in results { lines.push("| \{r.task} | \{r.backend} | \{r.repetition} | \{r.elapsed_ms} | \{r.failure_category} | \{r.requests} |") }
   lines.push("")
-  lines.push("Human interventions: 0 (unattended, approval=never); requested interventions are counted separately in audit. Tokens are provider-reported, reasoning is a subset of output. Missing usage is not zero cost. Latency includes Codex/tool execution, excludes build and grading. Each run has a fresh workspace and home; toolchain/package caches are shared. Orders alternate by task and repetition. No statistical or price claim is made from this small pilot. MBTX remains opt-in pending broader evidence.")
+  lines.push("Human interventions: 0 (unattended, approval=never); requested interventions are counted separately in audit. Tokens are provider-reported, reasoning is a subset of output. Missing usage is not zero cost. Latency includes Codex/tool execution, excludes build and grading. Each run has a fresh workspace and home; toolchain/package caches are shared. Orders alternate by task and repetition. Shell and transparent cohorts receive the same model-visible tools; transparent mode only changes the post-approval launcher. This small pilot does not support a statistical or price claim.")
   lines.join("\n") + "\n"
 }
 
@@ -254,13 +260,13 @@ async fn main {
     println("Running \{case.id} / \{slot.backend} / \{slot.repetition} (rollout \{slot.index})")
     let row = run_case(case, slot.backend, slot.repetition, base, reference, key, model, effort, grader)
     results.push(row)
-    let report : Json = { "schema_version": 2, "prompt_revision": 2, "implementation_sha": sha.to_json(), "binary_source": binary_source,
+    let report : Json = { "schema_version": 3, "prompt_revision": 3, "implementation_sha": sha.to_json(), "binary_source": binary_source,
       "binary_run": @env.get_env_var("M4_BINARY_RUN").unwrap_or("").to_json(), "toolchain": toolchain.stdout().to_json(),
       "github_run_id": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("").to_json(),
       "model": model.to_json(), "reasoning_effort": effort.to_json(), "mode": args[1].to_json(),
       "expected_rollouts": plan.rollouts.length().to_json(), "planned_rollouts": plan.planned_rollouts.to_json(),
       "start_rollout": plan.start_rollout.to_json(), "observed_token_budget": 2000000, "deadline_ms": 300000,
-      "tool_mode": "direct", "request_max_retries": 2, "stream_max_retries": 1,
+      "tool_mode": "exec_command", "backend_mode": "transparent", "request_max_retries": 2, "stream_max_retries": 1,
       "results": results.to_json() }
     put("_build/m4-results/report.json", report.stringify())
     put("_build/m4-results/report.md", markdown(results, model, effort, sha, plan))

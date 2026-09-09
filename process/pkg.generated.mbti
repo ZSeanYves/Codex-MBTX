@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub async fn proxy(String, Array[String], cwd? : String, cancel_handler? : @moonbitlang/async/process.CancellationHandler) -> Int
+
 pub async fn run(@runtime.Request) -> @runtime.RunResult
 
 pub async fn stream(@runtime.Request, Control, async (@runtime.Stream, String) -> Unit) -> (Int, Int64)

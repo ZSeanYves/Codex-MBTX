@@ -34,9 +34,9 @@ pub fn plan(mode : String, start_rollout : Int) -> Plan raise {
   for repetition in 1..<=repetitions {
     for i in 0..<count {
       let backends = if (i + repetition) % 2 == 1 {
-        ["shell", "mbtx"]
+        ["shell", "transparent"]
       } else {
-        ["mbtx", "shell"]
+        ["transparent", "shell"]
       }
       for backend in backends {
         if index >= start_rollout {

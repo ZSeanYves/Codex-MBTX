@@ -30,6 +30,33 @@ test "audit rejects shell fallback for mbtx backend" {
 }
 
 ///|
+test "transparent backend accepts the normal exec contract and rejects mbtx" {
+  let audit = completed_audit("exec_command")
+  assert_true(audit.backend_ok("transparent", false))
+  assert_false(audit.backend_ok("transparent", true))
+  audit.event({
+    "type": "response.output_item.done",
+    "item": {
+      "type": "function_call",
+      "name": "write_stdin",
+      "call_id": "stdin",
+      "arguments": "{}",
+    },
+  })
+  assert_true(audit.backend_ok("transparent", true))
+  audit.event({
+    "type": "response.output_item.done",
+    "item": {
+      "type": "function_call",
+      "name": "mbtx",
+      "call_id": "wrong",
+      "arguments": "{\"op\":\"run\"}",
+    },
+  })
+  assert_false(audit.backend_ok("transparent", false))
+}
+
+///|
 fn completed_audit(tool : String) -> @eval.Audit {
   let audit = @eval.Audit::new()
   audit.jsonl("{\"type\":\"turn.completed\",\"usage\":{}}\n")

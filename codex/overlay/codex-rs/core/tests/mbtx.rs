@@ -20,10 +20,27 @@ fn fixture(mode: &str) -> Vec<String> {
     ]
 }
 
+fn proxy_fixture() -> Vec<String> {
+    vec![std::env::var("CODEX_MBTX_TEST_RUNNER").expect("run through scripts/m3_test.mbtx")]
+}
+
 async fn harness(command: Option<Vec<String>>) -> Result<TestCodexHarness> {
+    harness_with(command, None).await
+}
+
+async fn transparent_harness(command: Option<Vec<String>>) -> Result<TestCodexHarness> {
+    harness_with(command, Some("transparent")).await
+}
+
+async fn harness_with(
+    command: Option<Vec<String>>,
+    backend: Option<&str>,
+) -> Result<TestCodexHarness> {
+    let backend = backend.map(str::to_string);
     TestCodexHarness::with_auto_env_builder(test_codex().with_model("gpt-5.4").with_config(
         move |config| {
             config.mbtx_command = command;
+            config.mbtx_backend = backend;
         },
     ))
     .await
@@ -74,6 +91,128 @@ async fn mbtx_mock_model_reaches_runner_and_shell_still_works() -> Result<()> {
     let requests = harness.request_bodies().await;
     let tools = requests[0]["tools"].to_string();
     assert!(tools.contains("\"mbtx\"") && tools.contains("\"exec_command\""));
+    harness.test().codex.shutdown_and_wait().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn transparent_backend_keeps_exec_contract_and_hides_mbtx_tool() -> Result<()> {
+    let harness = transparent_harness(Some(proxy_fixture())).await?;
+    let output = call(
+        &harness,
+        "transparent-literal",
+        "exec_command",
+        json!({
+            "cmd": "printf '%s' '$(touch SHOULD_NOT_EXIST)'",
+            "max_output_tokens": 1000
+        }),
+    )
+    .await?;
+    assert!(output.contains("$(touch SHOULD_NOT_EXIST)"), "{output}");
+    assert!(!harness.path("SHOULD_NOT_EXIST").exists());
+    let requests = harness.request_bodies().await;
+    let tools = requests[0]["tools"].to_string();
+    assert!(tools.contains("\"exec_command\""));
+    assert!(!tools.contains("\"mbtx\""));
+    harness.test().codex.shutdown_and_wait().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn transparent_backend_preserves_nonzero_exit_status() -> Result<()> {
+    let harness = transparent_harness(Some(proxy_fixture())).await?;
+    let output = call(
+        &harness,
+        "transparent-exit",
+        "exec_command",
+        json!({"cmd":"printf before-exit; exit 7","max_output_tokens":1000}),
+    )
+    .await?;
+    assert!(output.contains("before-exit"), "{output}");
+    assert!(output.contains("Process exited with code 7"), "{output}");
+    harness.test().codex.shutdown_and_wait().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn transparent_backend_approves_the_original_command_before_launch() -> Result<()> {
+    use codex_core::TurnInputRequest;
+    use codex_protocol::protocol::AskForApproval;
+    use codex_protocol::protocol::EventMsg;
+    use codex_protocol::protocol::Op;
+    use codex_protocol::protocol::ReviewDecision;
+    use codex_protocol::protocol::SandboxPolicy;
+    use codex_protocol::protocol::ThreadSettingsOverrides;
+    use codex_protocol::user_input::UserInput;
+    use core_test_support::wait_for_event;
+
+    let runner = proxy_fixture();
+    let harness = transparent_harness(Some(runner.clone())).await?;
+    mount_sse_sequence(
+        harness.server(),
+        vec![
+            sse(vec![
+                ev_response_created("transparent-approval"),
+                ev_function_call(
+                    "transparent-approve",
+                    "exec_command",
+                    &json!({"cmd":"git status","yield_time_ms":1000}).to_string(),
+                ),
+                ev_completed("transparent-approval"),
+            ]),
+            sse(vec![
+                ev_assistant_message("transparent-denied", "denied"),
+                ev_completed("transparent-after-denial"),
+            ]),
+        ],
+    )
+    .await;
+    harness
+        .test()
+        .codex
+        .start_or_steer_turn(
+            TurnInputRequest::user_input(vec![UserInput::Text {
+                text: "check git status".into(),
+                text_elements: vec![],
+            }])
+            .with_thread_settings(ThreadSettingsOverrides {
+                approval_policy: Some(AskForApproval::UnlessTrusted),
+                sandbox_policy: Some(SandboxPolicy::ReadOnly {
+                    network_access: false,
+                }),
+                ..Default::default()
+            }),
+        )
+        .await?;
+    let event = wait_for_event(&harness.test().codex, |event| {
+        matches!(
+            event,
+            EventMsg::ExecApprovalRequest(_) | EventMsg::TurnComplete(_)
+        )
+    })
+    .await;
+    let EventMsg::ExecApprovalRequest(approval) = event else {
+        panic!("transparent command completed without approval");
+    };
+    assert_eq!(approval.call_id, "transparent-approve");
+    assert!(approval.command.iter().any(|part| part == "git status"));
+    assert_ne!(approval.command.first(), runner.first());
+    assert!(!approval.command.iter().any(|part| part == "--"));
+    harness
+        .test()
+        .codex
+        .submit(Op::ExecApproval {
+            id: approval.effective_approval_id(),
+            turn_id: Some(approval.turn_id),
+            decision: ReviewDecision::denied("denied by integration test"),
+        })
+        .await?;
+    wait_for_event(&harness.test().codex, |event| {
+        matches!(event, EventMsg::TurnComplete(_))
+    })
+    .await;
+    let output = harness.function_call_stdout("transparent-approve").await;
+    assert!(output.contains("denied by integration test"), "{output}");
     harness.test().codex.shutdown_and_wait().await?;
     Ok(())
 }

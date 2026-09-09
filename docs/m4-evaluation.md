@@ -1,9 +1,10 @@
 # M4 evaluation
 
-The [delivery report reviewed on 2026-09-09](reports/m4-2026-09-09.md) records
-all 24 planned slots across two segments: MBTX completed 12/12, shell 9/12.
-Three relay 502 errors remain in the records. Engineering checks pass, while
-the live gates remain failed. These results do not justify a default-backend change.
+The [2026-09-09 delivery report](reports/m4-2026-09-09.md) records the earlier
+explicit-MBTX cohort. It is useful for compatibility and script-authoring
+behavior, but it is not evidence for transparent process replacement. The
+current M4 plan is a fresh shell/transparent comparison; its report is kept
+separate so the two questions cannot be conflated.
 
 CI pins MoonBit to `0.10.11+6ff76a5f9`, the version used for M3 verification.
 Using the rolling `latest` changed dependency warnings during M4 development
@@ -12,15 +13,16 @@ and contaminated stderr assertions. The installer honors
 
 M4 is a bounded, reproducible pilot for the M3 adapter. It runs the same six
 tasks with a fresh workspace and home directory through the shell baseline and
-the MBTX tool, records one structured row per run, and grades the result against
+the transparent backend, records one structured row per run, and grades the result against
 an answer key that is kept inside the evaluator. The model's final message is
 not treated as proof of success.
 
-Prompt revision 2 supplies the same `eval/MOONBIT.md` reference inline to both
-backends, in addition to placing it in the workspace. This gives the MBTX model
-the import and entrypoint syntax before its first tool call. Each workspace is
+Prompt revision 3 supplies the same `eval/MOONBIT.md` reference inline to both
+backends, in addition to placing it in the workspace. Both groups receive the
+same model-visible tools and routing instructions; transparent mode is selected
+only in the local Codex configuration. Each workspace is
 an empty Git repository and both backends have ripgrep installed. Schema
-version 2 encodes observed file contents as a JSON string or null; the evidence
+version 3 encodes observed file contents as a JSON string or null; the evidence
 CLI rejects other shapes instead of classifying invalid evidence as a model
 failure. Earlier diagnostic scores affected by the array-wrapping bug are
 identified in the report and are excluded from the formal comparison.
@@ -40,6 +42,13 @@ the model completed, and the requested backend was actually used. Other
 categories include `incorrect_output`, `input_modified`, `backend_violation`,
 `intervention_required`, `timeout`, `agent_error`, `provider_error`,
 `missing_usage`, and `audit_error`.
+
+The `.mbtx` fixtures are deliberate workload cases. When a model runs
+`moon run capture.mbtx`, repairs `broken.mbtx`, or starts `worker.mbtx`, the
+MoonBit compiler time belongs to that requested task in both cohorts. It is not
+evidence that transparent MBTX compiled a hidden script. Only the transparent
+launcher itself is evaluated as the candidate backend; it receives the final
+resolved shell argv and does not call the MBTX script protocol.
 
 The evaluator uses the pinned Codex Responses API proxy from the upstream
 source. The workflow passes the repository secret to the proxy over stdin; the
@@ -88,7 +97,8 @@ the model and reasoning inputs to the exact values being compared, for example
 `gpt-5.6-terra` and `xhigh`. The workflow is not a PR gate and does not claim a
 general performance improvement from this small pilot. A default backend should
 only be changed after a larger task set, repeated runs, cost data, and review of
-the raw private evidence. Until then MBTX remains an explicit opt-in.
+the raw private evidence. Until then transparent MBTX remains an explicit
+opt-in.
 
 `probe` makes one bounded Responses request without starting an agent, reports
 HTTP and transport diagnostics, and is excluded from the evaluation score.
@@ -116,9 +126,11 @@ Example dispatch (the referenced binary source must still be available):
 gh workflow run m4-evaluation.yml --ref codex/m4-evaluation -f mode=full -f model=gpt-5.6-terra -f reasoning_effort=xhigh -f binary_run=34187141796
 ```
 
-The comparison is instruction-routed: MBTX is enabled only in the candidate,
-and shell tools remain visible as in M3. Calling them in the MBTX group is a
-backend violation, even if file output is correct. `usage_complete=false`
+The comparison is intentionally same-prompt: transparent MBTX is enabled only
+in the candidate configuration, while both groups expose the normal
+`exec_command` and `write_stdin` tools. Calling an explicit `mbtx` function or
+another execution backend is a backend violation, even if file output is
+correct. `usage_complete=false`
 explicitly marks incomplete accounting. Token totals are observed lower bounds
 for those runs. Reported model names and tokens come from the relay; no model
 identity or relay price is inferred from them. This pilot is not an adversarial
