@@ -1,0 +1,159 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+/// A recorded probe attempt. The probe collector is intentionally offline:
+/// production runners may feed it redacted HTTP/SSE records without giving
+/// the evaluator permission to issue network requests.
+struct Probe {
+  attempt_id : String
+  retry_index : Int
+  arm : String
+  time_window : Int
+  http_status : Int?
+  first_byte_ms : Int?
+  completed_ms : Int?
+  stream_disconnected : Bool
+  provider_error : Bool
+  transport_error : Bool
+  usage_complete : Bool
+  error_class : String?
+} derive(FromJson, ToJson)
+
+fn percentile(values : Array[Int], p : Int) -> Int {
+  if values.is_empty() { return 30_000 }
+  let sorted = values.copy()
+  sorted.sort()
+  sorted[(sorted.length() - 1) * p / 100]
+}
+
+fn is_provider_failure(probe : Probe) -> Bool {
+  probe.provider_error || (match probe.http_status {
+    Some(status) => status >= 400
+    None => false
+  })
+}
+
+fn is_transport_failure(probe : Probe) -> Bool {
+  probe.transport_error || probe.stream_disconnected
+}
+
+fn is_success(probe : Probe) -> Bool {
+  let arm_ok = probe.arm == "shell" || probe.arm == "transparent"
+  let window_ok = probe.time_window > 0
+  let status_ok = match probe.http_status {
+    Some(status) => status >= 200 && status < 300
+    None => false
+  }
+  let completed_ok = probe.completed_ms is Some(_)
+  arm_ok && window_ok && !is_provider_failure(probe) &&
+    !is_transport_failure(probe) && status_ok &&
+    completed_ok && probe.usage_complete
+}
+
+fn health(probes : Array[Probe]) -> Json {
+  let mut successful = 0
+  let mut provider = 0
+  let mut transport = 0
+  let mut consecutive = 0
+  let mut max_consecutive = 0
+  let first_bytes : Array[Int] = []
+  let windows : Array[Int] = []
+  let mut shell_total = 0
+  let mut transparent_total = 0
+  let mut shell_failures = 0
+  let mut transparent_failures = 0
+  let mut malformed = false
+  for probe in probes {
+    if (probe.arm != "shell" && probe.arm != "transparent") ||
+      probe.time_window <= 0 {
+      malformed = true
+    }
+    if !windows.contains(probe.time_window) { windows.push(probe.time_window) }
+    if probe.arm == "shell" { shell_total += 1 }
+    if probe.arm == "transparent" { transparent_total += 1 }
+    match probe.first_byte_ms {
+      Some(value) => first_bytes.push(value)
+      None => ()
+    }
+    if is_success(probe) {
+      successful += 1
+      consecutive = 0
+    } else {
+      consecutive += 1
+      if consecutive > max_consecutive { max_consecutive = consecutive }
+      if is_provider_failure(probe) { provider += 1 }
+      if is_transport_failure(probe) { transport += 1 }
+      if probe.arm == "shell" { shell_failures += 1 }
+      if probe.arm == "transparent" { transparent_failures += 1 }
+    }
+  }
+  let shell_rate = if shell_total == 0 {
+    10_000
+  } else {
+    shell_failures * 10_000 / shell_total
+  }
+  let transparent_rate = if transparent_total == 0 {
+    10_000
+  } else {
+    transparent_failures * 10_000 / transparent_total
+  }
+  let arm_failure_rate = if malformed {
+    10_000
+  } else {
+    (shell_rate - transparent_rate).abs()
+  }
+  let health : Json = {
+    "probes": probes.length().to_json(),
+    "successful_probes": successful.to_json(),
+    "provider_errors": provider.to_json(),
+    "transport_errors": transport.to_json(),
+    "max_consecutive_failures": max_consecutive.to_json(),
+    "first_byte_p95_ms": percentile(first_bytes, 95).to_json(),
+    "arm_failure_rate_basis_points": arm_failure_rate.to_json(),
+    "time_windows": windows.length().to_json(),
+  }
+  {
+    "schema_version": 5,
+    "health": health,
+    "health_valid": probes.length() >= 10 && successful >= 9 &&
+      provider + transport <= 1 && max_consecutive < 2 &&
+      percentile(first_bytes, 95) <= 15_000 &&
+      !malformed && windows.length() >= 1,
+    "attempts": probes.to_json(),
+  }
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() <= 2 else {
+    fail("usage: moon run scripts/m5_probe.mbtx [PROBE_JSON_FILE]")
+  }
+  let text = if args.length() == 2 {
+    @fs.read_file(args[1]).text()
+  } else {
+    @stdio.stdin.read_all().text()
+  }
+  let probes : Array[Probe] = @json.from_json(@json.parse(text))
+  let output = health(probes)
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  let probe_output = @env.get_env_var("M5_PROBE_HEALTH_OUTPUT").unwrap_or(
+    "_build/m5-results/probe-health.json",
+  )
+  let relay_output = @env.get_env_var("M5_RELAY_HEALTH_OUTPUT").unwrap_or(
+    "_build/m5-results/relay-health.json",
+  )
+  @fs.write_file(probe_output, output.stringify())
+  match output {
+    { "health": health, .. } =>
+      @fs.write_file(relay_output, health.stringify())
+    _ => ()
+  }
+  println(output.stringify())
+}

@@ -1,0 +1,282 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+struct PlatformArtifact {
+  name : String
+  runtime_file : String
+  replay_file : String
+  runtime_platform : String
+  replay_platform : String
+  implementation_sha : String
+  toolchain : String
+} derive(ToJson)
+
+struct PlatformManifest {
+  schema_version : Int
+  implementation_sha : String
+  toolchain : String
+  platforms : Array[PlatformArtifact]
+} derive(ToJson)
+
+fn field(value : Json, key : String) -> Json? {
+  match value {
+    Object(fields) => fields.get(key)
+    _ => None
+  }
+}
+
+fn string_field(value : Json, key : String) -> String {
+  match field(value, key) {
+    Some(String(text)) => text
+    _ => ""
+  }
+}
+
+fn bool_field(value : Json, key : String) -> Bool {
+  field(value, key) is Some(True)
+}
+
+fn number_field(value : Json, key : String) -> Int {
+  match field(value, key) {
+    Some(Number(number, ..)) => number.to_int()
+    _ => -1
+  }
+}
+
+fn string_array_field(value : Json, key : String) -> Bool {
+  match field(value, key) {
+    Some(Array(values)) => values.all(item => item is String(_))
+    _ => false
+  }
+}
+
+fn runtime_sample_count(
+  samples : Array[Json],
+  scenario : String,
+  backend : String,
+  phase : String,
+) -> Int {
+  samples.filter(sample => string_field(sample, "scenario") == scenario &&
+    string_field(sample, "backend") == backend &&
+    string_field(sample, "phase") == phase).length()
+}
+
+fn runtime_quality(value : Json) -> Bool {
+  match value {
+    {
+      "schema_version": 5,
+      "cold_target": Number(cold_target, ..),
+      "warm_target": Number(warm_target, ..),
+      "samples": Array(samples),
+      "summaries": Array(summaries),
+      "platform": String(_),
+      ..
+    } => {
+      let scenarios = [
+        "argv", "stdin", "cwd-env", "large-output", "nonzero",
+        "background", "stop", "timeout", "cancel",
+      ]
+      let samples_shape_ok = !samples.is_empty() && samples.all(sample => {
+        let lifecycle = string_field(sample, "lifecycle_status")
+        bool_field(sample, "content_ok") &&
+          bool_field(sample, "child_start_marker") &&
+          bool_field(sample, "child_processes_clean") &&
+          field(sample, "stdout") is Some(String(_)) &&
+          field(sample, "stderr") is Some(String(_)) &&
+          field(sample, "exit_code") is Some(Number(_, ..)) &&
+          string_array_field(sample, "event_order") &&
+          (lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" ||
+            bool_field(sample, "child_end_marker"))
+      })
+      let summaries_shape_ok = !summaries.is_empty() && summaries.all(summary =>
+        number_field(summary, "marker_failures") == 0)
+      let counts_ok = cold_target >= 200.0 && warm_target >= 1_000.0 &&
+        summaries.length() >= 36 &&
+        scenarios.all(scenario =>
+          ["shell", "bare-proxy"].all(backend =>
+            ["cold", "warm"].all(phase => {
+              let target = if phase == "cold" {
+                cold_target.to_int()
+              } else {
+                warm_target.to_int()
+              }
+              runtime_sample_count(samples, scenario, backend, phase) >= target
+            })))
+      samples_shape_ok && summaries_shape_ok && counts_ok
+    }
+    _ => false
+  }
+}
+
+fn replay_quality(value : Json) -> Bool {
+  match value {
+    {
+      "schema_version": 5,
+      "trajectory_count": Number(trajectory_count, ..),
+      "repetitions": Number(repetitions, ..),
+      "paired_semantic_mismatches": Number(semantic_mismatches, ..),
+      "paired_trace_mismatches": Number(trace_mismatches, ..),
+      "runs": Array(runs),
+      "platform": String(_),
+      ..
+    } => {
+      let run_shape_ok = !runs.is_empty() && runs.all(run =>
+        bool_field(run, "semantic_ok") &&
+        bool_field(run, "child_processes_clean") &&
+          bool_field(run, "transparent_launcher_used") ==
+            (string_field(run, "backend") == "transparent") &&
+          (if string_field(run, "backend") == "transparent" {
+            match field(run, "launcher_trace") {
+              Some(Array(values)) => values.length() == 2 &&
+                values[0] == "launcher_start" && values[1] == "launcher_exit"
+              _ => false
+            }
+          } else {
+            match field(run, "launcher_trace") {
+              Some(Array(values)) => values.is_empty()
+              _ => false
+            }
+          }) &&
+          field(run, "approval_original_command") is Some(String(_)) &&
+          string_array_field(run, "argv") &&
+          string_array_field(run, "event_order") &&
+          string_array_field(run, "process_trace") &&
+          field(run, "workspace_diff") is Some(Array(_)) &&
+          string_field(run, "backend") != "")
+      let backend_counts = runs.filter(run => string_field(run, "backend") == "shell").length() ==
+        runs.filter(run => string_field(run, "backend") == "transparent").length()
+      trajectory_count >= 30.0 && repetitions >= 3.0 &&
+        semantic_mismatches == 0.0 && trace_mismatches == 0.0 &&
+        runs.length() >= trajectory_count.to_int() * 2 &&
+        backend_counts && run_shape_ok
+    }
+    _ => false
+  }
+}
+
+fn platform_name(value : String) -> String? {
+  if value.has_prefix("Linux") {
+    Some("Linux")
+  } else if value.has_prefix("Darwin") || value.has_prefix("macOS") {
+    Some("Darwin")
+  } else {
+    None
+  }
+}
+
+async fn artifact_platform(path : String, kind : String) -> String? {
+  if !@fs.exists(path) {
+    return None
+  }
+  try {
+    let value = @json.parse(@fs.read_file(path).text())
+    match value {
+      Object(fields) => {
+        let schema_ok = match fields.get("schema_version") {
+          Some(Number(version, ..)) => version == 5.0
+          _ => false
+        }
+        let quality_ok = if kind == "runtime" {
+          runtime_quality(value)
+        } else {
+          replay_quality(value)
+        }
+        if schema_ok && quality_ok {
+          match fields.get("platform") {
+            Some(String(platform)) => Some(platform)
+            _ => None
+          }
+        } else {
+          None
+        }
+      }
+      _ => None
+    }
+  } catch {
+    _ => None
+  }
+}
+
+async fn validate_platform(
+  name : String,
+  runtime_file : String,
+  replay_file : String,
+) -> PlatformArtifact? {
+  let runtime_platform = artifact_platform(runtime_file, "runtime")
+  let replay_platform = artifact_platform(replay_file, "replay")
+  let runtime_json : Json = try {
+    @json.parse(@fs.read_file(runtime_file).text())
+  } catch {
+    _ => return None
+  }
+  let replay_json : Json = try {
+    @json.parse(@fs.read_file(replay_file).text())
+  } catch {
+    _ => return None
+  }
+  let implementation_sha = string_field(runtime_json, "implementation_sha")
+  let runtime_toolchain = string_field(runtime_json, "toolchain")
+  match (runtime_platform, replay_platform) {
+    (Some(runtime), Some(replay)) if platform_name(runtime) == Some(name) &&
+      platform_name(replay) == Some(name) && !implementation_sha.is_empty() &&
+      implementation_sha == string_field(replay_json, "implementation_sha") &&
+      !runtime_toolchain.is_empty() &&
+      runtime_toolchain == string_field(replay_json, "toolchain") =>
+      Some({
+        name,
+        runtime_file,
+        replay_file,
+        runtime_platform: runtime,
+        replay_platform: replay,
+        implementation_sha,
+        toolchain: runtime_toolchain,
+      })
+    _ => None
+  }
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 7 else {
+    fail(
+      "usage: moon run scripts/m5_platforms.mbtx Linux runtime-linux.json replay-linux.json Darwin runtime-darwin.json replay-darwin.json",
+    )
+  }
+  guard args[1] == "Linux" && args[4] == "Darwin" else {
+    fail("platform arguments must be Linux then Darwin")
+  }
+  let linux = validate_platform("Linux", args[2], args[3])
+  let darwin = validate_platform("Darwin", args[5], args[6])
+  guard linux is Some(_) && darwin is Some(_) else {
+    fail("runtime/replay artifacts do not prove both Linux and Darwin platforms")
+  }
+  let platforms : Array[PlatformArtifact] = [linux.unwrap(), darwin.unwrap()]
+  let expected_sha = @shell.Cmd("git", ["rev-parse", "HEAD"]).output().stdout().trim().to_owned()
+  let expected_toolchain =
+    @shell.Cmd("moon", ["version", "--all"]).output().stdout().trim().to_owned()
+  guard platforms.all(item => item.implementation_sha == expected_sha) else {
+    fail("deterministic artifacts do not match the checked-out implementation")
+  }
+  guard platforms.all(item => item.toolchain == expected_toolchain) else {
+    fail("deterministic artifacts do not match the active MoonBit toolchain")
+  }
+  let manifest : PlatformManifest = {
+    schema_version: 5,
+    implementation_sha: expected_sha,
+    toolchain: expected_toolchain,
+    platforms,
+  }
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  let output = @env.get_env_var("M5_DETERMINISTIC_MANIFEST").unwrap_or(
+    "_build/m5-results/deterministic-platforms.json",
+  )
+  @fs.write_file(output, ToJson::to_json(manifest).stringify())
+  println(ToJson::to_json(manifest).stringify())
+}

@@ -1,0 +1,432 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+struct Sample {
+  scenario : String
+  backend : String
+  phase : String
+  sample_index : Int
+  elapsed_ms : Int
+  exit_code : Int
+  stdout_bytes : Int
+  stderr_bytes : Int
+  child_start_marker : Bool
+  child_end_marker : Bool
+  content_ok : Bool
+  stdout_complete : Bool
+  stderr_complete : Bool
+  child_start_ms : Int?
+  child_end_ms : Int?
+  execution_ms : Int
+  wrapper_overhead_ms : Int
+  event_order : Array[String]
+  poll_observed : Bool
+  child_processes_clean : Bool
+  lifecycle_status : String
+  stdout : String
+  stderr : String
+} derive(ToJson)
+
+struct ScenarioSummary {
+  scenario : String
+  backend : String
+  phase : String
+  samples : Int
+  p50_ms : Int
+  p95_ms : Int
+  p99_ms : Int
+  execution_p50_ms : Int
+  execution_p95_ms : Int
+  execution_p99_ms : Int
+  wrapper_overhead_p50_ms : Int
+  wrapper_overhead_p95_ms : Int
+  wrapper_overhead_p99_ms : Int
+  min_ms : Int
+  max_ms : Int
+  nonzero_exits : Int
+  marker_failures : Int
+} derive(ToJson)
+
+struct RuntimeReport {
+  schema_version : Int
+  experiment : String
+  implementation_sha : String
+  toolchain : String
+  platform : String
+  cold_target : Int
+  warm_target : Int
+  samples : Array[Sample]
+  summaries : Array[ScenarioSummary]
+} derive(ToJson)
+
+fn env_int(name : String, fallback : Int) -> Int {
+  match @env.get_env_var(name) {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) if number >= 1 && number <= 100_000 => number.to_int()
+        _ => fallback
+      }
+    } catch {
+      _ => fallback
+    }
+    None => fallback
+  }
+}
+
+fn percentile(values : Array[Int], p : Int) -> Int {
+  let sorted = values.copy()
+  sorted.sort()
+  sorted[(sorted.length() - 1) * p / 100]
+}
+
+fn marker_ms(text : String, marker : String) -> Int? {
+  for line in text.split("\n") {
+    if line.has_prefix(marker) {
+      try {
+        match @json.parse(line[marker.length():]) {
+          Number(number, ..) => return Some(number.to_int())
+          _ => ()
+        }
+      } catch {
+        _ => ()
+      }
+    }
+  }
+  None
+}
+
+fn runtime_scenarios() -> Array[String] {
+  [
+    "argv", "stdin", "cwd-env", "large-output", "nonzero",
+    "background", "stop", "timeout", "cancel",
+  ]
+}
+
+fn selected_runtime_scenarios() -> Array[String] {
+  match @env.get_env_var("M5_SCENARIOS") {
+    Some(value) => {
+      let requested = value.split(",").map(item => item.trim()).to_array()
+      let selected = runtime_scenarios().filter(name => requested.contains(name))
+      if selected.is_empty() { runtime_scenarios() } else { selected }
+    }
+    None => runtime_scenarios()
+  }
+}
+
+async fn sha() -> String {
+  let result = @shell.Cmd("git", ["rev-parse", "HEAD"]).output()
+  if result.exit_code() == 0 { result.stdout().trim().to_owned() } else { "unknown" }
+}
+
+async fn platform() -> String {
+  @shell.Cmd("uname", ["-s", "-m"]).output().stdout().trim().to_owned()
+}
+
+async fn toolchain() -> String {
+  @shell.Cmd("moon", ["version", "--all"]).output().stdout().trim().to_owned()
+}
+
+/// Exercise the same host-command lifecycle through the direct process path
+/// and through `mbtx exec --`. The child is deliberately long-lived for stop,
+/// timeout and cancel cases so the parent must reap it after cancellation.
+async fn run_lifecycle_once(
+  mbtx : String,
+  scenario : String,
+  backend : String,
+  phase : String,
+  index : Int,
+) -> Sample {
+  let body = if scenario == "background" {
+    "print('started',flush=True);time.sleep(0.04);print('complete',flush=True)"
+  } else {
+    "print('started',flush=True);time.sleep(0.5);print('late',flush=True)"
+  }
+  let child =
+    "import sys,time\n" +
+    "sys.stderr.write('__M5_CHILD_START__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush()\n" +
+    body +
+    "\nsys.stderr.write('__M5_CHILD_END__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush()\n"
+  let started = @async.now()
+  let (code, stdout, stderr, events, poll_observed) = @async.with_task_group() <| group => {
+    let (stdout_reader, stdout_writer) = @process.read_from_process()
+    defer stdout_reader.close()
+    defer stdout_writer.close()
+    let (stderr_reader, stderr_writer) = @process.read_from_process()
+    defer stderr_reader.close()
+    defer stderr_writer.close()
+    let command_args = ["-c", child]
+    let command = if backend == "shell" { "python3" } else { mbtx }
+    let args = if backend == "shell" {
+      command_args
+    } else {
+      ["exec", "--", "python3"] + command_args
+    }
+    // Use an explicit PID so cancellation does not cancel the harness task
+    // that is responsible for collecting the final exit status.
+    let pid = @process.spawn_orphan(
+      command,
+      args,
+      stdout=stdout_writer,
+      stderr=stderr_writer,
+    )
+    let stdout_task = group.spawn(() => stdout_reader.read_all().text())
+    let stderr_task = group.spawn(() => stderr_reader.read_all().text())
+    let events : Array[String] = ["launch"]
+    let mut poll_observed = false
+    let code = if scenario == "background" {
+      @async.sleep(20)
+      poll_observed = @shell.Cmd("kill", ["-0", pid.to_string()]).output().exit_code() == 0
+      events.push("poll")
+      let code = @process.wait_pid(pid)
+      events.push("exit")
+      code
+    } else {
+      @async.sleep(80)
+      events.push(if scenario == "timeout" { "timeout" } else { "stop" })
+      @process.graceful_cancel(timeout=50)(pid)
+      let code = @process.wait_pid(pid)
+      code
+    }
+    events.push("reap")
+    let stdout = stdout_task.wait()
+    let stderr = stderr_task.wait()
+    (code, stdout, stderr, events, poll_observed)
+  }
+  let elapsed = (@async.now() - started).to_int()
+  let child_start_ms = marker_ms(stderr, "__M5_CHILD_START__:")
+  let child_end_ms = marker_ms(stderr, "__M5_CHILD_END__:")
+  let execution_ms = match (child_start_ms, child_end_ms) {
+    (Some(start), Some(end)) if end >= start => end - start
+    _ => 0
+  }
+  let wrapper_overhead_ms = if elapsed >= execution_ms {
+    elapsed - execution_ms
+  } else {
+    0
+  }
+  let completed = scenario == "background"
+  let child_processes_clean = !stdout.contains("late")
+  let content_ok = if completed {
+    code == 0 && stdout == "started\ncomplete\n" &&
+      events == ["launch", "poll", "exit", "reap"] && poll_observed
+  } else {
+    code != 0 && stdout == "started\n" && child_processes_clean &&
+      events.length() == 3
+  }
+  {
+    scenario,
+    backend,
+    phase,
+    sample_index: index,
+    elapsed_ms: elapsed,
+    exit_code: code,
+    stdout_bytes: stdout.length(),
+    stderr_bytes: stderr.length(),
+    child_start_marker: child_start_ms is Some(_),
+    child_end_marker: child_end_ms is Some(_),
+    content_ok,
+    stdout_complete: true,
+    stderr_complete: true,
+    child_start_ms,
+    child_end_ms,
+    execution_ms,
+    wrapper_overhead_ms,
+    event_order: events,
+    poll_observed,
+    child_processes_clean,
+    lifecycle_status: if completed { "completed" } else { scenario },
+    stdout,
+    stderr,
+  }
+}
+
+async fn run_once(
+  mbtx : String,
+  scenario : String,
+  backend : String,
+  phase : String,
+  index : Int,
+) -> Sample {
+  if scenario == "background" || scenario == "stop" ||
+    scenario == "timeout" || scenario == "cancel" {
+    return run_lifecycle_once(mbtx, scenario, backend, phase, index)
+  }
+  let body = if scenario == "argv" {
+    "print(repr(sys.argv[1:]))\n"
+  } else if scenario == "cwd-env" {
+    "print(os.getcwd() + '|' + os.environ.get('M5_TASK_NONCE',''))\n"
+  } else if scenario == "large-output" {
+    "sys.stdout.write('x'*16384); sys.stdout.flush()\n"
+  } else if scenario == "nonzero" {
+    "sys.stderr.write('__M5_CHILD_END__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush(); sys.exit(7)\n"
+  } else {
+    "data=sys.stdin.read()\nprint(data, end='')\n"
+  }
+  let child = "import sys,time,os\n" +
+    "sys.stderr.write('__M5_CHILD_START__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush()\n" +
+    body +
+    "sys.stderr.write('__M5_CHILD_END__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush()\n"
+  let args = ["-c", child, "alpha beta", "quote'\"$", "$(touch SHOULD_NOT_EXIST)"]
+  let stdin = @shell.Stdin::Text("first line\n\n你好\nlast\n")
+  let started = @async.now()
+  let output = if backend == "shell" {
+    @shell.Cmd("python3", args, stdin=stdin, env={ "M5_TASK_NONCE": "runtime-v1" }).output(timeout_ms=30_000)
+  } else {
+    @shell.Cmd(mbtx, ["exec", "--", "python3"] + args, stdin=stdin, env={ "M5_TASK_NONCE": "runtime-v1" }).output(timeout_ms=30_000)
+  }
+  let elapsed = (@async.now() - started).to_int()
+  let stdout = output.stdout()
+  let stderr = output.stderr()
+  let workspace = @fs.realpath(".")
+  let redacted_stdout = stdout.replace_all(old=workspace, new="<workspace>")
+  let child_start_ms = marker_ms(stderr, "__M5_CHILD_START__:")
+  let child_end_ms = marker_ms(stderr, "__M5_CHILD_END__:")
+  let execution_ms = match (child_start_ms, child_end_ms) {
+    (Some(start), Some(end)) if end >= start => end - start
+    _ => 0
+  }
+  let wrapper_overhead_ms = if elapsed >= execution_ms {
+    elapsed - execution_ms
+  } else {
+    0
+  }
+  let content_ok = if scenario == "argv" {
+    stdout.contains("alpha beta") && stdout.contains("$(touch SHOULD_NOT_EXIST)")
+  } else if scenario == "stdin" {
+    stdout == "first line\n\n你好\nlast\n"
+  } else if scenario == "cwd-env" {
+    stdout.has_suffix("|runtime-v1\n")
+  } else if scenario == "large-output" {
+    stdout.length() == 16_384
+  } else {
+    output.exit_code() == 7
+  }
+  {
+    scenario,
+    backend,
+    phase,
+    sample_index: index,
+    elapsed_ms: elapsed,
+    exit_code: output.exit_code(),
+    stdout_bytes: stdout.length(),
+    stderr_bytes: stderr.length(),
+    child_start_marker: stderr.contains("__M5_CHILD_START__"),
+    child_end_marker: stderr.contains("__M5_CHILD_END__"),
+    content_ok,
+    stdout_complete: stdout.length() <= 4096,
+    stderr_complete: stderr.length() <= 4096,
+    child_start_ms,
+    child_end_ms,
+    execution_ms,
+    wrapper_overhead_ms,
+    event_order: ["launch", "exit", "reap"],
+    poll_observed: false,
+    child_processes_clean: true,
+    lifecycle_status: "none",
+    stdout: if redacted_stdout.length() > 4096 {
+      redacted_stdout[:4096].to_owned()
+    } else {
+      redacted_stdout
+    },
+    stderr: if stderr.length() > 4096 { stderr[:4096].to_owned() } else { stderr },
+  }
+}
+
+fn summarize(samples : Array[Sample]) -> ScenarioSummary {
+  let values = samples.map(s => s.elapsed_ms)
+  let execution = samples.map(s => s.execution_ms)
+  let wrapper = samples.map(s => s.wrapper_overhead_ms)
+  let mut nonzero = 0
+  let mut marker_failures = 0
+  let mut min_ms = values[0]
+  let mut max_ms = values[0]
+  for sample in samples {
+    if sample.exit_code != 0 { nonzero += 1 }
+    let end_required = sample.lifecycle_status == "none" ||
+      sample.lifecycle_status == "completed"
+    if !sample.child_start_marker || (end_required && !sample.child_end_marker) ||
+      !sample.content_ok || !sample.child_processes_clean {
+      marker_failures += 1
+    }
+    if sample.elapsed_ms < min_ms { min_ms = sample.elapsed_ms }
+    if sample.elapsed_ms > max_ms { max_ms = sample.elapsed_ms }
+  }
+  {
+    scenario: samples[0].scenario,
+    backend: samples[0].backend,
+    phase: samples[0].phase,
+    samples: samples.length(),
+    p50_ms: percentile(values, 50),
+    p95_ms: percentile(values, 95),
+    p99_ms: percentile(values, 99),
+    execution_p50_ms: percentile(execution, 50),
+    execution_p95_ms: percentile(execution, 95),
+    execution_p99_ms: percentile(execution, 99),
+    wrapper_overhead_p50_ms: percentile(wrapper, 50),
+    wrapper_overhead_p95_ms: percentile(wrapper, 95),
+    wrapper_overhead_p99_ms: percentile(wrapper, 99),
+    min_ms,
+    max_ms,
+    nonzero_exits: nonzero,
+    marker_failures,
+  }
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 1 else {
+    fail("usage: moon run scripts/m5_runtime.mbtx [set M5_COLD_RUNS/M5_WARM_RUNS]")
+  }
+  let cold_target = env_int("M5_COLD_RUNS", 200)
+  let warm_target = env_int("M5_WARM_RUNS", 1000)
+  let build = @shell.Cmd(
+    "moon",
+    ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"],
+  ).output(timeout_ms=120_000)
+  build.check()
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(mbtx)], .. } else {
+    fail("missing native MBTX artifact")
+  }
+  let all : Array[Sample] = []
+  for backend in ["shell", "bare-proxy"] {
+    for phase in ["cold", "warm"] {
+      let count = if phase == "cold" { cold_target } else { warm_target }
+      for scenario in selected_runtime_scenarios() {
+        for index in 0..<count {
+          all.push(run_once(mbtx, scenario, if backend == "shell" { "shell" } else { "bare-proxy" }, phase, index))
+        }
+      }
+    }
+  }
+  let summaries : Array[ScenarioSummary] = []
+  for backend in ["shell", "bare-proxy"] {
+    for phase in ["cold", "warm"] {
+      for scenario in selected_runtime_scenarios() {
+        summaries.push(summarize(all.filter(s => s.backend == backend && s.phase == phase && s.scenario == scenario)))
+      }
+    }
+  }
+  let report : RuntimeReport = {
+    schema_version: 5,
+    experiment: "m5-runtime",
+    implementation_sha: sha(),
+    toolchain: toolchain(),
+    platform: platform(),
+    cold_target,
+    warm_target,
+    samples: all,
+    summaries,
+  }
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  let encoded = ToJson::to_json(report).stringify()
+  @fs.write_file("_build/m5-results/runtime.json", encoded)
+  println(encoded)
+}

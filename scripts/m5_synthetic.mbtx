@@ -1,0 +1,176 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 1 else {
+    fail("usage: moon run scripts/m5_synthetic.mbtx")
+  }
+  let blocks : Array[Json] = []
+  let runs : Array[Json] = []
+  let tasks = [
+    "host_literal_argv", "host_stdin_stream", "host_path_inventory",
+    "host_background", "host_large_output", "host_exit_recovery",
+    "host_cwd_environment", "host_cancel_timeout",
+  ]
+  for repetition in 0..<20 {
+    let time_window = repetition * 3 / 20 + 1
+    for task_index in 0..<tasks.length() {
+      let task = tasks[task_index]
+      let index = repetition * tasks.length() + task_index
+      let block_id = "synthetic-" + index.to_string()
+      blocks.push({
+        "block_id": block_id,
+        "task": task,
+        "repetition": repetition + 1,
+        "batch_id": "synthetic-window-" + time_window.to_string(),
+        "time_window": time_window,
+        "order": ["shell", "transparent"],
+        "relay_health": {
+          "probes": 10,
+          "successful_probes": 10,
+          "provider_errors": 0,
+          "transport_errors": 0,
+          "max_consecutive_failures": 0,
+          "first_byte_p95_ms": 100,
+          "arm_failure_rate_basis_points": 0,
+          "time_windows": 1,
+        },
+        "runs": [],
+      })
+      for backend in ["shell", "transparent"] {
+        let elapsed = if backend == "shell" { 100 } else { 105 }
+        runs.push({
+          "run_id": block_id + "-" + backend,
+          "block_id": block_id,
+          "task": task,
+          "backend": backend,
+          "started_ms": 0,
+          "monotonic_start_ms": 0,
+          "monotonic_end_ms": elapsed,
+          "ended_ms": elapsed,
+          "turn_completed_ms": elapsed,
+          "attempts": [],
+          "tool_counts": {},
+          "stdout": "",
+          "stderr": "",
+          "exit_code": 0,
+          "workspace_manifest": [".m5/receipt.json", "result.json"],
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "output_tokens": 0,
+          "relay_status": "clean",
+          "observability": "complete",
+          "backend_observation": "compliant",
+          "completed": true,
+          "usage_complete": true,
+          "correct_output": true,
+          "inputs_preserved": true,
+          "workspace_clean": true,
+          "child_processes_clean": true,
+          "receipt_valid": true,
+          "trace_complete": true,
+          "argv_cwd_valid": true,
+          "approval_original_command": true,
+          "workspace_diff": {"entries": [], "permissions_unchanged": true, "symlinks_unchanged": true},
+          "receipt": {},
+          "process_trace": [],
+          "failure_category": "none",
+        })
+      }
+    }
+  }
+  let blocks = blocks.map(block => match block {
+    Object(fields) => {
+      let block_id = match fields.get("block_id") {
+        Some(String(value)) => value
+        _ => ""
+      }
+      fields["runs"] = Json::array(runs.filter(run => match run {
+        Object(run_fields) => run_fields.get("block_id") == Some(block_id.to_json())
+        _ => false
+      }))
+      Json::object(fields)
+    }
+    _ => block
+  })
+  let report : Json = {
+    "schema_version": 5,
+    "experiment_id": "m5-synthetic",
+    "mode": "formal",
+    "implementation_sha": "synthetic",
+    "binary_sha256": "synthetic",
+    "codex_binary_sha256": "synthetic",
+    "mbtx_binary_sha256": "synthetic",
+    "runner_binary_sha256": "synthetic",
+    "evaluator_binary_sha256": "synthetic",
+    "toolchain": "synthetic",
+    "platform": "synthetic",
+    "model": "synthetic",
+    "reasoning_effort": "synthetic",
+    "prompt_hash": "synthetic",
+    "fixture_hash": "synthetic",
+    "seed": 17,
+    "planned_blocks": 160,
+    "start_block": 0,
+    "tool_catalog": "exec_command,write_stdin",
+    "relay_health": {
+      "probes": 10,
+      "successful_probes": 10,
+      "provider_errors": 0,
+      "transport_errors": 0,
+      "max_consecutive_failures": 0,
+      "first_byte_p95_ms": 100,
+      "arm_failure_rate_basis_points": 0,
+      "time_windows": 1,
+    },
+    "blocks": blocks,
+    "runs": runs,
+    "aggregates": {},
+    "validity": {
+      "relay_health_valid": true,
+      "relay_batch_valid": true,
+      "observed_batch_valid": true,
+      "runner_configured": true,
+      "evidence_complete": true,
+      "backend_observable": true,
+      "runtime_artifact_present": true,
+      "runtime_artifact_valid": true,
+      "runtime_artifact_complete": true,
+      "replay_artifact_present": true,
+      "replay_artifact_valid": true,
+      "replay_artifact_complete": true,
+      "deterministic_platforms": "Linux,Darwin",
+      "deterministic_cross_platform_valid": true,
+      "deterministic_manifest_valid": true,
+      "artifacts_rebuildable": true,
+    },
+    "decision": { "status": "pending", "reasons": [] },
+  }
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  @fs.write_file("_build/m5-results/report.json", report.stringify())
+  let analysis = @shell.Cmd("moon", ["run", "scripts/m5_analyze.mbtx"]).output(timeout_ms=120_000)
+  analysis.check()
+  guard @json.parse(analysis.stdout()) is {
+    "pair_count": 160,
+    "success_difference_ci": { "lower": 0, "upper": 0, .. },
+    "p95_difference_ci": { "upper": 500, .. },
+    ..
+  } else {
+    fail("synthetic confidence interval fixture changed")
+  }
+  guard @json.parse(@fs.read_file("_build/m5-results/report.json").text()) is {
+    "decision": { "status": "GO_DEFAULT", .. },
+    ..
+  } else {
+    fail("synthetic decision gate changed")
+  }
+  println("M5 synthetic aggregation fixture passed")
+}

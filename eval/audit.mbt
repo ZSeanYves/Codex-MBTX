@@ -342,6 +342,46 @@ pub fn Audit::backend_ok(
 }
 
 ///|
+/// M5 keeps relay failures separate from backend observations. This adapter is
+/// additive: the historical M4 failure_category function below is unchanged.
+pub fn Audit::m5_relay_status(self : Audit, transport_error : Bool) -> String {
+  if self.http_errors > 0 || self.provider_errors > 0 {
+    "provider_error"
+  } else if transport_error {
+    "transport_error"
+  } else {
+    "clean"
+  }
+}
+
+///|
+pub fn Audit::m5_observability(self : Audit, stream_complete : Bool) -> String {
+  if !stream_complete && self.responses == 0 {
+    "unobserved"
+  } else if !stream_complete || self.parse_errors > 0 || !self.completed {
+    "partial"
+  } else {
+    "complete"
+  }
+}
+
+///|
+pub fn Audit::m5_backend_observation(
+  self : Audit,
+  observed : Bool,
+  compliant : Bool,
+) -> String {
+  let _ = self
+  if !observed {
+    "unknown"
+  } else if compliant {
+    "compliant"
+  } else {
+    "violation"
+  }
+}
+
+///|
 pub fn failure_category(
   audit : Audit,
   backend : String,

@@ -57,6 +57,22 @@ test "transparent backend accepts the normal exec contract and rejects mbtx" {
 }
 
 ///|
+test "M5 audit separates relay health, observability and unknown backend use" {
+  let clean = completed_audit("exec_command")
+  assert_eq(clean.m5_relay_status(false), "clean")
+  assert_eq(clean.m5_relay_status(true), "transport_error")
+  assert_eq(clean.m5_observability(true), "complete")
+  assert_eq(clean.m5_observability(false), "partial")
+  assert_eq(clean.m5_backend_observation(false, false), "unknown")
+  assert_eq(clean.m5_backend_observation(true, true), "compliant")
+  assert_eq(clean.m5_backend_observation(true, false), "violation")
+  let empty = @eval.Audit::new()
+  assert_eq(empty.m5_observability(false), "unobserved")
+  empty.event({ "type": "response.failed", "message": "502" })
+  assert_eq(empty.m5_relay_status(false), "provider_error")
+}
+
+///|
 fn completed_audit(tool : String) -> @eval.Audit {
   let audit = @eval.Audit::new()
   audit.jsonl("{\"type\":\"turn.completed\",\"usage\":{}}\n")

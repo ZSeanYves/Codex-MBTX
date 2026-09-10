@@ -35,6 +35,43 @@ The process-only [backend report](docs/reports/m4-backend-2026-09-09.md) has
 the expanded 24-row cohort and the same evidence boundary.
 Transparent MBTX remains opt-in.
 
+M5 replaces the exploratory online comparison with a versioned evidence
+pipeline. It keeps B0 shell, B1 transparent, and B2 bare-proxy separate,
+records relay health and three-state observability, and reports both
+intention-to-treat and relay-clean paired views. The process cohort is limited
+to host execution semantics; MoonBit script capability is reported separately.
+Run the credential-free acceptance path with:
+
+```bash
+moon run scripts/m5_verify.mbtx
+```
+
+已保存的 relay probe 可以在离线环境重建健康门禁：
+
+```bash
+moon run scripts/m5_probe.mbtx < probes.json
+```
+
+The protocol and default-backend gates are frozen in
+[`docs/m5-evaluation.md`](docs/m5-evaluation.md). The current implementation
+report is [M5 decision report](docs/reports/m5-decision-2026-09-10.md); it is
+intentionally `INCONCLUSIVE` until a controlled Linux runner passes the relay
+health gate, supplies the complete formal process cohort, and provides
+deterministic Linux plus macOS runtime/replay artifacts. `M5_START_BLOCK` is
+reserved for resumptions; a continuation must be merged at a complete block
+boundary before analysis. Raw runner stdout/stderr/exit evidence is saved per
+block with a unique retry suffix, so a failed continuation cannot overwrite an
+earlier artifact.
+The controlled workflow derives formal continuations as three independent
+7/7/6 repetition windows (56/56/48 paired blocks) and requires explicit pilot,
+deterministic, and previous-window run IDs. Exact dispatch commands and frozen
+toolchain versions are part of the preregistered protocol.
+The redacted machine-readable acceptance snapshot is stored under
+[`docs/reports/m5-2026-09-10/`](docs/reports/m5-2026-09-10/README.md).
+Formal online runs also require `scripts/m5_platforms.mbtx` to validate the
+saved Linux and macOS runtime/replay artifacts; a declared platform list alone
+cannot satisfy the cross-platform gate.
+
 Build the modified Codex and runner with:
 
 ```bash

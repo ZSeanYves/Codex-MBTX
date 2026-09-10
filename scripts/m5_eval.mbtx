@@ -1,0 +1,1207 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+struct M5Block {
+  block_id : String
+  task : String
+  repetition : Int
+  batch_id : String
+  time_window : Int
+  order : Array[String]
+  relay_health : Json
+  runs : Array[Json]
+} derive(ToJson, FromJson)
+
+struct M5Plan {
+  schema_version : Int
+  seed : Int
+  mode : String
+  planned_blocks : Int
+  start_block : Int
+  blocks : Array[M5Block]
+} derive(ToJson, FromJson)
+
+struct M5RelayHealth {
+  probes : Int
+  successful_probes : Int
+  provider_errors : Int
+  transport_errors : Int
+  max_consecutive_failures : Int
+  first_byte_p95_ms : Int
+  arm_failure_rate_basis_points : Int
+  time_windows : Int
+} derive(ToJson, FromJson)
+
+struct RunnerEnvelope {
+  runs : Array[Json]
+} derive(FromJson)
+
+struct M5Report {
+  schema_version : Int
+  experiment_id : String
+  mode : String
+  implementation_sha : String
+  binary_sha256 : String
+  codex_binary_sha256 : String
+  mbtx_binary_sha256 : String
+  runner_binary_sha256 : String
+  evaluator_binary_sha256 : String
+  toolchain : String
+  platform : String
+  model : String
+  reasoning_effort : String
+  prompt_hash : String
+  fixture_hash : String
+  seed : Int
+  planned_blocks : Int
+  start_block : Int
+  tool_catalog : String
+  relay_health : M5RelayHealth
+  blocks : Array[M5Block]
+  runs : Array[Json]
+  aggregates : Json
+  validity : Json
+  decision : Json
+} derive(ToJson, FromJson)
+
+async fn put(path : String, text : String) -> Unit {
+  let parts = path.split("/").to_array()
+  if parts.length() > 1 {
+    let parent = parts[:parts.length() - 1].map(x => x.to_owned()).join("/")
+    if !@fs.exists(parent) { @fs.mkdir(parent, recursive=true) }
+  }
+  @fs.write_file(path, text)
+}
+
+async fn put_runner_artifact(block_id : String, text : String) -> Unit {
+  let base = "_build/m5-results/runner-" + block_id
+  let mut index = 0
+  let mut path = base + ".json"
+  while @fs.exists(path) {
+    index += 1
+    path = base + "-retry-" + index.to_string() + ".json"
+  }
+  put(path, text)
+}
+
+async fn hash_file(path : String) -> String {
+  let shasum = @shell.Cmd("shasum", ["-a", "256", path]).output()
+  if shasum.exit_code() == 0 {
+    shasum.stdout().split(" ").to_array()[0].to_owned()
+  } else {
+    let sha256sum = @shell.Cmd("sha256sum", [path]).output()
+    if sha256sum.exit_code() == 0 {
+      sha256sum.stdout().split(" ").to_array()[0].to_owned()
+    } else {
+      "unavailable"
+    }
+  }
+}
+
+async fn git_sha() -> String {
+  let output = @shell.Cmd("git", ["rev-parse", "HEAD"]).output()
+  if output.exit_code() == 0 { output.stdout().trim().to_owned() } else { "unknown" }
+}
+
+async fn platform() -> String {
+  let output = @shell.Cmd("uname", ["-s", "-m"]).output()
+  if output.exit_code() == 0 { output.stdout().trim().to_owned() } else { "unknown" }
+}
+
+fn default_health() -> M5RelayHealth {
+  {
+    probes: 0,
+    successful_probes: 0,
+    provider_errors: 0,
+    transport_errors: 0,
+    max_consecutive_failures: 10_000,
+    first_byte_p95_ms: 0,
+    arm_failure_rate_basis_points: 10_000,
+    time_windows: 0,
+  }
+}
+
+async fn read_health() -> M5RelayHealth {
+  let text = match @env.get_env_var("M5_RELAY_HEALTH_JSON") {
+    Some(value) => value
+    None => match @env.get_env_var("M5_RELAY_HEALTH_FILE") {
+      Some(path) if @fs.exists(path) => @fs.read_file(path).text()
+      _ => return default_health()
+    }
+  }
+  try {
+    let parsed = @json.parse(text)
+    match parsed {
+      { "health": health, .. } => @json.from_json(health)
+      _ => @json.from_json(parsed)
+    }
+  } catch {
+    _ => default_health()
+  }
+}
+
+async fn runtime_artifact_valid(path : String) -> Bool {
+  if !@fs.exists(path) { return false }
+  try {
+    guard @json.parse(@fs.read_file(path).text()) is {
+      "schema_version": 5,
+      "samples": Array(samples),
+      "summaries": Array(summaries),
+      ..
+    } else {
+      return false
+    }
+    !samples.is_empty() && !summaries.is_empty() &&
+    samples.all(sample => {
+      let lifecycle = string_field(sample, "lifecycle_status")
+      bool_field(sample, "content_ok") &&
+        bool_field(sample, "child_start_marker") &&
+        bool_field(sample, "child_processes_clean") &&
+        field(sample, "stdout") is Some(String(_)) &&
+        field(sample, "stderr") is Some(String(_)) &&
+        field(sample, "exit_code") is Some(Number(_, ..)) &&
+        (field(sample, "poll_observed") is Some(True) ||
+          (field(sample, "poll_observed") is Some(False) &&
+            lifecycle != "completed")) &&
+        (lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" ||
+          bool_field(sample, "child_end_marker")) &&
+        array_field(sample, "event_order")
+    }) &&
+    summaries.all(summary => match field(summary, "marker_failures") {
+      Some(Number(value, ..)) => value == 0
+      _ => false
+    })
+  } catch {
+    _ => false
+  }
+}
+
+fn runtime_sample_count(
+  samples : Array[Json],
+  scenario : String,
+  backend : String,
+  phase : String,
+) -> Int {
+  samples.filter(sample => string_field(sample, "scenario") == scenario &&
+    string_field(sample, "backend") == backend &&
+    string_field(sample, "phase") == phase).length()
+}
+
+async fn replay_artifact_valid(path : String) -> Bool {
+  if !@fs.exists(path) { return false }
+  try {
+    guard @json.parse(@fs.read_file(path).text()) is {
+      "schema_version": 5,
+      "paired_semantic_mismatches": 0,
+      "paired_trace_mismatches": 0,
+      "runs": Array(runs),
+      ..
+    } else {
+      return false
+    }
+    !runs.is_empty() &&
+      runs.all(run => {
+        let backend = string_field(run, "backend")
+        bool_field(run, "semantic_ok") &&
+          bool_field(run, "child_processes_clean") &&
+          bool_field(run, "transparent_launcher_used") == (backend == "transparent") &&
+          (if backend == "transparent" {
+            match field(run, "launcher_trace") {
+              Some(Array(values)) => values.length() == 2 &&
+                values[0] == "launcher_start" && values[1] == "launcher_exit"
+              _ => false
+            }
+          } else {
+            match field(run, "launcher_trace") {
+              Some(Array(values)) => values.is_empty()
+              _ => false
+            }
+          }) &&
+          field(run, "workspace_diff") is Some(Array(_)) &&
+          field(run, "process_trace") is Some(Array(_))
+      })
+  } catch {
+    _ => false
+  }
+}
+
+async fn runtime_artifact_complete(path : String) -> Bool {
+  if !@fs.exists(path) { return false }
+  try {
+    guard @json.parse(@fs.read_file(path).text()) is {
+      "schema_version": 5,
+      "cold_target": Number(cold_target, ..),
+      "warm_target": Number(warm_target, ..),
+      "samples": Array(samples),
+      "summaries": Array(summaries),
+      ..
+    } else {
+      return false
+    }
+    let scenarios = [
+      "argv", "stdin", "cwd-env", "large-output", "nonzero",
+      "background", "stop", "timeout", "cancel",
+    ]
+    cold_target >= 200 && warm_target >= 1_000 && summaries.length() >= 36 &&
+      scenarios.all(scenario =>
+        ["shell", "bare-proxy"].all(backend =>
+          ["cold", "warm"].all(phase => {
+            let target = if phase == "cold" {
+              cold_target.to_int()
+            } else {
+              warm_target.to_int()
+            }
+            runtime_sample_count(samples, scenario, backend, phase) >= target
+          })))
+  } catch {
+    _ => false
+  }
+}
+
+async fn replay_artifact_complete(path : String) -> Bool {
+  if !@fs.exists(path) { return false }
+  try {
+    guard @json.parse(@fs.read_file(path).text()) is {
+      "schema_version": 5,
+      "trajectory_count": Number(trajectory_count, ..),
+      "repetitions": Number(repetitions, ..),
+      ..
+    } else {
+      return false
+    }
+    trajectory_count >= 30 && repetitions >= 3
+  } catch {
+    _ => false
+  }
+}
+
+fn platform_matches(actual : String, expected : String) -> Bool {
+  if expected == "Linux" {
+    actual.has_prefix("Linux")
+  } else if expected == "Darwin" || expected == "macOS" {
+    actual.has_prefix("Darwin") || actual.has_prefix("macOS")
+  } else {
+    false
+  }
+}
+
+fn string_array_present(value : Json, key : String) -> Bool {
+  match field(value, key) {
+    Some(Array(values)) => values.all(item => item is String(_))
+    _ => false
+  }
+}
+
+fn platform_runtime_quality(value : Json) -> Bool {
+  match value {
+    {
+      "schema_version": 5,
+      "cold_target": Number(cold_target, ..),
+      "warm_target": Number(warm_target, ..),
+      "samples": Array(samples),
+      "summaries": Array(summaries),
+      "platform": String(_),
+      ..
+    } => {
+      let scenarios = [
+        "argv", "stdin", "cwd-env", "large-output", "nonzero",
+        "background", "stop", "timeout", "cancel",
+      ]
+      let samples_ok = !samples.is_empty() && samples.all(sample => {
+        let lifecycle = string_field(sample, "lifecycle_status")
+        bool_field(sample, "content_ok") &&
+          bool_field(sample, "child_start_marker") &&
+          bool_field(sample, "child_processes_clean") &&
+          field(sample, "stdout") is Some(String(_)) &&
+          field(sample, "stderr") is Some(String(_)) &&
+          field(sample, "exit_code") is Some(Number(_, ..)) &&
+          array_field(sample, "event_order") &&
+          (lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" ||
+            bool_field(sample, "child_end_marker"))
+      })
+      let summaries_ok = !summaries.is_empty() && summaries.all(summary =>
+        match field(summary, "marker_failures") {
+          Some(Number(value, ..)) => value == 0.0
+          _ => false
+        })
+      let counts_ok = cold_target >= 200.0 && warm_target >= 1_000.0 &&
+        summaries.length() >= 36 &&
+        scenarios.all(scenario =>
+          ["shell", "bare-proxy"].all(backend =>
+            ["cold", "warm"].all(phase => {
+              let target = if phase == "cold" {
+                cold_target.to_int()
+              } else {
+                warm_target.to_int()
+              }
+              runtime_sample_count(samples, scenario, backend, phase) >= target
+            })))
+      samples_ok && summaries_ok && counts_ok
+    }
+    _ => false
+  }
+}
+
+fn platform_replay_quality(value : Json) -> Bool {
+  match value {
+    {
+      "schema_version": 5,
+      "trajectory_count": Number(trajectory_count, ..),
+      "repetitions": Number(repetitions, ..),
+      "paired_semantic_mismatches": Number(semantic_mismatches, ..),
+      "paired_trace_mismatches": Number(trace_mismatches, ..),
+      "runs": Array(runs),
+      "platform": String(_),
+      ..
+    } => {
+      let runs_ok = !runs.is_empty() && runs.all(run =>
+        bool_field(run, "semantic_ok") &&
+          bool_field(run, "child_processes_clean") &&
+          bool_field(run, "transparent_launcher_used") ==
+            (string_field(run, "backend") == "transparent") &&
+          (if string_field(run, "backend") == "transparent" {
+            match field(run, "launcher_trace") {
+              Some(Array(values)) => values.length() == 2 &&
+                values[0] == "launcher_start" && values[1] == "launcher_exit"
+              _ => false
+            }
+          } else {
+            match field(run, "launcher_trace") {
+              Some(Array(values)) => values.is_empty()
+              _ => false
+            }
+          }) &&
+          field(run, "approval_original_command") is Some(String(_)) &&
+          string_array_present(run, "argv") &&
+          string_array_present(run, "event_order") &&
+          string_array_present(run, "process_trace") &&
+          field(run, "workspace_diff") is Some(Array(_)) &&
+          (string_field(run, "backend") == "shell" ||
+            string_field(run, "backend") == "transparent"))
+      let shell_count = runs.filter(run => string_field(run, "backend") == "shell").length()
+      let transparent_count = runs.filter(run =>
+        string_field(run, "backend") == "transparent").length()
+      trajectory_count >= 30.0 && repetitions >= 3.0 &&
+        semantic_mismatches == 0.0 && trace_mismatches == 0.0 &&
+        runs.length() >= trajectory_count.to_int() * 2 &&
+        shell_count == transparent_count && runs_ok
+    }
+    _ => false
+  }
+}
+
+async fn artifact_platform(path : String, kind : String) -> String? {
+  if !@fs.exists(path) { return None }
+  try {
+    let value = @json.parse(@fs.read_file(path).text())
+    match value {
+      Object(fields) => {
+        let schema_ok = match fields.get("schema_version") {
+          Some(Number(version, ..)) => version == 5.0
+          _ => false
+        }
+        let quality_ok = if kind == "runtime" {
+          platform_runtime_quality(value)
+        } else {
+          platform_replay_quality(value)
+        }
+        if schema_ok && quality_ok {
+          match fields.get("platform") {
+            Some(String(platform)) => Some(platform)
+            _ => None
+          }
+        } else {
+          None
+        }
+      }
+      _ => None
+    }
+  } catch {
+    _ => None
+  }
+}
+
+async fn deterministic_evidence() -> (Bool, String) {
+  let path = @env.get_env_var("M5_DETERMINISTIC_MANIFEST").unwrap_or(
+    "_build/m5-results/deterministic-platforms.json",
+  )
+  if !@fs.exists(path) {
+    return (false, platform())
+  }
+  try {
+    let value = @json.parse(@fs.read_file(path).text())
+    match value {
+      {
+        "schema_version": 5,
+        "platforms": Array(entries),
+        ..
+      } => {
+        let mut valid = true
+        let names : Array[String] = []
+        for entry in entries {
+          match entry {
+            Object(fields) => {
+              let name = match fields.get("name") {
+                Some(String(value)) => value
+                _ => ""
+              }
+              let runtime_file = match fields.get("runtime_file") {
+                Some(String(value)) => value
+                _ => ""
+              }
+              let replay_file = match fields.get("replay_file") {
+                Some(String(value)) => value
+                _ => ""
+              }
+              if name != "Linux" && name != "Darwin" {
+                valid = false
+              } else {
+                let runtime = artifact_platform(runtime_file, "runtime")
+                let replay = artifact_platform(replay_file, "replay")
+                match (runtime, replay) {
+                  (Some(runtime), Some(replay)) if
+                    platform_matches(runtime, name) && platform_matches(replay, name) => {
+                    if !names.contains(name) { names.push(name) }
+                  }
+                  _ => valid = false
+                }
+              }
+            }
+            _ => valid = false
+          }
+        }
+        let complete = valid && names.contains("Linux") && names.contains("Darwin")
+        (complete, names.join(","))
+      }
+      _ => (false, platform())
+    }
+  } catch {
+    _ => (false, platform())
+  }
+}
+
+fn mode_repetitions(mode : String) -> Int {
+  if mode == "pilot" { 5 } else if mode == "formal" { 20 } else { 10 }
+}
+
+fn health_valid(health : M5RelayHealth) -> Bool {
+  health.probes >= 10 &&
+  health.successful_probes >= 9 &&
+  health.provider_errors + health.transport_errors <= 1 &&
+  health.max_consecutive_failures < 2 &&
+  health.first_byte_p95_ms <= 15_000 &&
+  health.time_windows >= 1
+}
+
+fn planned_windows_valid(blocks : Array[M5Block], required : Int) -> Bool {
+  if required <= 0 { return false }
+  let windows : Array[Int] = []
+  for block in blocks {
+    if block.time_window < 1 || block.time_window > required {
+      return false
+    }
+    if !windows.contains(block.time_window) {
+      windows.push(block.time_window)
+    }
+  }
+  windows.length() >= required
+}
+
+fn block_health_valid(block : M5Block) -> Bool {
+  try {
+    health_valid(@json.from_json(block.relay_health))
+  } catch {
+    _ => false
+  }
+}
+
+fn all_block_health_valid(blocks : Array[M5Block]) -> Bool {
+  !blocks.is_empty() && blocks.all(block_health_valid)
+}
+
+fn same_block_contract(left : M5Block, right : M5Block) -> Bool {
+  left.block_id == right.block_id &&
+  left.task == right.task &&
+  left.repetition == right.repetition &&
+  left.batch_id == right.batch_id &&
+  left.time_window == right.time_window &&
+  left.order == right.order
+}
+
+async fn run_runner(
+  runner : String,
+  block : M5Block,
+) -> Array[Json] ? {
+  let block_json = ToJson::to_json(block).stringify()
+  let output = @shell.Cmd(
+    runner,
+    ["--block", block.block_id],
+    stdin=@shell.Stdin::Text(block_json),
+  ).output(timeout_ms=900_000, max_output_bytes=8_388_608)
+  let runner_artifact : Json = {
+    "schema_version": 5,
+    "block_id": block.block_id,
+    "exit_code": output.exit_code().to_json(),
+    "stdout": output.stdout().to_json(),
+    "stderr": output.stderr().to_json(),
+  }
+  put_runner_artifact(block.block_id, runner_artifact.stringify())
+  if output.exit_code() != 0 { return None }
+  try {
+    let envelope : RunnerEnvelope = @json.from_json(@json.parse(output.stdout()))
+    guard valid_runner_runs(envelope.runs, block) else { return None }
+    Some(envelope.runs)
+  } catch {
+    _ => None
+  }
+}
+
+fn markdown(report : M5Report, health_ok : Bool, runner_configured : Bool) -> String {
+  let reliability = report.aggregates
+  let decision = report.decision
+  [
+    "# M5 Codex-MBTX Decision Report",
+    "",
+    "Schema: 5. Experiment: " + report.experiment_id + ".",
+    "Implementation: " + report.implementation_sha + ". Platform: " +
+      report.platform + ". Model: " + report.model + ".",
+    "",
+    "## Execution Summary",
+    "",
+    "This artifact keeps B0-shell, B1-transparent and B2-bare-proxy separate. " +
+      "M5 does not convert relay/provider failures or unobserved backend use into a backend violation.",
+    "",
+    "## Validity",
+    "",
+    "- Relay health gate: " + health_ok.to_string() + ".",
+    "- Online runner configured: " + runner_configured.to_string() + ".",
+    "- Planned blocks: " + report.blocks.length().to_string() + ".",
+    "- Recorded runs: " + report.runs.length().to_string() + ".",
+    "- Reliability aggregate: " + reliability.stringify() + ".",
+    "",
+    "## Decision",
+    "",
+    "Decision object: " + decision.stringify() + ".",
+    "",
+    "A missing runner, failed health gate, incomplete observability, or unavailable confidence interval is INCONCLUSIVE; it is not evidence that Transparent MBTX is worse.",
+    "",
+    "## Reproduction",
+    "",
+    "Use the saved report.json, plan.json, relay-health.json, implementation SHA, binary hash and the exact runner command. Historical M4 reports are preserved and are not rewritten.",
+  ].join("\n") + "\n"
+}
+
+fn bool_field(run : Json, key : String) -> Bool {
+  match run {
+    Object(fields) => match fields.get(key) {
+      Some(True) => true
+      _ => false
+    }
+    _ => false
+  }
+}
+
+fn string_field(run : Json, key : String) -> String {
+  match run {
+    Object(fields) => match fields.get(key) {
+      Some(String(value)) => value
+      _ => ""
+    }
+    _ => ""
+  }
+}
+
+fn field(run : Json, key : String) -> Json? {
+  match run {
+    Object(fields) => fields.get(key)
+    _ => None
+  }
+}
+
+fn number_field(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Number(_, ..)) => true
+    _ => false
+  }
+}
+
+fn object_field(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Object(_)) => true
+    _ => false
+  }
+}
+
+fn array_field(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Array(_)) => true
+    _ => false
+  }
+}
+
+fn attempt_valid(attempt : Json) -> Bool {
+  let strings = ["attempt_id"]
+  let numbers = [
+    "retry_index", "started_ms", "input_tokens", "cached_input_tokens",
+    "output_tokens",
+  ]
+  let bools = [
+    "stream_disconnected", "provider_error", "recovered", "usage_complete",
+  ]
+  let mut ok = true
+  for key in strings { ok = ok && field(attempt, key) is Some(String(_)) }
+  for key in numbers { ok = ok && number_field(attempt, key) }
+  for key in bools {
+    ok = ok && (field(attempt, key) is Some(True) || field(attempt, key) is Some(False))
+  }
+  ok
+}
+
+fn attempts_valid(run : Json) -> Bool {
+  match field(run, "attempts") {
+    Some(Array(values)) => values.all(attempt_valid)
+    _ => false
+  }
+}
+
+fn string_array_field(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Array(values)) => values.all(item => item is String(_))
+    _ => false
+  }
+}
+
+fn tool_counts_valid(run : Json) -> Bool {
+  match field(run, "tool_counts") {
+    Some(Object(fields)) => {
+      let mut ok = true
+      for _, value in fields { ok = ok && value is Number(_, ..) }
+      ok
+    }
+    _ => false
+  }
+}
+
+fn workspace_diff_valid(run : Json) -> Bool {
+  match field(run, "workspace_diff") {
+    Some(Object(fields)) =>
+      fields.get("entries") is Some(Array(_)) &&
+      (fields.get("permissions_unchanged") is Some(True) ||
+        fields.get("permissions_unchanged") is Some(False)) &&
+      (fields.get("symlinks_unchanged") is Some(True) ||
+        fields.get("symlinks_unchanged") is Some(False))
+    _ => false
+  }
+}
+
+fn required_run_fields_present(run : Json) -> Bool {
+  let required_strings = [
+    "run_id", "block_id", "task", "backend", "relay_status", "observability",
+    "backend_observation", "failure_category",
+  ]
+  let required_bools = [
+    "completed", "usage_complete", "correct_output", "inputs_preserved",
+    "workspace_clean", "child_processes_clean", "receipt_valid", "trace_complete",
+    "argv_cwd_valid", "approval_original_command",
+  ]
+  let required_numbers = [
+    "input_tokens", "cached_input_tokens", "output_tokens", "ended_ms",
+    "monotonic_start_ms", "monotonic_end_ms",
+  ]
+  let mut ok = number_field(run, "started_ms")
+  for key in required_strings {
+    ok = ok && field(run, key) is Some(String(_))
+  }
+  for key in required_bools {
+    ok = ok && (field(run, key) is Some(True) || field(run, key) is Some(False))
+  }
+  for key in required_numbers { ok = ok && number_field(run, key) }
+  ok && timing_fields_valid(run) && field(run, "stdout") is Some(String(_)) &&
+    field(run, "stderr") is Some(String(_)) &&
+    number_field(run, "exit_code") &&
+    string_array_field(run, "workspace_manifest") && attempts_valid(run) &&
+    tool_counts_valid(run) &&
+    workspace_diff_valid(run) && object_field(run, "receipt") &&
+    string_array_field(run, "process_trace")
+}
+
+fn timing_fields_valid(run : Json) -> Bool {
+  match (field(run, "monotonic_start_ms"), field(run, "monotonic_end_ms")) {
+    (Some(Number(start, ..)), Some(Number(end, ..))) => {
+      end >= start && start >= 0
+    }
+    _ => false
+  }
+}
+
+fn run_valid_for_block(run : Json, block : M5Block) -> Bool {
+  required_run_fields_present(run) &&
+    string_field(run, "block_id") == block.block_id &&
+    string_field(run, "task") == block.task &&
+    (string_field(run, "backend") == "shell" ||
+      string_field(run, "backend") == "transparent") &&
+    (string_field(run, "relay_status") == "clean" ||
+      string_field(run, "relay_status") == "provider_error" ||
+      string_field(run, "relay_status") == "transport_error") &&
+    (string_field(run, "observability") == "complete" ||
+      string_field(run, "observability") == "partial" ||
+      string_field(run, "observability") == "unobserved") &&
+    (string_field(run, "backend_observation") == "compliant" ||
+      string_field(run, "backend_observation") == "violation" ||
+      string_field(run, "backend_observation") == "unknown")
+}
+
+fn valid_runner_runs(runs : Array[Json], block : M5Block) -> Bool {
+  runs.length() == 2 && runs.all(r => run_valid_for_block(r, block)) &&
+    string_field(runs[0], "run_id") != "" &&
+    string_field(runs[1], "run_id") != "" &&
+    string_field(runs[0], "run_id") != string_field(runs[1], "run_id") &&
+    runs.filter(r => string_field(r, "backend") == "shell").length() == 1 &&
+    runs.filter(r => string_field(r, "backend") == "transparent").length() == 1 &&
+    string_field(runs[0], "backend") == block.order[0] &&
+    string_field(runs[1], "backend") == block.order[1]
+}
+
+fn infrastructure_run(run : Json) -> Bool {
+  string_field(run, "relay_status") == "provider_error" ||
+    string_field(run, "relay_status") == "transport_error"
+}
+
+fn clean_observed_run(run : Json) -> Bool {
+  string_field(run, "relay_status") == "clean" &&
+    string_field(run, "observability") == "complete" &&
+    string_field(run, "backend_observation") != "unknown"
+}
+
+fn run_evidence_complete(run : Json) -> Bool {
+  if !required_run_fields_present(run) {
+    false
+  } else if infrastructure_run(run) {
+    // Infrastructure failures are retained in ITT. They do not need a
+    // backend observation because no backend turn was attributable.
+    true
+  } else {
+    clean_observed_run(run) && bool_field(run, "usage_complete")
+  }
+}
+
+fn observed_batch_valid(runs : Array[Json]) -> Bool {
+  if runs.is_empty() { return false }
+  let failures = runs.filter(infrastructure_run).length()
+  if failures * 10_000 / runs.length() > 500 { return false }
+  let shell = runs.filter(r => string_field(r, "backend") == "shell")
+  let transparent = runs.filter(r => string_field(r, "backend") == "transparent")
+  if shell.is_empty() || transparent.is_empty() { return false }
+  let shell_rate = shell.filter(infrastructure_run).length() * 10_000 / shell.length()
+  let transparent_rate = transparent.filter(infrastructure_run).length() * 10_000 /
+    transparent.length()
+  (shell_rate - transparent_rate).abs() <= 200
+}
+
+fn reliability(runs : Array[Json], planned_arms : Int) -> Json {
+  let mut relay_clean = 0
+  let mut successes = 0
+  let mut attributable_successes = 0
+  let mut provider_failures = 0
+  let mut transport_failures = 0
+  let mut missing_usage = 0
+  let mut unknown = 0
+  let mut violations = 0
+  for run in runs {
+    if string_field(run, "relay_status") == "clean" { relay_clean += 1 }
+    if string_field(run, "failure_category") == "none" { successes += 1 }
+    if string_field(run, "failure_category") == "none" &&
+      string_field(run, "backend_observation") != "unknown" {
+      attributable_successes += 1
+    }
+    if string_field(run, "failure_category") == "infrastructure_unavailable" &&
+      string_field(run, "relay_status") == "provider_error" {
+      provider_failures += 1
+    }
+    if string_field(run, "relay_status") == "transport_error" {
+      transport_failures += 1
+    }
+    if string_field(run, "failure_category") == "missing_usage" {
+      missing_usage += 1
+    }
+    if string_field(run, "backend_observation") == "unknown" { unknown += 1 }
+    if string_field(run, "backend_observation") == "violation" { violations += 1 }
+  }
+  {
+    "planned": planned_arms.to_json(),
+    "recorded": runs.length().to_json(),
+    "relay_clean": relay_clean.to_json(),
+    "successes": successes.to_json(),
+    "attributable_successes": attributable_successes.to_json(),
+    "provider_failures": provider_failures.to_json(),
+    "transport_failures": transport_failures.to_json(),
+    "missing_usage": missing_usage.to_json(),
+    "unknown_backend_observations": unknown.to_json(),
+    "backend_violations": violations.to_json(),
+  }
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 2 &&
+    (args[1] == "pilot" || args[1] == "formal" || args[1] == "script") else {
+    fail("usage: moon run scripts/m5_eval.mbtx pilot|formal|script")
+  }
+  let mode = args[1]
+  let seed = match @env.get_env_var("M5_SEED") {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) => number.to_int()
+        _ => 20260910
+      }
+    } catch {
+      _ => 20260910
+    }
+    None => 20260910
+  }
+  let start_block = match @env.get_env_var("M5_START_BLOCK") {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) if number >= 0 && number == number.to_int().to_double() =>
+          number.to_int()
+        _ => 0
+      }
+    } catch {
+      _ => 0
+    }
+    None => 0
+  }
+  let requested_window : Int? = match @env.get_env_var("M5_TIME_WINDOW") {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) if number >= 1.0 && number <= 3.0 &&
+          number == number.to_int().to_double() => Some(number.to_int())
+        _ => fail("M5_TIME_WINDOW must be 1, 2, or 3")
+      }
+    } catch {
+      _ => fail("M5_TIME_WINDOW must be 1, 2, or 3")
+    }
+    None => None
+  }
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  let build = @shell.Cmd(
+    "moon",
+    ["run", "--build-only", "--output-json", "--target", "native", "cmd/m5-evidence"],
+  ).output(timeout_ms=120_000)
+  build.check()
+  guard @json.parse(build.stdout()) is { "artifacts_path": [String(binary)], .. } else {
+    fail("missing native m5-evidence binary")
+  }
+  let plan_output = @shell.Cmd(
+    binary,
+    [
+      "plan", mode, seed.to_string(), start_block.to_string(),
+      mode_repetitions(mode).to_string(),
+    ],
+  ).output()
+  plan_output.check()
+  let run_plan : M5Plan = @json.from_json(@json.parse(plan_output.stdout()))
+  let requested_limit = match @env.get_env_var("M5_BLOCK_LIMIT") {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) if number >= 1 && number == number.to_int().to_double() =>
+          number.to_int()
+        _ => run_plan.blocks.length()
+      }
+    } catch {
+      _ => run_plan.blocks.length()
+    }
+    None => run_plan.blocks.length()
+  }
+  let limit = if requested_limit < run_plan.blocks.length() {
+    requested_limit
+  } else {
+    run_plan.blocks.length()
+  }
+  let run_blocks = run_plan.blocks[:limit].to_owned()
+  let full_plan : M5Plan = if start_block == 0 {
+    run_plan
+  } else {
+    let full_plan_output = @shell.Cmd(
+      binary,
+      [
+        "plan", mode, seed.to_string(), "0",
+        mode_repetitions(mode).to_string(),
+      ],
+    ).output()
+    full_plan_output.check()
+    @json.from_json(@json.parse(full_plan_output.stdout()))
+  }
+  guard run_blocks.length() > 0 else {
+    fail("M5 continuation has no blocks to execute")
+  }
+  if mode == "formal" {
+    match requested_window {
+      Some(window) => {
+        guard run_blocks.all(block => block.time_window == window) else {
+          fail("formal continuation crosses or does not match M5_TIME_WINDOW")
+        }
+      }
+      None => fail("formal execution requires M5_TIME_WINDOW")
+    }
+  }
+  let implementation_sha = git_sha()
+  let evaluator_binary_sha256 = hash_file(binary)
+  let toolchain = @shell.Cmd("moon", ["version", "--all"]).output().stdout().trim().to_owned()
+  let platform_name = platform()
+  let model = @env.get_env_var("M5_MODEL").unwrap_or("unspecified")
+  let reasoning_effort = @env.get_env_var("M5_EFFORT").unwrap_or("unspecified")
+  let tool_catalog = @env.get_env_var("M5_TOOL_CATALOG").unwrap_or(
+    "exec_command,write_stdin",
+  )
+  let prompt_hash = hash_file("eval/MOONBIT.md") + ":" + hash_file("eval/m5.mbt")
+  let fixture_hash = hash_file("eval/suite.mbt") + ":" + hash_file("eval/m5.mbt")
+  let runner = @env.get_env_var("M5_RUNNER")
+  let runner_configured = runner is Some(_)
+  let runner_binary_sha256 = match runner {
+    Some(path) if @fs.exists(path) => hash_file(path)
+    _ => "unavailable"
+  }
+  let codex_binary_sha256 = match @env.get_env_var("M5_CODEX") {
+    Some(path) if @fs.exists(path) => hash_file(path)
+    _ => "unavailable"
+  }
+  let mbtx_binary_sha256 = match @env.get_env_var("M5_MBTX") {
+    Some(path) if @fs.exists(path) => hash_file(path)
+    _ => "unavailable"
+  }
+  let binary_sha256 = if codex_binary_sha256 != "unavailable" {
+    codex_binary_sha256
+  } else {
+    evaluator_binary_sha256
+  }
+  let prior_report : M5Report? = if start_block == 0 {
+    None
+  } else {
+    let report_path = "_build/m5-results/report.json"
+    guard @fs.exists(report_path) else {
+      fail("continuation requires the previous report artifact")
+    }
+    try {
+      Some(@json.from_json(@json.parse(@fs.read_file(report_path).text())))
+    } catch {
+      _ => fail("previous report artifact is not a valid M5 report")
+    }
+  }
+  match prior_report {
+    Some(previous) => {
+      guard previous.schema_version == 5 && previous.mode == mode &&
+        previous.seed == seed && previous.planned_blocks == full_plan.planned_blocks &&
+        previous.implementation_sha == implementation_sha &&
+        previous.binary_sha256 == binary_sha256 &&
+        previous.codex_binary_sha256 == codex_binary_sha256 &&
+        previous.mbtx_binary_sha256 == mbtx_binary_sha256 &&
+        previous.runner_binary_sha256 == runner_binary_sha256 &&
+        previous.evaluator_binary_sha256 == evaluator_binary_sha256 &&
+        previous.toolchain == toolchain && previous.platform == platform_name &&
+        previous.model == model && previous.reasoning_effort == reasoning_effort &&
+        previous.prompt_hash == prompt_hash && previous.fixture_hash == fixture_hash &&
+        previous.tool_catalog == tool_catalog &&
+        previous.start_block == 0 &&
+        previous.blocks.length() == start_block &&
+        previous.runs.length() == start_block * 2 else {
+        fail("previous report is not the complete prefix for this continuation")
+      }
+      for index in 0..<start_block {
+        guard same_block_contract(previous.blocks[index], full_plan.blocks[index]) else {
+          fail("previous report block prefix does not match the seeded plan")
+        }
+      }
+    }
+    None => ()
+  }
+  // Keep the complete seeded plan in the artifact even when this invocation
+  // is a continuation. Existing prefix blocks are merged below rather than
+  // overwritten by the new suffix.
+  put("_build/m5-results/plan.json", ToJson::to_json(full_plan).stringify())
+  let health = read_health()
+  // Probe health is a preflight gate. The 5% batch failure rule is applied
+  // separately to the recorded block runs below; a 9/10 healthy probe set is
+  // therefore allowed to start a batch as preregistered.
+  let health_ok = health_valid(health)
+  // A continuation is allowed to start in a new relay time window.  Previous
+  // blocks retain their own health snapshot; new blocks receive this probe's
+  // snapshot below. Requiring byte-identical health across windows would make
+  // valid continuation evidence impossible to collect.
+  put("_build/m5-results/relay-health.json", ToJson::to_json(health).stringify())
+  let blocks = if health_ok {
+    run_blocks.map(block => {
+      { ..block, relay_health: ToJson::to_json(health), }
+    })
+  } else {
+    []
+  }
+  let runtime_path = "_build/m5-results/runtime.json"
+  let replay_path = "_build/m5-results/replay.json"
+  let runtime_present = @fs.exists(runtime_path)
+  let replay_present = @fs.exists(replay_path)
+  let runtime_valid = runtime_artifact_valid(runtime_path)
+  let replay_valid = replay_artifact_valid(replay_path)
+  let runtime_complete = runtime_artifact_complete(runtime_path)
+  let replay_complete = replay_artifact_complete(replay_path)
+  let (deterministic_cross_platform, deterministic_platforms) = deterministic_evidence()
+  let runs : Array[Json] = []
+  let completed_blocks : Array[M5Block] = []
+  let mut runner_errors = 0
+  if health_ok && runner is Some(runner) {
+    for block in blocks {
+      match run_runner(runner, block) {
+        Some(block_runs) => {
+          runs.append(block_runs)
+          completed_blocks.push(block)
+        }
+        None => {
+          runner_errors += 1
+          break
+        }
+      }
+    }
+  }
+  let previous_runs = match prior_report {
+    Some(previous) => previous.runs
+    None => []
+  }
+  let all_runs = previous_runs + runs
+  let merged_blocks = match prior_report {
+    Some(previous) => previous.blocks + completed_blocks.map(block => {
+      let block_runs = runs.filter(run =>
+        string_field(run, "block_id") == block.block_id)
+      { ..block, runs: block_runs, }
+    })
+    None => completed_blocks.map(block => {
+      let block_runs = runs.filter(run =>
+        string_field(run, "block_id") == block.block_id)
+      { ..block, runs: block_runs, }
+    })
+  }
+  let required_windows = if mode == "formal" { 3 } else { 1 }
+  let planned_windows_ok = planned_windows_valid(merged_blocks, required_windows)
+  let block_health_ok = all_block_health_valid(merged_blocks)
+  let reliability_json = reliability(all_runs, full_plan.planned_blocks * 2)
+  let observed_batch_ok = observed_batch_valid(all_runs)
+  let evidence_complete = health_ok && runner_configured &&
+    runner_errors == 0 && all_runs.length() == merged_blocks.length() * 2 &&
+    planned_windows_ok && block_health_ok && observed_batch_ok &&
+    all_runs.all(run_evidence_complete)
+  let backend_observable = !all_runs.is_empty() &&
+    all_runs.filter(r => !infrastructure_run(r)).length() > 0 &&
+    all_runs.filter(r => !infrastructure_run(r)).all(clean_observed_run)
+  let semantic_candidates = all_runs.filter(clean_observed_run)
+  let semantic_zero = !semantic_candidates.is_empty() &&
+    semantic_candidates.all(r => bool_field(r, "correct_output") &&
+      bool_field(r, "completed") && bool_field(r, "usage_complete") &&
+      bool_field(r, "inputs_preserved") && bool_field(r, "workspace_clean") &&
+      bool_field(r, "child_processes_clean") && bool_field(r, "receipt_valid") &&
+      bool_field(r, "trace_complete") && bool_field(r, "argv_cwd_valid"))
+  let semantic_regression = !semantic_candidates.is_empty() && !semantic_zero
+  let safety_ok = !all_runs.any(r => clean_observed_run(r) &&
+    (string_field(r, "backend_observation") == "violation" ||
+      !bool_field(r, "approval_original_command")))
+  let decision_status = if semantic_regression || !safety_ok {
+    "NO_GO"
+  } else {
+    "INCONCLUSIVE"
+  }
+  let decision_reasons : Array[String] = []
+  if !health_ok { decision_reasons.push("relay health gate did not pass") }
+  if !planned_windows_ok {
+    decision_reasons.push("planned blocks do not cover the required time windows")
+  }
+  if !block_health_ok {
+    decision_reasons.push("one or more blocks have an invalid relay health snapshot")
+  }
+  if !runner_configured { decision_reasons.push("M5_RUNNER is not configured") }
+  if runner_errors > 0 { decision_reasons.push("one or more runner blocks failed") }
+  if !observed_batch_ok && !all_runs.is_empty() {
+    decision_reasons.push("observed batch infrastructure failure rate exceeded 5% or arm difference exceeded 2pp")
+  }
+  if !evidence_complete { decision_reasons.push("paired evidence is incomplete") }
+  if !backend_observable { decision_reasons.push("backend observation is incomplete or unknown") }
+  decision_reasons.push("confidence intervals are pending m5_analyze")
+  let decision : Json = {
+    "status": decision_status,
+    "reasons": decision_reasons.to_json(),
+  }
+  let aggregates : Json = {
+    "reliability": reliability_json,
+    "runner_errors": runner_errors.to_json(),
+    "block_limit": limit.to_json(),
+    "planned_blocks": full_plan.planned_blocks.to_json(),
+    "continuation_start_block": start_block.to_json(),
+    "observed_blocks": (all_runs.length() / 2).to_json(),
+    "relay_error_rate_basis_points": (if health.probes == 0 {
+      10_000
+    } else {
+      (health.provider_errors + health.transport_errors) * 10_000 / health.probes
+    }).to_json(),
+    "confidence_intervals": "pending analyzer",
+  }
+  let validity : Json = {
+    "relay_health_valid": health_valid(health).to_json(),
+    "relay_batch_valid": (health_ok && observed_batch_ok).to_json(),
+    "planned_time_windows_valid": planned_windows_ok.to_json(),
+    "block_health_valid": block_health_ok.to_json(),
+    "observed_batch_valid": observed_batch_ok.to_json(),
+    "runner_configured": runner_configured.to_json(),
+    "runner_errors": runner_errors.to_json(),
+    "evidence_complete": evidence_complete.to_json(),
+    "backend_observable": backend_observable.to_json(),
+    "intention_to_treat_included": true,
+    "relay_clean_conditional_available": (health_ok && observed_batch_ok).to_json(),
+    "runtime_artifact_present": runtime_present.to_json(),
+    "runtime_artifact_valid": runtime_valid.to_json(),
+    "runtime_artifact_complete": runtime_complete.to_json(),
+    "replay_artifact_present": replay_present.to_json(),
+    "replay_artifact_valid": replay_valid.to_json(),
+    "replay_artifact_complete": replay_complete.to_json(),
+    "deterministic_platforms": deterministic_platforms.to_json(),
+    "deterministic_cross_platform_valid": deterministic_cross_platform.to_json(),
+    "deterministic_manifest_valid": deterministic_cross_platform.to_json(),
+    "artifacts_rebuildable": (runtime_valid && replay_valid &&
+      @fs.exists("_build/m5-results/plan.json") &&
+      @fs.exists("_build/m5-results/relay-health.json")).to_json(),
+  }
+  let report : M5Report = {
+    schema_version: 5,
+    experiment_id: "m5-" + mode + "-" + seed.to_string(),
+    mode,
+    implementation_sha,
+    binary_sha256,
+    codex_binary_sha256,
+    mbtx_binary_sha256,
+    runner_binary_sha256,
+    evaluator_binary_sha256,
+    toolchain,
+    platform: platform_name,
+    model,
+    reasoning_effort,
+    prompt_hash,
+    fixture_hash,
+    seed,
+    planned_blocks: full_plan.planned_blocks,
+    start_block: if prior_report is Some(_) { 0 } else { full_plan.start_block },
+    tool_catalog,
+    relay_health: health,
+    blocks: merged_blocks,
+    runs: all_runs,
+    aggregates,
+    validity,
+    decision,
+  }
+  let encoded = ToJson::to_json(report).stringify()
+  put("_build/m5-results/report.json", encoded)
+  put("_build/m5-results/report.md", markdown(report, health_ok, runner_configured))
+  println(encoded)
+}

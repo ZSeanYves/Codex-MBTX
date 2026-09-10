@@ -1,0 +1,402 @@
+name: M5 Evaluation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: M5 offline or controlled online mode
+        required: true
+        default: offline
+        type: choice
+        options:
+          - offline
+          - pilot
+          - formal
+          - script
+      enable_online:
+        description: Permit the isolated Linux job to issue online requests
+        required: true
+        default: false
+        type: boolean
+      model:
+        description: Frozen relay model id
+        required: true
+        default: gpt-5.6-terra
+        type: string
+      reasoning_effort:
+        description: Frozen Codex reasoning effort
+        required: true
+        default: xhigh
+        type: choice
+        options:
+          - medium
+          - high
+          - xhigh
+      time_window:
+        description: Formal window (0 for pilot/script; 1, 2, or 3 for formal)
+        required: true
+        default: "0"
+        type: choice
+        options:
+          - "0"
+          - "1"
+          - "2"
+          - "3"
+      previous_run_id:
+        description: Complete-prefix M5 run id required by formal windows 2 and 3
+        required: false
+        default: ""
+        type: string
+      deterministic_run_id:
+        description: Pilot run id supplying frozen Linux/macOS runtime and replay evidence
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  MOONBIT_INSTALL_VERSION: "0.10.12+1634b282e"
+
+jobs:
+  validate-online:
+    if: github.event_name == 'workflow_dispatch' && inputs.enable_online == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Validate the preregistered dispatch contract
+        env:
+          MODE: ${{ inputs.mode }}
+          WINDOW: ${{ inputs.time_window }}
+          PREVIOUS_RUN: ${{ inputs.previous_run_id }}
+          DETERMINISTIC_RUN: ${{ inputs.deterministic_run_id }}
+        run: |
+          set -euo pipefail
+          numeric_run_id() {
+            [[ "$1" =~ ^[0-9]+$ ]]
+          }
+          case "$MODE" in
+            pilot)
+              test "$WINDOW" = "0"
+              test -z "$PREVIOUS_RUN"
+              test -z "$DETERMINISTIC_RUN"
+              ;;
+            formal)
+              numeric_run_id "$DETERMINISTIC_RUN"
+              case "$WINDOW" in
+                1)
+                  test -z "$PREVIOUS_RUN"
+                  ;;
+                2|3)
+                  numeric_run_id "$PREVIOUS_RUN"
+                  ;;
+                *)
+                  echo "formal mode requires time_window=1, 2, or 3" >&2
+                  exit 2
+                  ;;
+              esac
+              ;;
+            script)
+              test "$WINDOW" = "0"
+              test -z "$PREVIOUS_RUN"
+              ;;
+            *)
+              echo "online execution requires mode=pilot, formal, or script" >&2
+              exit 2
+              ;;
+          esac
+
+  deterministic-linux:
+    needs: validate-online
+    if: needs.validate-online.result == 'success' && inputs.deterministic_run_id == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install Linux runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential python3
+      - name: Install pinned MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: moon update
+      - name: Collect formal Linux deterministic artifacts
+        run: |
+          M5_COLD_RUNS=200 M5_WARM_RUNS=1000 moon run scripts/m5_runtime.mbtx
+          M5_REPLAY_REPETITIONS=3 moon run scripts/m5_replay.mbtx
+          mkdir -p _build/m5-platform/linux
+          cp _build/m5-results/runtime.json _build/m5-platform/linux/runtime.json
+          cp _build/m5-results/replay.json _build/m5-platform/linux/replay.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m5-deterministic-linux-${{ github.run_id }}
+          path: _build/m5-platform/
+          if-no-files-found: error
+
+  deterministic-macos:
+    needs: validate-online
+    if: needs.validate-online.result == 'success' && inputs.deterministic_run_id == ''
+    runs-on: macos-14
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install pinned MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: moon update
+      - name: Collect formal macOS deterministic artifacts
+        run: |
+          M5_COLD_RUNS=200 M5_WARM_RUNS=1000 moon run scripts/m5_runtime.mbtx
+          M5_REPLAY_REPETITIONS=3 moon run scripts/m5_replay.mbtx
+          mkdir -p _build/m5-platform/darwin
+          cp _build/m5-results/runtime.json _build/m5-platform/darwin/runtime.json
+          cp _build/m5-results/replay.json _build/m5-platform/darwin/replay.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m5-deterministic-darwin-${{ github.run_id }}
+          path: _build/m5-platform/
+          if-no-files-found: error
+
+  offline:
+    if: github.event_name != 'workflow_dispatch' || inputs.enable_online == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install pinned MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: moon update
+      - name: Run M5 offline verification
+        run: moon run scripts/m5_verify.mbtx
+      - name: Run required package checks
+        run: |
+          moon check --deny-warn
+          moon test --target wasm
+          moon test --target native
+          moon info
+          moon fmt --check
+          moon run --build-only scripts/m5_platforms.mbtx
+          cargo fmt --manifest-path adapter/Cargo.toml -- --check
+          cargo test --locked --manifest-path adapter/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m5-offline-${{ github.run_id }}
+          path: _build/m5-results/
+          if-no-files-found: warn
+
+  online:
+    if: >-
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.enable_online == true &&
+      needs.validate-online.result == 'success' &&
+      (inputs.deterministic_run_id != '' ||
+       (needs.deterministic-linux.result == 'success' &&
+        needs.deterministic-macos.result == 'success'))
+    needs: [validate-online, deterministic-linux, deterministic-macos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install Linux runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libssl-dev libcap-dev bubblewrap ripgrep jq
+      - name: Enable Codex sandbox namespaces
+        run: |
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 kernel.apparmor_restrict_unprivileged_userns=0
+          bwrap --unshare-user --unshare-net --ro-bind / / /usr/bin/true
+      - name: Install pinned MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Resolve dependencies
+        run: moon update
+      - name: Restore the complete-prefix report
+        if: inputs.previous_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_RUN: ${{ inputs.previous_run_id }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_RUN" --jq .head_sha)" = "$GITHUB_SHA"
+          mkdir -p _build/m5-previous _build/m5-results
+          gh run download "$PREVIOUS_RUN" --name "m5-online-$PREVIOUS_RUN" --dir _build/m5-previous
+          test -f _build/m5-previous/report.json
+          cp -a _build/m5-previous/. _build/m5-results/
+      - name: Download deterministic artifacts from this run
+        if: inputs.deterministic_run_id == ''
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m5-deterministic-*
+          path: _build/m5-results/platform-downloads
+          merge-multiple: true
+      - name: Restore frozen deterministic artifacts
+        if: inputs.deterministic_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DETERMINISTIC_RUN: ${{ inputs.deterministic_run_id }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DETERMINISTIC_RUN" --jq .head_sha)" = "$GITHUB_SHA"
+          mkdir -p _build/m5-results/platform-downloads
+          gh run download "$DETERMINISTIC_RUN" --pattern 'm5-deterministic-*' --dir _build/m5-results/platform-downloads
+      - name: Validate deterministic platform manifest
+        run: |
+          set -euo pipefail
+          mkdir -p _build/m5-results/platforms/linux _build/m5-results/platforms/darwin
+          LINUX_RUNTIME=$(find _build/m5-results/platform-downloads -path '*/linux/runtime.json' -type f | head -n 1)
+          LINUX_REPLAY=$(find _build/m5-results/platform-downloads -path '*/linux/replay.json' -type f | head -n 1)
+          DARWIN_RUNTIME=$(find _build/m5-results/platform-downloads -path '*/darwin/runtime.json' -type f | head -n 1)
+          DARWIN_REPLAY=$(find _build/m5-results/platform-downloads -path '*/darwin/replay.json' -type f | head -n 1)
+          test -n "$LINUX_RUNTIME" -a -n "$LINUX_REPLAY" -a -n "$DARWIN_RUNTIME" -a -n "$DARWIN_REPLAY"
+          cp "$LINUX_RUNTIME" _build/m5-results/platforms/linux/runtime.json
+          cp "$LINUX_REPLAY" _build/m5-results/platforms/linux/replay.json
+          cp "$DARWIN_RUNTIME" _build/m5-results/platforms/darwin/runtime.json
+          cp "$DARWIN_REPLAY" _build/m5-results/platforms/darwin/replay.json
+          cp _build/m5-results/platforms/linux/runtime.json _build/m5-results/runtime.json
+          cp _build/m5-results/platforms/linux/replay.json _build/m5-results/replay.json
+          moon run scripts/m5_platforms.mbtx Linux \
+            _build/m5-results/platforms/linux/runtime.json \
+            _build/m5-results/platforms/linux/replay.json \
+            Darwin \
+            _build/m5-results/platforms/darwin/runtime.json \
+            _build/m5-results/platforms/darwin/replay.json
+      - name: Prepare pinned Codex source
+        run: moon run scripts/codex.mbtx
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          workspaces: |
+            adapter -> target
+            _build/codex-upstream/codex-rs -> target
+      - name: Build pinned Codex and MBTX binaries
+        env:
+          M4_MODEL: ${{ inputs.model }}
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_INCREMENTAL: "0"
+          CARGO_BUILD_JOBS: "2"
+        run: moon run scripts/m4_build.mbtx
+      - name: Build M5 evidence and isolated runner
+        run: |
+          moon run --build-only --output-json --target native cmd/m5-evidence > _build/m5-evidence-build.json
+          jq -e '.artifacts_path | length == 1' _build/m5-evidence-build.json
+          M5_EVIDENCE_SRC=$(jq -r '.artifacts_path[0]' _build/m5-evidence-build.json)
+          cargo build --locked --manifest-path adapter/Cargo.toml --bins
+          sudo useradd --system --create-home --shell /usr/sbin/nologin mbtx-eval || true
+          sudo install -d -m 0755 /opt/mbtx-eval-tools/bin /opt/mbtx-eval-tools/moon
+          sudo install -m 0755 _build/m3-dist/codex /opt/mbtx-eval-tools/bin/codex
+          sudo install -m 0755 _build/m3-dist/mbtx /opt/mbtx-eval-tools/bin/mbtx
+          sudo install -m 0755 adapter/target/debug/m5-runner /opt/mbtx-eval-tools/bin/m5-runner
+          sudo install -m 0755 adapter/target/debug/m5-trace-launcher /opt/mbtx-eval-tools/bin/m5-trace-launcher
+          sudo install -m 0755 adapter/target/debug/m5-command-trace /opt/mbtx-eval-tools/bin/m5-command-trace
+          sudo install -m 0755 "$M5_EVIDENCE_SRC" /opt/mbtx-eval-tools/bin/m5-evidence
+          sudo install -m 0644 _build/m3-dist/m4-models.json /opt/mbtx-eval-tools/models.json
+          sudo cp -a "$HOME/.moon/." /opt/mbtx-eval-tools/moon/
+          sudo chmod -R a+rX /opt/mbtx-eval-tools
+          sudo chown -R mbtx-eval:mbtx-eval /opt/mbtx-eval-tools/moon/cache
+      - name: Verify isolated MBTX path without API use
+        run: moon run scripts/m4_env_verify.mbtx
+      - name: Run ten-request relay health gate
+        continue-on-error: true
+        env:
+          OPENROUTER_ICU_API_KEY: ${{ secrets.OPENROUTER_ICU_API_KEY }}
+          M5_CODEX: /opt/mbtx-eval-tools/bin/codex
+          M5_MODEL: ${{ inputs.model }}
+          M5_TIME_WINDOW: ${{ inputs.time_window == '0' && '1' || inputs.time_window }}
+        run: |
+          test -n "$OPENROUTER_ICU_API_KEY"
+          moon run scripts/m5_live_probe.mbtx
+      - name: Gate and run controlled M5 batch
+        env:
+          OPENROUTER_ICU_API_KEY: ${{ secrets.OPENROUTER_ICU_API_KEY }}
+          M5_RUNNER: /opt/mbtx-eval-tools/bin/m5-runner
+          M5_CODEX: /opt/mbtx-eval-tools/bin/codex
+          M5_MBTX: /opt/mbtx-eval-tools/bin/mbtx
+          M5_EVIDENCE: /opt/mbtx-eval-tools/bin/m5-evidence
+          M5_TRACE_LAUNCHER: /opt/mbtx-eval-tools/bin/m5-trace-launcher
+          M5_COMMAND_TRACE: /opt/mbtx-eval-tools/bin/m5-command-trace
+          M5_MODEL_CATALOG: /opt/mbtx-eval-tools/models.json
+          M5_MOON_HOME: /opt/mbtx-eval-tools/moon
+          M5_MOON: /opt/mbtx-eval-tools/moon/bin/moon
+          M5_AGENT_USER: mbtx-eval
+          M5_ARTIFACT_DIR: _build/m5-results/runner-evidence
+          M5_API_KEY: ${{ secrets.OPENROUTER_ICU_API_KEY }}
+          M5_MODEL: ${{ inputs.model }}
+          M5_EFFORT: ${{ inputs.reasoning_effort }}
+          M5_SEED: "20260910"
+          M5_DETERMINISTIC_MANIFEST: _build/m5-results/deterministic-platforms.json
+          M5_RELAY_HEALTH_FILE: _build/m5-results/relay-health.json
+          M5_TIME_WINDOW: ${{ inputs.time_window == '0' && '1' || inputs.time_window }}
+        run: |
+          set +e
+          MODE="${{ inputs.mode }}"
+          WINDOW="${{ inputs.time_window }}"
+          case "$MODE:$WINDOW" in
+            pilot:0)
+              export M5_START_BLOCK=0 M5_BLOCK_LIMIT=40
+              ;;
+            formal:1)
+              export M5_START_BLOCK=0 M5_BLOCK_LIMIT=56
+              ;;
+            formal:2)
+              export M5_START_BLOCK=56 M5_BLOCK_LIMIT=56
+              ;;
+            formal:3)
+              export M5_START_BLOCK=112 M5_BLOCK_LIMIT=48
+              ;;
+            script:0)
+              export M5_START_BLOCK=0 M5_BLOCK_LIMIT=60
+              ;;
+            *)
+              echo "dispatch contract was not recognized" >&2
+              exit 2
+              ;;
+          esac
+          PROBE_WINDOW=${M5_TIME_WINDOW}
+          jq -e '.health_valid == true' "_build/m5-results/probe-health-window-$PROBE_WINDOW.json"
+          HEALTH_OK=$?
+          if [ "$HEALTH_OK" -eq 0 ]; then
+            moon run scripts/m5_eval.mbtx "$MODE"
+            EVAL_EXIT=$?
+            moon run scripts/m5_analyze.mbtx
+            ANALYZE_EXIT=$?
+          else
+            echo "Relay health gate failed; writing an INCONCLUSIVE artifact without online samples."
+            env -u M5_RUNNER moon run scripts/m5_eval.mbtx "$MODE"
+            EVAL_EXIT=$?
+            moon run scripts/m5_analyze.mbtx
+            ANALYZE_EXIT=$?
+          fi
+          if [ "$HEALTH_OK" -ne 0 ] || [ "$EVAL_EXIT" -ne 0 ] || [ "$ANALYZE_EXIT" -ne 0 ]; then
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m5-online-${{ github.run_id }}
+          path: _build/m5-results/
+          if-no-files-found: warn

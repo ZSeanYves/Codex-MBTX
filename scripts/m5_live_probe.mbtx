@@ -1,0 +1,229 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+/// The live collector is intentionally separate from `m5_probe.mbtx`: this
+/// file owns the private proxy and emits only redacted, aggregate-safe probe
+/// records. The parser remains usable with recorded fixtures in offline CI.
+
+fn env_or(name : String, fallback : String) -> String {
+  @env.get_env_var(name).unwrap_or(fallback)
+}
+
+fn time_window() -> Int {
+  match @env.get_env_var("M5_TIME_WINDOW") {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) if number >= 1.0 && number <= 3.0 &&
+          number == number.to_int().to_double() => number.to_int()
+        _ => fail("M5_TIME_WINDOW must be 1, 2, or 3")
+      }
+    } catch {
+      _ => fail("M5_TIME_WINDOW must be 1, 2, or 3")
+    }
+    None => 1
+  }
+}
+
+fn millis(value : Json) -> Int? {
+  match value {
+    Number(number, ..) if number >= 0.0 && number <= 3_600_000.0 =>
+      Some((number * 1000.0).to_int())
+    _ => None
+  }
+}
+
+fn text_has_completion(text : String) -> Bool {
+  text.contains("response.completed") ||
+    text.contains("\"status\":\"completed\"")
+}
+
+fn text_has_failure(text : String) -> Bool {
+  text.contains("response.failed") ||
+    text.contains("\"type\":\"error\"") ||
+    text.contains("\"error\"")
+}
+
+fn usage_complete(text : String) -> Bool {
+  text.contains("\"usage\"") &&
+    text.contains("input_tokens") &&
+    text.contains("output_tokens")
+}
+
+fn error_class(
+  status : Int?,
+  provider_error : Bool,
+  transport_error : Bool,
+  body : String,
+) -> String? {
+  if provider_error {
+    match status {
+      Some(429) => Some("retry_after")
+      Some(code) if code >= 500 => Some("http_5xx")
+      _ => Some("provider_error")
+    }
+  } else if transport_error {
+    if body.is_empty() { Some("transport_disconnect") } else { Some("malformed_sse") }
+  } else {
+    None
+  }
+}
+
+async fn probe_one(
+  codex_url : String,
+  model : String,
+  arm : String,
+  window : Int,
+  index : Int,
+  directory : String,
+) -> Json {
+  let request : Json = {
+    "model": model.to_json(),
+    "input": "Reply with OK.",
+    "stream": true,
+    "store": false,
+    "max_output_tokens": 128,
+  }
+  let body_path = "\{directory}/body-\{index}.txt"
+  let output = @shell.Cmd(
+    "curl",
+    [
+      "--silent", "--show-error", "--max-time", "60", "--connect-timeout", "15",
+      "--request", "POST", codex_url,
+      "--header", "Content-Type: application/json",
+      "--data-binary", "@-",
+      "--output", body_path,
+      "--write-out", "%{json}",
+    ],
+    stdin=@shell.Stdin::Text(request.stringify()),
+    inherit_env=false,
+    env={ "PATH": "/usr/bin:/bin" },
+  ).output(timeout_ms=65_000, max_output_bytes=131_072)
+  let body = if @fs.exists(body_path) { @fs.read_file(body_path).text() } else { "" }
+  let diagnostics : Json = try { @json.parse(output.stdout()) } catch {
+    _ => Json::null()
+  }
+  let status = match diagnostics {
+    { "http_code": Number(code, ..), .. } => Some(code.to_int())
+    _ => None
+  }
+  let first_byte_ms : Int? = match diagnostics {
+    { "time_starttransfer": value, .. } => millis(value)
+    _ => None
+  }
+  let completed_ms : Int? = match diagnostics {
+    { "time_total": value, .. } => millis(value)
+    _ => None
+  }
+  let completed = text_has_completion(body)
+  let provider_error = (status is Some(code) && code >= 400) || text_has_failure(body)
+  let transport_error = output.exit_code() != 0 || (!provider_error && !completed)
+  let error = error_class(status, provider_error, transport_error, body)
+  let completed_value : Int? = if completed { completed_ms } else { None }
+  let attempt_id = "probe-\{index}"
+  {
+    "attempt_id": attempt_id,
+    "retry_index": 0,
+    "arm": arm,
+    "time_window": window,
+    "http_status": status,
+    "first_byte_ms": first_byte_ms,
+    "completed_ms": completed_value,
+    "stream_disconnected": transport_error,
+    "provider_error": provider_error,
+    "transport_error": transport_error,
+    "usage_complete": completed && usage_complete(body),
+    "error_class": error,
+  }
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 1 else {
+    fail("usage: moon run scripts/m5_live_probe.mbtx")
+  }
+  let key = match @env.get_env_var("OPENROUTER_ICU_API_KEY") {
+    Some(value) if !value.is_empty() => value
+    _ => fail("OPENROUTER_ICU_API_KEY repository secret is required")
+  }
+  guard !key.contains("\n") && !key.contains("\r") else {
+    fail("repository secret must contain only the raw API key")
+  }
+  // Keep the key only in this process and the proxy stdin. Child commands
+  // (curl, the parser, and MoonBit) must not inherit it.
+  @env.unset_env_var("OPENROUTER_ICU_API_KEY")
+  let codex = env_or("M5_CODEX", "/opt/mbtx-eval-tools/bin/codex")
+  let model = env_or("M5_MODEL", "gpt-5.6-terra")
+  let window = time_window()
+  let upstream = env_or("M5_UPSTREAM_URL", "https://tokenadvent.com/v1/responses")
+  let base = @fs.tmpdir(prefix="m5-live-probe-")
+  @fs.mkdir("\{base}/dumps", recursive=true, permission=0o700)
+  @fs.mkdir("_build/m5-results", recursive=true)
+  let probes : Array[Json] = @async.with_task_group() <| group => {
+    let (input, writer) = @process.write_to_process()
+    let proxy_log = @process.redirect_to_file("\{base}/proxy.log", permission=0o600)
+    defer proxy_log.close()
+    let proxy = @process.spawn(
+      group,
+      codex,
+      [
+        "responses-api-proxy", "--http-shutdown",
+        "--server-info", "\{base}/server.json",
+        "--upstream-url", upstream,
+        "--dump-dir", "\{base}/dumps",
+      ],
+      inherit_env=false,
+      extra_env={ "PATH": "/usr/bin:/bin" },
+      stdin=input,
+      stdout=proxy_log,
+      stderr=proxy_log,
+      no_wait=true,
+    )
+    writer.write(key + "\n")
+    writer.close()
+    let port = @async.with_timeout(15_000, () => {
+      for ; !@fs.exists("\{base}/server.json"); {
+        if proxy.try_wait() is Some(_) { fail("relay proxy exited before startup") }
+        @async.sleep(100)
+      }
+      guard @json.parse(@fs.read_file("\{base}/server.json").text()) is {
+        "port": Number(port, ..), ..
+      } else { fail("invalid relay proxy server info") }
+      port.to_int()
+    })
+    let endpoint = "http://127.0.0.1:\{port}/v1/responses"
+    let values : Array[Json] = []
+    for index in 0..<10 {
+      let arm = if index % 2 == 0 { "shell" } else { "transparent" }
+      values.push(probe_one(endpoint, model, arm, window, index, base))
+      if index != 9 { @async.sleep(250) }
+    }
+    let _ = @shell.Cmd(
+      "curl",
+      ["--silent", "--show-error", "--max-time", "3", "http://127.0.0.1:\{port}/shutdown"],
+      inherit_env=false,
+      env={ "PATH": "/usr/bin:/bin" },
+    ).output(timeout_ms=5_000, max_output_bytes=8_192)
+    proxy.cancel()
+    values
+  }
+  let attempts_path =
+    "_build/m5-results/probe-attempts-window-\{window}.json"
+  @fs.write_file(attempts_path, probes.to_json().stringify(indent=2))
+  let parsed = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_probe.mbtx", attempts_path],
+  ).output(timeout_ms=120_000, max_output_bytes=262_144)
+  parsed.check()
+  @fs.write_file(
+    "_build/m5-results/probe-health-window-\{window}.json",
+    parsed.stdout(),
+  )
+  println(parsed.stdout())
+  @fs.rmdir(base, recursive=true)
+}

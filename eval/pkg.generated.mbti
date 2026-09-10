@@ -1,10 +1,51 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "ZSeanYves/Codex-MBTX/eval"
 
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn correct_output(Case, String) -> Bool
 
 pub fn failure_category(Audit, String, Bool, Bool, Bool, Bool, Int) -> String
+
+pub fn m5_attempt_summary(Array[M5Attempt]) -> M5AttemptSummary
+
+pub fn m5_cancellation_valid(M5Task, Bool, Bool) -> Bool
+
+pub fn m5_classify(M5ClassificationInput) -> String
+
+pub fn m5_correct_output(M5Task, String) -> Bool
+
+pub fn m5_decide(M5DecisionInput) -> M5Decision
+
+pub fn m5_failure_category(String, String, String, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool) -> String
+
+pub fn m5_manifest_valid(M5Task, Array[String]) -> Bool
+
+pub fn m5_pair_summary(Array[Int], Array[Int]) -> M5PairSummary raise
+
+pub fn m5_percentile(Array[Int], Int) -> Int raise
+
+pub fn m5_plan(String, Array[String], Int, Int, Int) -> M5Plan raise
+
+pub fn m5_process_suite() -> Array[M5Task]
+
+pub fn m5_prompt(M5Task) -> String
+
+pub fn m5_receipt_valid(M5Task, Json) -> Bool
+
+pub fn m5_relay_batch_valid(M5RelayHealth) -> Bool
+
+pub fn m5_relay_health_valid(M5RelayHealth) -> Bool
+
+pub fn m5_reliability_summary(Array[M5RunObservation]) -> M5ReliabilitySummary
+
+pub fn m5_script_suite() -> Array[M5Task]
+
+pub fn m5_streams_valid(M5Task, String, String, Int) -> Bool
 
 pub fn plan(String, Int) -> Plan raise
 
@@ -47,6 +88,9 @@ pub fn Audit::backend_ok(Self, String, Bool) -> Bool
 pub fn Audit::dump(Self, String) -> Unit
 pub fn Audit::event(Self, Json) -> Unit
 pub fn Audit::jsonl(Self, String) -> Unit
+pub fn Audit::m5_backend_observation(Self, Bool, Bool) -> String
+pub fn Audit::m5_observability(Self, Bool) -> String
+pub fn Audit::m5_relay_status(Self, Bool) -> String
 pub fn Audit::new() -> Self
 pub fn Audit::request(Self, String) -> Unit
 pub fn Audit::sse(Self, String) -> Unit
@@ -60,6 +104,217 @@ pub struct Case {
   editable : String?
   background : Bool
 } derive(ToJson)
+
+pub(all) struct M5Attempt {
+  attempt_id : String
+  retry_index : Int
+  http_status : Int?
+  started_ms : Int
+  first_byte_ms : Int?
+  completed_ms : Int?
+  stream_disconnected : Bool
+  provider_error : Bool
+  recovered : Bool
+  input_tokens : Int
+  cached_input_tokens : Int
+  output_tokens : Int
+  usage_complete : Bool
+  error_class : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5AttemptSummary {
+  attempts : Int
+  retry_count : Int
+  provider_errors : Int
+  transport_errors : Int
+  incomplete_attempts : Int
+  recovered_attempts : Int
+  missing_usage : Int
+  input_tokens : Int
+  cached_input_tokens : Int
+  output_tokens : Int
+  retry_input_tokens : Int
+  retry_cached_input_tokens : Int
+  retry_output_tokens : Int
+  retry_elapsed_ms : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5Block {
+  block_id : String
+  task : String
+  repetition : Int
+  batch_id : String
+  time_window : Int
+  order : Array[String]
+  relay_health : Json
+  runs : Array[Json]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5ClassificationInput {
+  relay_status : String
+  observability : String
+  backend_observation : String
+  completed : Bool
+  usage_complete : Bool
+  correct_output : Bool
+  inputs_preserved : Bool
+  workspace_clean : Bool
+  child_processes_clean : Bool
+  receipt_valid : Bool
+  trace_complete : Bool
+  argv_cwd_valid : Bool
+  approval_original_command : Bool
+  timeout : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5Decision {
+  status : String
+  reasons : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5DecisionInput {
+  semantic_zero_regression : Bool
+  safety_compatibility_ok : Bool
+  success_lower_bound_basis_points : Int
+  p95_upper_bound_basis_points : Int
+  key_task_regression : Bool
+  evidence_complete : Bool
+  backend_observable : Bool
+  artifacts_rebuildable : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5PairInput {
+  shell_ms : Array[Int]
+  transparent_ms : Array[Int]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5PairSummary {
+  count : Int
+  shell_median_ms : Int
+  transparent_median_ms : Int
+  median_delta_ms : Int
+  shell_wins : Int
+  transparent_wins : Int
+  ties : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5Plan {
+  schema_version : Int
+  seed : Int
+  mode : String
+  planned_blocks : Int
+  start_block : Int
+  blocks : Array[M5Block]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5RelayHealth {
+  probes : Int
+  successful_probes : Int
+  provider_errors : Int
+  transport_errors : Int
+  max_consecutive_failures : Int
+  first_byte_p95_ms : Int
+  arm_failure_rate_basis_points : Int
+  time_windows : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5ReliabilitySummary {
+  planned : Int
+  relay_clean : Int
+  successes : Int
+  attributable_successes : Int
+  provider_failures : Int
+  transport_failures : Int
+  missing_usage : Int
+  unknown_backend_observations : Int
+  backend_violations : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5Report {
+  schema_version : Int
+  experiment_id : String
+  mode : String
+  implementation_sha : String
+  binary_sha256 : String
+  evaluator_binary_sha256 : String
+  toolchain : String
+  platform : String
+  model : String
+  reasoning_effort : String
+  prompt_hash : String
+  fixture_hash : String
+  seed : Int
+  planned_blocks : Int
+  start_block : Int
+  tool_catalog : String
+  relay_health : M5RelayHealth
+  blocks : Array[M5Block]
+  runs : Array[M5RunObservation]
+  aggregates : Json
+  validity : Json
+  decision : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5RunObservation {
+  run_id : String
+  block_id : String
+  task : String
+  backend : String
+  started_ms : Int
+  monotonic_start_ms : Int?
+  monotonic_end_ms : Int?
+  ended_ms : Int?
+  first_response_ms : Int?
+  first_tool_ms : Int?
+  last_tool_ms : Int?
+  turn_completed_ms : Int?
+  process_launch_ms : Int?
+  process_exit_ms : Int?
+  stdout : String
+  stderr : String
+  exit_code : Int
+  workspace_manifest : Array[String]
+  attempts : Array[M5Attempt]
+  tool_counts : Map[String, Int]
+  input_tokens : Int
+  cached_input_tokens : Int
+  output_tokens : Int
+  relay_status : String
+  observability : String
+  backend_observation : String
+  completed : Bool
+  usage_complete : Bool
+  correct_output : Bool
+  inputs_preserved : Bool
+  workspace_clean : Bool
+  child_processes_clean : Bool
+  receipt_valid : Bool
+  trace_complete : Bool
+  argv_cwd_valid : Bool
+  approval_original_command : Bool
+  workspace_diff : Json
+  receipt : Json
+  process_trace : Json
+  failure_category : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct M5Task {
+  id : String
+  cohort : String
+  difficulty : String
+  prompt : String
+  inputs : Map[String, String]
+  expected : Json
+  expected_stdout : String
+  expected_stderr : String
+  expected_exit_code : Int
+  expected_manifest : Array[String]
+  editable : String?
+  background : Bool
+  fixture_nonce : String
+  receipt_path : String
+  oracle : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct Plan {
   planned_rollouts : Int

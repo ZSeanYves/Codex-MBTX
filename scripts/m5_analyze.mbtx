@@ -1,0 +1,1131 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+struct Report {
+  schema_version : Int
+  experiment_id : String
+  mode : String
+  implementation_sha : String
+  binary_sha256 : String
+  codex_binary_sha256 : String
+  mbtx_binary_sha256 : String
+  runner_binary_sha256 : String
+  evaluator_binary_sha256 : String
+  toolchain : String
+  platform : String
+  model : String
+  reasoning_effort : String
+  prompt_hash : String
+  fixture_hash : String
+  seed : Int
+  planned_blocks : Int
+  start_block : Int
+  tool_catalog : String
+  relay_health : Json
+  blocks : Array[Json]
+  runs : Array[Json]
+  aggregates : Json
+  validity : Json
+  decision : Json
+} derive(FromJson, ToJson)
+
+struct RelayHealth {
+  probes : Int
+  successful_probes : Int
+  provider_errors : Int
+  transport_errors : Int
+  max_consecutive_failures : Int
+  first_byte_p95_ms : Int
+  arm_failure_rate_basis_points : Int
+  time_windows : Int
+} derive(FromJson)
+
+struct Pair {
+  block_id : String
+  task : String
+  shell_ms : Int
+  transparent_ms : Int
+  shell_success : Bool
+  transparent_success : Bool
+} derive(ToJson)
+
+struct Interval {
+  estimate : Int
+  lower : Int
+  upper : Int
+} derive(ToJson)
+
+struct Analysis {
+  schema_version : Int
+  experiment_id : String
+  ci_method : String
+  bootstrap_iterations : Int
+  confidence_intervals_available : Bool
+  relay_clean_pairs_available : Bool
+  token_metrics_available : Bool
+  itt_planned_arms : Int
+  itt_recorded_arms : Int
+  itt_shell_successes : Int
+  itt_transparent_successes : Int
+  itt_shell_success_rate_basis_points : Int
+  itt_transparent_success_rate_basis_points : Int
+  itt_success_difference_basis_points : Int
+  pair_count : Int
+  shell_successes : Int
+  transparent_successes : Int
+  shell_p50_ms : Int
+  shell_p95_ms : Int
+  shell_p99_ms : Int
+  transparent_p50_ms : Int
+  transparent_p95_ms : Int
+  transparent_p99_ms : Int
+  shell_wins : Int
+  transparent_wins : Int
+  ties : Int
+  shell_input_tokens : Int
+  shell_cached_input_tokens : Int
+  shell_output_tokens : Int
+  transparent_input_tokens : Int
+  transparent_cached_input_tokens : Int
+  transparent_output_tokens : Int
+  shell_tool_calls : Int
+  transparent_tool_calls : Int
+  total_attempts : Int
+  retry_attempts : Int
+  recovered_attempts : Int
+  provider_attempts : Int
+  transport_attempts : Int
+  retry_input_tokens : Int
+  retry_cached_input_tokens : Int
+  retry_output_tokens : Int
+  retry_elapsed_ms : Int
+  success_difference_basis_points : Int
+  success_difference_ci : Interval
+  p95_difference_basis_points : Int
+  p95_difference_ci : Interval
+  pairs : Array[Pair]
+} derive(ToJson)
+
+fn field(run : Json, key : String) -> Json? {
+  match run {
+    Object(fields) => fields.get(key)
+    _ => None
+  }
+}
+
+fn text_field(run : Json, key : String) -> String {
+  match field(run, key) {
+    Some(String(value)) => value
+    _ => ""
+  }
+}
+
+fn bool_field(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(True) => true
+    _ => false
+  }
+}
+
+fn array_field(run : Json, key : String) -> Array[Json] {
+  match field(run, key) {
+    Some(Array(values)) => values
+    _ => []
+  }
+}
+
+fn object_field(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Object(_)) => true
+    _ => false
+  }
+}
+
+fn number_present(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Number(_, ..)) => true
+    _ => false
+  }
+}
+
+fn attempt_shape_valid(attempt : Json) -> Bool {
+  let strings = ["attempt_id"]
+  let numbers = [
+    "retry_index", "started_ms", "input_tokens", "cached_input_tokens",
+    "output_tokens",
+  ]
+  let bools = [
+    "stream_disconnected", "provider_error", "recovered", "usage_complete",
+  ]
+  let mut ok = true
+  for key in strings { ok = ok && field(attempt, key) is Some(String(_)) }
+  for key in numbers { ok = ok && number_present(attempt, key) }
+  for key in bools {
+    ok = ok && (field(attempt, key) is Some(True) || field(attempt, key) is Some(False))
+  }
+  ok
+}
+
+fn string_array_present(run : Json, key : String) -> Bool {
+  match field(run, key) {
+    Some(Array(values)) => values.all(item => item is String(_))
+    _ => false
+  }
+}
+
+fn attempts_shape_valid(run : Json) -> Bool {
+  match field(run, "attempts") {
+    Some(Array(values)) => values.all(attempt_shape_valid)
+    _ => false
+  }
+}
+
+fn tool_counts_shape_valid(run : Json) -> Bool {
+  match field(run, "tool_counts") {
+    Some(Object(fields)) => {
+      let mut ok = true
+      for _, value in fields { ok = ok && value is Number(_, ..) }
+      ok
+    }
+    _ => false
+  }
+}
+
+fn workspace_diff_shape_valid(run : Json) -> Bool {
+  match field(run, "workspace_diff") {
+    Some(Object(fields)) =>
+      fields.get("entries") is Some(Array(_)) &&
+      (fields.get("permissions_unchanged") is Some(True) ||
+        fields.get("permissions_unchanged") is Some(False)) &&
+      (fields.get("symlinks_unchanged") is Some(True) ||
+        fields.get("symlinks_unchanged") is Some(False))
+    _ => false
+  }
+}
+
+fn run_shape_valid(run : Json) -> Bool {
+  let strings = [
+    "run_id", "block_id", "task", "backend", "relay_status", "observability",
+    "backend_observation", "failure_category",
+  ]
+  let bools = [
+    "completed", "usage_complete", "correct_output", "inputs_preserved",
+    "workspace_clean", "child_processes_clean", "receipt_valid", "trace_complete",
+    "argv_cwd_valid", "approval_original_command",
+  ]
+  let numbers = [
+    "input_tokens", "cached_input_tokens", "output_tokens", "ended_ms",
+    "monotonic_start_ms", "monotonic_end_ms",
+  ]
+  let mut ok = number_present(run, "started_ms")
+  for key in strings { ok = ok && field(run, key) is Some(String(_)) }
+  for key in bools {
+    ok = ok && (field(run, key) is Some(True) || field(run, key) is Some(False))
+  }
+  for key in numbers { ok = ok && number_present(run, key) }
+  ok && timing_fields_valid(run) && field(run, "stdout") is Some(String(_)) &&
+    field(run, "stderr") is Some(String(_)) &&
+    number_present(run, "exit_code") &&
+    (text_field(run, "backend") == "shell" ||
+      text_field(run, "backend") == "transparent") &&
+    (text_field(run, "relay_status") == "clean" ||
+      text_field(run, "relay_status") == "provider_error" ||
+      text_field(run, "relay_status") == "transport_error") &&
+    (text_field(run, "observability") == "complete" ||
+      text_field(run, "observability") == "partial" ||
+      text_field(run, "observability") == "unobserved") &&
+    (text_field(run, "backend_observation") == "compliant" ||
+      text_field(run, "backend_observation") == "violation" ||
+      text_field(run, "backend_observation") == "unknown") &&
+    string_array_present(run, "workspace_manifest") &&
+    attempts_shape_valid(run) && tool_counts_shape_valid(run) &&
+    workspace_diff_shape_valid(run) && object_field(run, "receipt") &&
+    string_array_present(run, "process_trace")
+}
+
+fn timing_fields_valid(run : Json) -> Bool {
+  match (field(run, "monotonic_start_ms"), field(run, "monotonic_end_ms")) {
+    (Some(Number(start, ..)), Some(Number(end, ..))) => {
+      end >= start && start >= 0
+    }
+    _ => false
+  }
+}
+
+fn infrastructure_run(run : Json) -> Bool {
+  text_field(run, "relay_status") == "provider_error" ||
+    text_field(run, "relay_status") == "transport_error"
+}
+
+fn token_metrics_available(runs : Array[Json], pair_count : Int) -> Bool {
+  pair_count > 0 && !runs.is_empty() && runs.all(run =>
+    infrastructure_run(run) || bool_field(run, "usage_complete"))
+}
+
+fn tool_calls(run : Json) -> Int {
+  match field(run, "tool_counts") {
+    Some(Object(fields)) => {
+      let mut total = 0
+      for _, value in fields {
+        match value {
+          Number(number, ..) => total += number.to_int()
+          _ => ()
+        }
+      }
+      total
+    }
+    _ => 0
+  }
+}
+
+fn token_total(runs : Array[Json], backend : String, key : String) -> Int {
+  let mut total = 0
+  for run in runs {
+    if text_field(run, "backend") == backend {
+      total += number_field(run, key)
+    }
+  }
+  total
+}
+
+fn tool_total(runs : Array[Json], backend : String) -> Int {
+  let mut total = 0
+  for run in runs {
+    if text_field(run, "backend") == backend { total += tool_calls(run) }
+  }
+  total
+}
+
+fn clean_observed_run(run : Json) -> Bool {
+  text_field(run, "relay_status") == "clean" &&
+    text_field(run, "observability") == "complete" &&
+    text_field(run, "backend_observation") != "unknown"
+}
+
+fn validity_bool(value : Json, key : String) -> Bool {
+  match value {
+    Object(fields) => fields.get(key) is Some(True)
+    _ => false
+  }
+}
+
+fn block_runs_match_report(report : Report) -> Bool {
+  let seen_blocks : Array[String] = []
+  for block in report.blocks {
+    match block {
+      Object(fields) => {
+        let block_id = match fields.get("block_id") {
+          Some(String(value)) => value
+          _ => return false
+        }
+        if block_id.is_empty() || seen_blocks.contains(block_id) {
+          return false
+        }
+        seen_blocks.push(block_id)
+        let task = match fields.get("task") {
+          Some(String(value)) => value
+          _ => return false
+        }
+        let embedded = match fields.get("runs") {
+          Some(Array(values)) => values
+          _ => return false
+        }
+        guard fields.get("relay_health") is Some(Object(_)) else { return false }
+        guard fields.get("time_window") is Some(Number(_, ..)) else { return false }
+        let order_values = match fields.get("order") {
+          Some(Array(values)) => values
+          _ => return false
+        }
+        guard order_values.length() == 2 else { return false }
+        let order : Array[String] = []
+        for item in order_values {
+          match item {
+            String(value) if value == "shell" || value == "transparent" =>
+              order.push(value)
+            _ => return false
+          }
+        }
+        let top_level = report.runs.filter(run =>
+          text_field(run, "block_id") == block_id)
+        if embedded.length() != top_level.length() || top_level.length() > 2 {
+          return false
+        }
+        if top_level.any(run => text_field(run, "task") != task) {
+          return false
+        }
+        if top_level.length() == 2 &&
+          (top_level.filter(run => text_field(run, "backend") == order[0]).length() != 1 ||
+            top_level.filter(run => text_field(run, "backend") == order[1]).length() != 1) {
+          return false
+        }
+        let embedded_ids : Array[String] = []
+        for item in embedded {
+          match item {
+            Object(item_fields) => match item_fields.get("run_id") {
+              Some(String(run_id)) => {
+                if run_id.is_empty() || embedded_ids.contains(run_id) ||
+                  !top_level.any(run => text_field(run, "run_id") == run_id) {
+                  return false
+                }
+                embedded_ids.push(run_id)
+              }
+              _ => return false
+            }
+            _ => return false
+          }
+        }
+      }
+      _ => return false
+    }
+  }
+  let seen_runs : Array[String] = []
+  for run in report.runs {
+    let run_id = text_field(run, "run_id")
+    if run_id.is_empty() || seen_runs.contains(run_id) {
+      return false
+    }
+    seen_runs.push(run_id)
+    if !report.blocks.any(block =>
+      match block {
+        Object(fields) => fields.get("block_id") == Some(text_field(run, "block_id").to_json())
+        _ => false
+      }) {
+      return false
+    }
+  }
+  seen_runs.length() == report.runs.length()
+}
+
+fn block_windows_valid(report : Report) -> Bool {
+  let required = if report.mode == "formal" { 3 } else { 1 }
+  let windows : Array[Int] = []
+  for block in report.blocks {
+    let value = match field(block, "time_window") {
+      Some(Number(number, ..)) => number.to_int()
+      _ => return false
+    }
+    if value < 1 || value > required { return false }
+    if !windows.contains(value) { windows.push(value) }
+  }
+  windows.length() >= required
+}
+
+fn block_health_valid(report : Report) -> Bool {
+  if report.blocks.is_empty() { return false }
+  report.blocks.all(block => {
+    match field(block, "relay_health") {
+      Some(value) => try {
+        let health : RelayHealth = @json.from_json(value)
+        health.probes >= 10 && health.successful_probes >= 9 &&
+          health.provider_errors + health.transport_errors <= 1 &&
+          health.max_consecutive_failures < 2 &&
+          health.first_byte_p95_ms <= 15_000 && health.time_windows >= 1 &&
+          health.arm_failure_rate_basis_points >= 0 &&
+          health.arm_failure_rate_basis_points <= 10_000
+      } catch {
+        _ => false
+      }
+      None => false
+    }
+  })
+}
+
+fn formal_cohort_complete(report : Report, pairs : Array[Pair]) -> Bool {
+  if report.mode != "formal" || report.start_block != 0 ||
+    report.blocks.length() != report.planned_blocks ||
+    report.planned_blocks < 160 || !block_windows_valid(report) {
+    return false
+  }
+  let required_tasks = [
+    "host_literal_argv", "host_stdin_stream", "host_path_inventory",
+    "host_background", "host_large_output", "host_exit_recovery",
+    "host_cwd_environment", "host_cancel_timeout",
+  ]
+  required_tasks.all(task => {
+    let planned = report.blocks.filter(block =>
+      match block {
+        Object(fields) => fields.get("task") == Some(task.to_json())
+        _ => false
+      }).length()
+    let clean = pairs.filter(pair => pair.task == task).length()
+    let minimum_clean = if planned * 9 / 10 < 18 { 18 } else { planned * 9 / 10 }
+    planned >= 20 && planned <= 30 && clean >= minimum_clean
+  })
+}
+
+fn number_field(value : Json, key : String) -> Int {
+  match value {
+    Object(fields) => match fields.get(key) {
+      Some(Number(number, ..)) => number.to_int()
+      _ => 0
+    }
+    _ => 0
+  }
+}
+
+fn attempt_stats(runs : Array[Json]) -> (Int, Int, Int, Int, Int, Int, Int, Int, Int) {
+  let mut total = 0
+  let mut retries = 0
+  let mut recovered = 0
+  let mut provider = 0
+  let mut transport = 0
+  let mut retry_input = 0
+  let mut retry_cached = 0
+  let mut retry_output = 0
+  let mut retry_elapsed = 0
+  for run in runs {
+    for attempt in array_field(run, "attempts") {
+      total += 1
+      if number_field(attempt, "retry_index") > 0 { retries += 1 }
+      if number_field(attempt, "retry_index") > 0 {
+        retry_input += number_field(attempt, "input_tokens")
+        retry_cached += number_field(attempt, "cached_input_tokens")
+        retry_output += number_field(attempt, "output_tokens")
+        let started = number_field(attempt, "started_ms")
+        let completed = number_field(attempt, "completed_ms")
+        if completed >= started { retry_elapsed += completed - started }
+      }
+      if bool_field(attempt, "recovered") { recovered += 1 }
+      if bool_field(attempt, "provider_error") ||
+        number_field(attempt, "http_status") >= 400 {
+        provider += 1
+      }
+      if bool_field(attempt, "stream_disconnected") { transport += 1 }
+    }
+  }
+  (
+    total,
+    retries,
+    recovered,
+    provider,
+    transport,
+    retry_input,
+    retry_cached,
+    retry_output,
+    retry_elapsed,
+  )
+}
+
+fn int_value(value : Json) -> Int? {
+  match value {
+    Number(number, ..) => Some(number.to_int())
+    String(text) => try {
+      match @json.parse(text) {
+        Number(number, ..) => Some(number.to_int())
+        _ => None
+      }
+    } catch {
+      _ => None
+    }
+    _ => None
+  }
+}
+
+fn int_field(run : Json, key : String) -> Int? {
+  match field(run, key) {
+    Some(value) => int_value(value)
+    None => None
+  }
+}
+
+fn elapsed(run : Json) -> Int? {
+  match (int_field(run, "started_ms"), int_field(run, "turn_completed_ms")) {
+    (Some(start), Some(end)) if end >= start => Some(end - start)
+    _ => match (int_field(run, "process_launch_ms"), int_field(run, "process_exit_ms")) {
+      (Some(start), Some(end)) if end >= start => Some(end - start)
+      _ => None
+    }
+  }
+}
+
+fn percentile(values : Array[Int], p : Int) -> Int {
+  if values.is_empty() { return 0 }
+  let sorted = values.copy()
+  sorted.sort()
+  sorted[(sorted.length() - 1) * p / 100]
+}
+
+fn mean(values : Array[Int]) -> Int {
+  if values.is_empty() { return 0 }
+  let mut total = 0L
+  for value in values { total += value.to_int64() }
+  (total / values.length().to_int64()).to_int()
+}
+
+fn lcg(state : Int64) -> Int64 {
+  (state * 1_103_515_245L + 12_345L) % 2_147_483_647L
+}
+
+fn bootstrap_mean(values : Array[Int], seed : Int, success_scale : Int) -> Interval {
+  if values.is_empty() {
+    return { estimate: 0, lower: 0, upper: 0 }
+  }
+  let estimate = mean(values)
+  let mut state = seed.to_int64().abs() + 1L
+  let bootstrap : Array[Int] = []
+  for _ in 0..<2000 {
+    let sample : Array[Int] = []
+    for _ in 0..<values.length() {
+      state = lcg(state)
+      let index = (state % values.length().to_int64()).to_int()
+      sample.push(values[index])
+    }
+    bootstrap.push(mean(sample) * success_scale)
+  }
+  bootstrap.sort()
+  {
+    estimate: estimate * success_scale,
+    lower: bootstrap[50],
+    upper: bootstrap[1949],
+  }
+}
+
+fn bootstrap_p95(pairs : Array[Pair], seed : Int) -> Interval {
+  if pairs.is_empty() {
+    return { estimate: 10_000, lower: 10_000, upper: 10_000 }
+  }
+  let point_shell = percentile(pairs.map(p => p.shell_ms), 95)
+  let point_transparent = percentile(pairs.map(p => p.transparent_ms), 95)
+  let estimate = if point_shell == 0 {
+    10_000
+  } else {
+    (point_transparent - point_shell) * 10_000 / point_shell
+  }
+  let mut state = seed.to_int64().abs() + 23L
+  let bootstrap : Array[Int] = []
+  for _ in 0..<2000 {
+    let shell : Array[Int] = []
+    let transparent : Array[Int] = []
+    for _ in 0..<pairs.length() {
+      state = lcg(state)
+      let index = (state % pairs.length().to_int64()).to_int()
+      shell.push(pairs[index].shell_ms)
+      transparent.push(pairs[index].transparent_ms)
+    }
+    let shell_p95 = percentile(shell, 95)
+    let transparent_p95 = percentile(transparent, 95)
+    bootstrap.push(if shell_p95 == 0 {
+      10_000
+    } else {
+      (transparent_p95 - shell_p95) * 10_000 / shell_p95
+    })
+  }
+  bootstrap.sort()
+  { estimate, lower: bootstrap[50], upper: bootstrap[1949] }
+}
+
+fn make_pairs(runs : Array[Json]) -> Array[Pair] {
+  let shell_ms : Map[String, Int] = Map([])
+  let transparent_ms : Map[String, Int] = Map([])
+  let shell_counts : Map[String, Int] = Map([])
+  let transparent_counts : Map[String, Int] = Map([])
+  let shell_ok : Map[String, Bool] = Map([])
+  let transparent_ok : Map[String, Bool] = Map([])
+  let tasks : Map[String, String] = Map([])
+  for run in runs {
+    let block_id = text_field(run, "block_id")
+    let backend = text_field(run, "backend")
+    let relay = text_field(run, "relay_status")
+    let observability = text_field(run, "observability")
+    let usage = bool_field(run, "usage_complete")
+    if block_id.is_empty() || relay != "clean" || observability != "complete" ||
+      !usage || text_field(run, "backend_observation") == "unknown" {
+      continue
+    }
+    guard elapsed(run) is Some(duration) else { continue }
+    let success = text_field(run, "failure_category") == "none" &&
+      bool_field(run, "correct_output") &&
+      bool_field(run, "inputs_preserved") &&
+      bool_field(run, "workspace_clean") &&
+      bool_field(run, "child_processes_clean") &&
+      bool_field(run, "receipt_valid") &&
+      bool_field(run, "trace_complete") &&
+      bool_field(run, "argv_cwd_valid") &&
+      bool_field(run, "approval_original_command")
+    tasks[block_id] = text_field(run, "task")
+    if backend == "shell" {
+      shell_ms[block_id] = duration
+      shell_ok[block_id] = success
+      shell_counts[block_id] = shell_counts.get(block_id).unwrap_or(0) + 1
+    } else if backend == "transparent" {
+      transparent_ms[block_id] = duration
+      transparent_ok[block_id] = success
+      transparent_counts[block_id] = transparent_counts.get(block_id).unwrap_or(0) + 1
+    }
+  }
+  let pairs : Array[Pair] = []
+  for block_id, shell_time in shell_ms {
+    guard transparent_ms.get(block_id) is Some(transparent_time) else { continue }
+    guard shell_counts.get(block_id) == Some(1) &&
+      transparent_counts.get(block_id) == Some(1) else { continue }
+    pairs.push({
+      block_id,
+      task: tasks.get(block_id).unwrap_or("unknown"),
+      shell_ms: shell_time,
+      transparent_ms: transparent_time,
+      shell_success: shell_ok.get(block_id).unwrap_or(false),
+      transparent_success: transparent_ok.get(block_id).unwrap_or(false),
+    })
+  }
+  pairs
+}
+
+fn run_success(run : Json) -> Bool {
+  (text_field(run, "failure_category") == "none" &&
+    // Unknown backend use is retained in the ITT denominator but cannot
+    // contribute to its success numerator.
+    text_field(run, "backend_observation") == "compliant" &&
+    bool_field(run, "completed") &&
+    bool_field(run, "usage_complete") &&
+    bool_field(run, "correct_output") &&
+    bool_field(run, "inputs_preserved") &&
+    bool_field(run, "workspace_clean") &&
+    bool_field(run, "child_processes_clean") &&
+    bool_field(run, "receipt_valid") &&
+    bool_field(run, "trace_complete") &&
+    bool_field(run, "argv_cwd_valid") &&
+    bool_field(run, "approval_original_command"))
+}
+
+fn itt_successes(runs : Array[Json], backend : String) -> Int {
+  runs.filter(run => text_field(run, "backend") == backend && run_success(run)).length()
+}
+
+fn csv(pairs : Array[Pair]) -> String {
+  let lines = ["block_id,task,shell_ms,transparent_ms,shell_success,transparent_success"]
+  for pair in pairs {
+    lines.push(
+      pair.block_id + "," + pair.task + "," + pair.shell_ms.to_string() + "," +
+        pair.transparent_ms.to_string() + "," + pair.shell_success.to_string() +
+        "," + pair.transparent_success.to_string(),
+    )
+  }
+  lines.join("\n") + "\n"
+}
+
+fn augmented_validity(
+  prior : Json,
+  pair_count : Int,
+  token_metrics_available : Bool,
+  block_health_valid : Bool,
+) -> Json {
+  let has_pairs = pair_count > 0
+  match prior {
+    Object(fields) => {
+      fields["analysis_pair_count"] = pair_count.to_json()
+      fields["confidence_intervals_computed"] = has_pairs.to_json()
+      fields["intention_to_treat_retained"] = true
+      fields["relay_clean_conditional"] = has_pairs.to_json()
+      fields["token_metrics_available"] = token_metrics_available.to_json()
+      fields["block_health_valid"] = block_health_valid.to_json()
+      Json::object(fields)
+    }
+    _ => {
+      "prior": prior,
+      "analysis_pair_count": pair_count.to_json(),
+      "confidence_intervals_computed": has_pairs.to_json(),
+      "intention_to_treat_retained": true,
+      "relay_clean_conditional": has_pairs.to_json(),
+      "token_metrics_available": token_metrics_available.to_json(),
+      "block_health_valid": block_health_valid.to_json(),
+    }
+  }
+}
+
+fn decision(
+  report : Report,
+  pairs : Array[Pair],
+  success_ci : Interval,
+  p95_ci : Interval,
+) -> Json {
+  let mut semantic_ok = true
+  let mut safety_ok = true
+  let relay_batch_valid = validity_bool(report.validity, "relay_batch_valid")
+  let windows_valid = block_windows_valid(report)
+  let health_snapshots_valid = block_health_valid(report)
+  let runtime_present = validity_bool(report.validity, "runtime_artifact_present")
+  let runtime_valid = validity_bool(report.validity, "runtime_artifact_valid")
+  let runtime_complete = validity_bool(
+    report.validity,
+    "runtime_artifact_complete",
+  )
+  let replay_present = validity_bool(report.validity, "replay_artifact_present")
+  let replay_valid = validity_bool(report.validity, "replay_artifact_valid")
+  let replay_complete = validity_bool(
+    report.validity,
+    "replay_artifact_complete",
+  )
+  let cross_platform_declared = validity_bool(
+    report.validity,
+    "deterministic_cross_platform_valid",
+  )
+  let deterministic_manifest_valid = validity_bool(
+    report.validity,
+    "deterministic_manifest_valid",
+  )
+  let cross_platform = cross_platform_declared && deterministic_manifest_valid
+  let artifacts_rebuildable = validity_bool(
+    report.validity,
+    "artifacts_rebuildable",
+  )
+  let deterministic_failure = (runtime_present && !runtime_valid) ||
+    (replay_present && !replay_valid)
+  let mut evidence_complete = relay_batch_valid &&
+    windows_valid &&
+    health_snapshots_valid &&
+    report.blocks.length() > 0 &&
+    report.runs.length() == report.blocks.length() * 2 &&
+    block_runs_match_report(report)
+  let mut clean_runs = 0
+  let mut shape_invalid = 0
+  for run in report.runs {
+    let observable = clean_observed_run(run)
+    if !run_shape_valid(run) {
+      evidence_complete = false
+      shape_invalid += 1
+    }
+    if infrastructure_run(run) {
+      // Provider and transport failures stay in the ITT denominator. They do
+      // not invalidate the relay-clean conditional analysis by themselves.
+      if text_field(run, "failure_category") != "infrastructure_unavailable" {
+        evidence_complete = false
+      }
+    } else if observable {
+      clean_runs += 1
+      if
+        (!bool_field(run, "correct_output") ||
+          !bool_field(run, "completed") ||
+          !bool_field(run, "usage_complete") ||
+          !bool_field(run, "inputs_preserved") ||
+          !bool_field(run, "workspace_clean") ||
+          !bool_field(run, "child_processes_clean") ||
+          !bool_field(run, "receipt_valid") ||
+          !bool_field(run, "trace_complete") ||
+          !bool_field(run, "argv_cwd_valid")) {
+        semantic_ok = false
+      }
+      if
+        (text_field(run, "backend_observation") == "violation" ||
+          !bool_field(run, "approval_original_command")) {
+        safety_ok = false
+      }
+    } else {
+      evidence_complete = false
+    }
+  }
+  if clean_runs == 0 { evidence_complete = false }
+  let reasons : Array[String] = []
+  if !relay_batch_valid { reasons.push("relay batch health invalid") }
+  if !windows_valid { reasons.push("block time-window coverage is invalid") }
+  if !health_snapshots_valid {
+    reasons.push("one or more blocks have an invalid relay health snapshot")
+  }
+  if report.blocks.length() == 0 {
+    reasons.push("no planned blocks")
+  } else if report.runs.length() != report.blocks.length() * 2 {
+    reasons.push("run count does not match planned pairs")
+  }
+  if !block_runs_match_report(report) {
+    reasons.push("embedded block runs do not match top-level runs")
+  }
+  if clean_runs == 0 { reasons.push("no clean observed runs") }
+  if shape_invalid > 0 {
+    reasons.push("run schema invalid: " + shape_invalid.to_string())
+  }
+  if report.mode != "formal" {
+    reasons.push("pilot or script cohort cannot produce a default-backend decision")
+  }
+  if !formal_cohort_complete(report, pairs) {
+    reasons.push("formal process cohort is incomplete")
+  }
+  if deterministic_failure {
+    reasons.push("deterministic runtime or replay regression")
+  } else if !runtime_present || !replay_present {
+    reasons.push("deterministic runtime/replay artifact is missing")
+  }
+  if !runtime_complete || !replay_complete {
+    reasons.push("deterministic runtime/replay sample size is below the formal gate")
+  }
+  if !cross_platform {
+    reasons.push("Linux and macOS deterministic evidence is not both present")
+  }
+  if !deterministic_manifest_valid {
+    reasons.push("deterministic platform manifest is missing or invalid")
+  }
+  if !artifacts_rebuildable {
+    reasons.push("saved artifacts cannot rebuild the report")
+  }
+  if !semantic_ok { reasons.push("deterministic semantic or lifecycle regression") }
+  if !safety_ok { reasons.push("approval/sandbox/backend compatibility regression") }
+  if !formal_cohort_complete(report, pairs) {
+    reasons.push("fewer than preregistered paired samples")
+  }
+  if !pairs.is_empty() && success_ci.lower < -200 {
+    reasons.push("success-rate lower confidence bound is below -2 percentage points")
+  }
+  if !pairs.is_empty() && p95_ci.upper > 500 {
+    reasons.push("p95 latency upper confidence bound exceeds +5 percent")
+  }
+  if !evidence_complete { reasons.push("evidence is partial or backend observation is unknown") }
+  let status = if !semantic_ok || !safety_ok || deterministic_failure {
+    "NO_GO"
+  } else if formal_cohort_complete(report, pairs) &&
+    evidence_complete && runtime_complete && replay_complete && cross_platform &&
+    artifacts_rebuildable &&
+    success_ci.lower >= -200 &&
+    p95_ci.upper <= 500 {
+    "GO_DEFAULT"
+  } else if formal_cohort_complete(report, pairs) &&
+    evidence_complete && runtime_complete && replay_complete && cross_platform &&
+    artifacts_rebuildable {
+    "OPT_IN_ONLY"
+  } else {
+    "INCONCLUSIVE"
+  }
+  {
+    "status": status,
+    "reasons": reasons.to_json(),
+  }
+}
+
+fn markdown(report : Report, analysis : Analysis, final_decision : Json) -> String {
+  [
+    "# M5 Codex-MBTX Decision Report",
+    "",
+    "Experiment: " + report.experiment_id + ". Schema: 5.",
+    "Implementation: " + report.implementation_sha + ". Platform: " +
+      report.platform + ". Model: " + report.model + ".",
+    "",
+    "## Execution Summary",
+    "",
+    "B0-shell, B1-transparent and B2-bare-proxy are kept separate. " +
+      "Provider/transport failures and unknown observations remain infrastructure/evidence states.",
+    "",
+    "## Relay and Validity",
+    "",
+    "Saved validity: " + report.validity.stringify() + ".",
+    "Planned runs: " + report.blocks.length().to_string() +
+      " blocks; recorded runs: " + report.runs.length().to_string() + ".",
+    "",
+    "## Intention-to-treat",
+    "",
+    "Planned arms: " + analysis.itt_planned_arms.to_string() + "; recorded arms: " +
+      analysis.itt_recorded_arms.to_string() + ". Shell success rate: " +
+      analysis.itt_shell_success_rate_basis_points.to_string() + " bp; Transparent success rate: " +
+      analysis.itt_transparent_success_rate_basis_points.to_string() + " bp; difference: " +
+      analysis.itt_success_difference_basis_points.to_string() + " bp. Provider/transport, timeout and missing-usage runs remain in this denominator.",
+    "",
+    "## Relay-clean Paired Analysis",
+    "",
+    "Paired blocks: " + analysis.pair_count.to_string() + ".",
+    "Win/tie/loss: shell " + analysis.shell_wins.to_string() + ", transparent " +
+      analysis.transparent_wins.to_string() + ", ties " +
+      (analysis.pair_count - analysis.shell_wins - analysis.transparent_wins).to_string() + ".",
+    "Attempts: total " + analysis.total_attempts.to_string() + ", retries " +
+      analysis.retry_attempts.to_string() + ", recovered " +
+      analysis.recovered_attempts.to_string() + ", provider " +
+      analysis.provider_attempts.to_string() + ", transport " +
+      analysis.transport_attempts.to_string() + ". Retry token cost: input " +
+      analysis.retry_input_tokens.to_string() + ", cached " +
+      analysis.retry_cached_input_tokens.to_string() + ", output " +
+      analysis.retry_output_tokens.to_string() + "; retry elapsed " +
+      analysis.retry_elapsed_ms.to_string() + " ms.",
+    "Total tokens: shell input/cached/output " +
+      analysis.shell_input_tokens.to_string() + "/" +
+      analysis.shell_cached_input_tokens.to_string() + "/" +
+      analysis.shell_output_tokens.to_string() + "; transparent input/cached/output " +
+      analysis.transparent_input_tokens.to_string() + "/" +
+      analysis.transparent_cached_input_tokens.to_string() + "/" +
+      analysis.transparent_output_tokens.to_string() + ". Tool calls: shell " +
+      analysis.shell_tool_calls.to_string() + ", transparent " +
+      analysis.transparent_tool_calls.to_string() + ".",
+    "Success difference (basis points): " +
+      analysis.success_difference_basis_points.to_string() +
+      "; 95% bootstrap interval: " +
+      (if analysis.confidence_intervals_available {
+        ToJson::to_json(analysis.success_difference_ci).stringify()
+      } else {
+        "unavailable (no relay-clean paired samples)"
+      }) + ".",
+    "p95 difference (basis points): " +
+      analysis.p95_difference_basis_points.to_string() +
+      "; 95% bootstrap interval: " +
+      (if analysis.confidence_intervals_available {
+        ToJson::to_json(analysis.p95_difference_ci).stringify()
+      } else {
+        "unavailable (no relay-clean paired samples)"
+      }) + ".",
+    "",
+    "## Decision",
+    "",
+    final_decision.stringify(),
+    "",
+    "A missing health gate, insufficient paired samples or unknown backend observation is INCONCLUSIVE, not a backend failure. Cost is not inferred without independent price data.",
+    "",
+    "## Reproduction",
+    "",
+    "Use report.json, analysis.json, pairs.csv, plan.json, relay-health.json, the saved hashes and the exact runner command.",
+  ].join("\n") + "\n"
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() == 1 else {
+    fail("usage: moon run scripts/m5_analyze.mbtx")
+  }
+  guard @fs.exists("_build/m5-results/report.json") else {
+    fail("missing _build/m5-results/report.json")
+  }
+  let report : Report = @json.from_json(
+    @json.parse(@fs.read_file("_build/m5-results/report.json").text()),
+  )
+  guard report.schema_version == 5 else { fail("expected M5 schema version 5") }
+  let pairs = make_pairs(report.runs)
+  let shell_times = pairs.map(p => p.shell_ms)
+  let transparent_times = pairs.map(p => p.transparent_ms)
+  let shell_successes = pairs.filter(p => p.shell_success).length()
+  let transparent_successes = pairs.filter(p => p.transparent_success).length()
+  let shell_wins = pairs.filter(p => p.shell_ms < p.transparent_ms).length()
+  let transparent_wins = pairs.filter(p => p.transparent_ms < p.shell_ms).length()
+  let success_deltas = pairs.map(p =>
+    (if p.transparent_success { 10_000 } else { 0 }) -
+      (if p.shell_success { 10_000 } else { 0 }))
+  let success_ci = bootstrap_mean(success_deltas, report.seed, 1)
+  let shell_p95 = percentile(shell_times, 95)
+  let transparent_p95 = percentile(transparent_times, 95)
+  let p95_delta_basis_points = if shell_p95 == 0 {
+    10_000
+  } else {
+    (transparent_p95 - shell_p95) * 10_000 / shell_p95
+  }
+  let p95_ci = bootstrap_p95(pairs, report.seed + 17)
+  let (
+    total_attempts,
+    retry_attempts,
+    recovered_attempts,
+    provider_attempts,
+    transport_attempts,
+    retry_input_tokens,
+    retry_cached_input_tokens,
+    retry_output_tokens,
+    retry_elapsed_ms,
+  ) =
+    attempt_stats(report.runs)
+  let analysis : Analysis = {
+    schema_version: 5,
+    experiment_id: report.experiment_id,
+    ci_method: "paired nonparametric bootstrap",
+    bootstrap_iterations: 2_000,
+    confidence_intervals_available: !pairs.is_empty(),
+    relay_clean_pairs_available: !pairs.is_empty(),
+    token_metrics_available: token_metrics_available(report.runs, pairs.length()),
+    itt_planned_arms: report.planned_blocks * 2,
+    itt_recorded_arms: report.runs.length(),
+    itt_shell_successes: itt_successes(report.runs, "shell"),
+    itt_transparent_successes: itt_successes(report.runs, "transparent"),
+    itt_shell_success_rate_basis_points: if report.planned_blocks <= 0 {
+      0
+    } else {
+      itt_successes(report.runs, "shell") * 10_000 / report.planned_blocks
+    },
+    itt_transparent_success_rate_basis_points: if report.planned_blocks <= 0 {
+      0
+    } else {
+      itt_successes(report.runs, "transparent") * 10_000 / report.planned_blocks
+    },
+    itt_success_difference_basis_points: if report.planned_blocks <= 0 {
+      0
+    } else {
+      (itt_successes(report.runs, "transparent") -
+        itt_successes(report.runs, "shell")) * 10_000 / report.planned_blocks
+    },
+    pair_count: pairs.length(),
+    shell_successes,
+    transparent_successes,
+    shell_p50_ms: percentile(shell_times, 50),
+    shell_p95_ms: shell_p95,
+    shell_p99_ms: percentile(shell_times, 99),
+    transparent_p50_ms: percentile(transparent_times, 50),
+    transparent_p95_ms: transparent_p95,
+    transparent_p99_ms: percentile(transparent_times, 99),
+    shell_wins,
+    transparent_wins,
+    ties: pairs.length() - shell_wins - transparent_wins,
+    shell_input_tokens: token_total(report.runs, "shell", "input_tokens"),
+    shell_cached_input_tokens: token_total(
+      report.runs,
+      "shell",
+      "cached_input_tokens",
+    ),
+    shell_output_tokens: token_total(report.runs, "shell", "output_tokens"),
+    transparent_input_tokens: token_total(
+      report.runs,
+      "transparent",
+      "input_tokens",
+    ),
+    transparent_cached_input_tokens: token_total(
+      report.runs,
+      "transparent",
+      "cached_input_tokens",
+    ),
+    transparent_output_tokens: token_total(
+      report.runs,
+      "transparent",
+      "output_tokens",
+    ),
+    shell_tool_calls: tool_total(report.runs, "shell"),
+    transparent_tool_calls: tool_total(report.runs, "transparent"),
+    total_attempts,
+    retry_attempts,
+    recovered_attempts,
+    provider_attempts,
+    transport_attempts,
+    retry_input_tokens,
+    retry_cached_input_tokens,
+    retry_output_tokens,
+    retry_elapsed_ms,
+    success_difference_basis_points: if pairs.is_empty() {
+      0
+    } else {
+      (transparent_successes - shell_successes) * 10_000 / pairs.length()
+    },
+    success_difference_ci: success_ci,
+    p95_difference_basis_points: p95_delta_basis_points,
+    p95_difference_ci: p95_ci,
+    pairs,
+  }
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  let analysis_json = ToJson::to_json(analysis).stringify()
+  @fs.write_file("_build/m5-results/analysis.json", analysis_json)
+  @fs.write_file("_build/m5-results/pairs.csv", csv(pairs))
+  let updated_aggregates : Json = {
+    "prior": report.aggregates,
+    "analysis": @json.parse(analysis_json),
+  }
+  let updated_report : Report = {
+    ..report,
+    aggregates: updated_aggregates,
+    validity: augmented_validity(
+      report.validity,
+      pairs.length(),
+      token_metrics_available(report.runs, pairs.length()),
+      block_health_valid(report),
+    ),
+    decision: decision(report, pairs, success_ci, p95_ci),
+  }
+  @fs.write_file(
+    "_build/m5-results/report.json",
+    ToJson::to_json(updated_report).stringify(),
+  )
+  @fs.write_file(
+    "_build/m5-results/report.md",
+    markdown(updated_report, analysis, updated_report.decision),
+  )
+  println(analysis_json)
+}
