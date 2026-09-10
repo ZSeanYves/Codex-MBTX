@@ -301,13 +301,39 @@ async fn main {
     }
     None => 3
   }
-  let build = @shell.Cmd(
-    "moon",
-    ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"],
-  ).output(timeout_ms=120_000)
-  build.check()
-  guard @json.parse(build.stdout()) is { "artifacts_path": [String(mbtx)], .. } else {
-    fail("missing native MBTX artifact")
+  let mbtx = match @env.get_env_var("M5_MBTX") {
+    Some(path) => {
+      guard @fs.exists(path) else {
+        fail("M5_MBTX does not exist: " + path)
+      }
+      @fs.realpath(path)
+    }
+    None => {
+      let build = @shell.Cmd(
+        "moon",
+        [
+          "run", "--build-only", "--output-json", "--target", "native",
+          "cmd/mbtx",
+        ],
+      ).output(timeout_ms=120_000)
+      if build.exit_code() != 0 {
+        fail(
+          "native MBTX build failed with exit " +
+          build.exit_code().to_string() +
+          "\nstdout:\n" +
+          build.stdout() +
+          "\nstderr:\n" +
+          build.stderr(),
+        )
+      }
+      guard @json.parse(build.stdout()) is {
+        "artifacts_path": [String(path)],
+        ..
+      } else {
+        fail("missing native MBTX artifact")
+      }
+      path
+    }
   }
   let launcher_build = @shell.Cmd(
     "cargo",

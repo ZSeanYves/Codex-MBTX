@@ -132,6 +132,43 @@ async fn toolchain() -> String {
   @shell.Cmd("moon", ["version", "--all"]).output().stdout().trim().to_owned()
 }
 
+async fn resolve_mbtx() -> String {
+  match @env.get_env_var("M5_MBTX") {
+    Some(path) => {
+      guard @fs.exists(path) else {
+        fail("M5_MBTX does not exist: " + path)
+      }
+      @fs.realpath(path)
+    }
+    None => {
+      let build = @shell.Cmd(
+        "moon",
+        [
+          "run", "--build-only", "--output-json", "--target", "native",
+          "cmd/mbtx",
+        ],
+      ).output(timeout_ms=120_000)
+      if build.exit_code() != 0 {
+        fail(
+          "native MBTX build failed with exit " +
+          build.exit_code().to_string() +
+          "\nstdout:\n" +
+          build.stdout() +
+          "\nstderr:\n" +
+          build.stderr(),
+        )
+      }
+      guard @json.parse(build.stdout()) is {
+        "artifacts_path": [String(mbtx)],
+        ..
+      } else {
+        fail("missing native MBTX artifact")
+      }
+      mbtx
+    }
+  }
+}
+
 /// Exercise the same host-command lifecycle through the direct process path
 /// and through `mbtx exec --`. The child is deliberately long-lived for stop,
 /// timeout and cancel cases so the parent must reap it after cancellation.
@@ -385,14 +422,7 @@ async fn main {
   }
   let cold_target = env_int("M5_COLD_RUNS", 200)
   let warm_target = env_int("M5_WARM_RUNS", 1000)
-  let build = @shell.Cmd(
-    "moon",
-    ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"],
-  ).output(timeout_ms=120_000)
-  build.check()
-  guard @json.parse(build.stdout()) is { "artifacts_path": [String(mbtx)], .. } else {
-    fail("missing native MBTX artifact")
-  }
+  let mbtx = resolve_mbtx()
   let all : Array[Sample] = []
   for backend in ["shell", "bare-proxy"] {
     for phase in ["cold", "warm"] {

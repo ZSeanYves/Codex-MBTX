@@ -131,8 +131,14 @@ jobs:
         run: moon update
       - name: Collect formal Linux deterministic artifacts
         run: |
-          M5_COLD_RUNS=200 M5_WARM_RUNS=1000 moon run scripts/m5_runtime.mbtx
-          M5_REPLAY_REPETITIONS=3 moon run scripts/m5_replay.mbtx
+          set -euo pipefail
+          moon version --all
+          mkdir -p _build/m5-results
+          moon run --build-only --output-json --target native cmd/mbtx > _build/m5-mbtx-build.json
+          MBTX=$(python3 -c 'import json; print(json.load(open("_build/m5-mbtx-build.json"))["artifacts_path"][0])')
+          test -x "$MBTX"
+          M5_MBTX="$MBTX" M5_COLD_RUNS=200 M5_WARM_RUNS=1000 moon run scripts/m5_runtime.mbtx
+          M5_MBTX="$MBTX" M5_REPLAY_REPETITIONS=3 moon run scripts/m5_replay.mbtx
           mkdir -p _build/m5-platform/linux
           cp _build/m5-results/runtime.json _build/m5-platform/linux/runtime.json
           cp _build/m5-results/replay.json _build/m5-platform/linux/replay.json
@@ -160,8 +166,14 @@ jobs:
         run: moon update
       - name: Collect formal macOS deterministic artifacts
         run: |
-          M5_COLD_RUNS=200 M5_WARM_RUNS=1000 moon run scripts/m5_runtime.mbtx
-          M5_REPLAY_REPETITIONS=3 moon run scripts/m5_replay.mbtx
+          set -euo pipefail
+          moon version --all
+          mkdir -p _build/m5-results
+          moon run --build-only --output-json --target native cmd/mbtx > _build/m5-mbtx-build.json
+          MBTX=$(python3 -c 'import json; print(json.load(open("_build/m5-mbtx-build.json"))["artifacts_path"][0])')
+          test -x "$MBTX"
+          M5_MBTX="$MBTX" M5_COLD_RUNS=200 M5_WARM_RUNS=1000 moon run scripts/m5_runtime.mbtx
+          M5_MBTX="$MBTX" M5_REPLAY_REPETITIONS=3 moon run scripts/m5_replay.mbtx
           mkdir -p _build/m5-platform/darwin
           cp _build/m5-results/runtime.json _build/m5-platform/darwin/runtime.json
           cp _build/m5-results/replay.json _build/m5-platform/darwin/replay.json
