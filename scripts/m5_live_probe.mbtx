@@ -15,6 +15,12 @@ fn env_or(name : String, fallback : String) -> String {
   @env.get_env_var(name).unwrap_or(fallback)
 }
 
+async fn ensure_results_directory() -> Unit {
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+}
+
 fn time_window() -> Int raise {
   match @env.get_env_var("M5_TIME_WINDOW") {
     Some(value) => try {
@@ -144,8 +150,20 @@ async fn probe_one(
 
 async fn main {
   let args = @env.args()
-  guard args.length() == 1 else {
-    fail("usage: moon run scripts/m5_live_probe.mbtx")
+  guard args.length() <= 2 else {
+    fail(
+      "usage: moon run scripts/m5_live_probe.mbtx [--prepare-results-dir]",
+    )
+  }
+  if args.length() == 2 {
+    guard args[1] == "--prepare-results-dir" else {
+      fail(
+        "usage: moon run scripts/m5_live_probe.mbtx [--prepare-results-dir]",
+      )
+    }
+    ensure_results_directory()
+    println("M5 probe results directory is ready")
+    return
   }
   let key = match @env.get_env_var("OPENROUTER_ICU_API_KEY") {
     Some(value) if !value.is_empty() => value
@@ -163,7 +181,7 @@ async fn main {
   let upstream = env_or("M5_UPSTREAM_URL", "https://tokenadvent.com/v1/responses")
   let base = @fs.tmpdir(prefix="m5-live-probe-")
   @fs.mkdir("\{base}/dumps", recursive=true, permission=0o700)
-  @fs.mkdir("_build/m5-results", recursive=true)
+  ensure_results_directory()
   let probes : Array[Json] = @async.with_task_group() <| group => {
     let (input, writer) = @process.write_to_process()
     let proxy_log = @process.redirect_to_file("\{base}/proxy.log", permission=0o600)

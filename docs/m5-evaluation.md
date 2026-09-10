@@ -163,6 +163,8 @@ Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d
 
 第二次诊断 run `34519793691` 在 implementation `474e463` 上完成了 Linux/Darwin 零回归确定性证据，但 runtime 仍按整臂顺序先执行全部 Shell、再执行全部 bare proxy；Darwin 简短任务的时延方向反转表明时段负载漂移可能压过 wrapper 差异。该 run 在 relay probe 前取消，未产生在线 block；后续版本把 runtime 改为相邻配对且 AB/BA 交替，并由 artifact validator 验证实际顺序。该 run 只证明 receipt 修复与语义零回归，不进入最终性能或在线结论。
 
+第三次诊断 run `34526824314` 在 implementation `ba2eaf1` 上完成了最终规模的 Linux/Darwin 相邻配对确定性证据，但 live probe 在写任何 attempt 前因重复创建已存在的 `_build/m5-results` 目录而退出。该 run 的在线 artifact 明确记录 0 probe、0 block、0 run；后续版本把结果目录准备改为幂等操作，并在离线验证中连续两次覆盖预先存在目录的路径。该 run 不进入 pilot 或 formal 在线统计，双平台确定性 artifact 也不作为后续冻结证据复用，避免跨 implementation SHA 混用。
+
 ## Artifact
 
 每次运行保存：

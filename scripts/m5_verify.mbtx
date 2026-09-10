@@ -63,6 +63,16 @@ async fn main {
     ["run", "--build-only", "scripts/m5_live_probe.mbtx"],
   ).output(timeout_ms=120_000)
   live_probe_build.check()
+  if !@fs.exists("_build/m5-results") {
+    @fs.mkdir("_build/m5-results", recursive=true)
+  }
+  for _ in 0..<2 {
+    let prepare_probe_directory = @shell.Cmd(
+      "moon",
+      ["run", "scripts/m5_live_probe.mbtx", "--prepare-results-dir"],
+    ).output(timeout_ms=120_000)
+    prepare_probe_directory.check()
+  }
   let build = @shell.Cmd(
     "moon",
     ["run", "--build-only", "--output-json", "--target", "native", "cmd/m5-evidence"],
@@ -227,7 +237,15 @@ async fn main {
   faults.check()
   let synthetic = @shell.Cmd("moon", ["run", "scripts/m5_synthetic.mbtx"]).output(timeout_ms=120_000)
   synthetic.check()
-  let eval = @shell.Cmd("moon", ["run", "scripts/m5_eval.mbtx", "pilot"]).output(timeout_ms=120_000)
+  let isolated_state = @fs.tmpdir(prefix="m5-verify-state-")
+  defer @fs.rmdir(isolated_state, recursive=true)
+  let eval = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_eval.mbtx", "pilot"],
+    env={
+      "M5_DETERMINISTIC_MANIFEST": isolated_state + "/missing-manifest.json",
+    },
+  ).output(timeout_ms=120_000)
   eval.check()
   let analyze = @shell.Cmd("moon", ["run", "scripts/m5_analyze.mbtx"]).output(timeout_ms=120_000)
   analyze.check()
