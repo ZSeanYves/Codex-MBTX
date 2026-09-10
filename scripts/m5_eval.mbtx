@@ -645,7 +645,7 @@ fn array_field(run : Json, key : String) -> Bool {
 }
 
 fn attempt_valid(attempt : Json) -> Bool {
-  let strings = ["attempt_id"]
+  let strings = ["attempt_id", "request_group"]
   let numbers = [
     "retry_index", "started_ms", "input_tokens", "cached_input_tokens",
     "output_tokens",
@@ -659,7 +659,15 @@ fn attempt_valid(attempt : Json) -> Bool {
   for key in bools {
     ok = ok && (field(attempt, key) is Some(True) || field(attempt, key) is Some(False))
   }
-  ok
+  let successful = match field(attempt, "http_status") {
+    Some(Number(status, ..)) => status >= 200.0 && status < 300.0 &&
+      !bool_field(attempt, "provider_error") &&
+      !bool_field(attempt, "stream_disconnected")
+    _ => false
+  }
+  ok && (!successful ||
+    (number_field(attempt, "first_byte_ms") &&
+      number_field(attempt, "completed_ms")))
 }
 
 fn attempts_valid(run : Json) -> Bool {

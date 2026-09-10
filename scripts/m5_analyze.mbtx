@@ -153,7 +153,7 @@ fn number_present(run : Json, key : String) -> Bool {
 }
 
 fn attempt_shape_valid(attempt : Json) -> Bool {
-  let strings = ["attempt_id"]
+  let strings = ["attempt_id", "request_group"]
   let numbers = [
     "retry_index", "started_ms", "input_tokens", "cached_input_tokens",
     "output_tokens",
@@ -167,7 +167,15 @@ fn attempt_shape_valid(attempt : Json) -> Bool {
   for key in bools {
     ok = ok && (field(attempt, key) is Some(True) || field(attempt, key) is Some(False))
   }
-  ok
+  let successful = match field(attempt, "http_status") {
+    Some(Number(status, ..)) => status >= 200.0 && status < 300.0 &&
+      !bool_field(attempt, "provider_error") &&
+      !bool_field(attempt, "stream_disconnected")
+    _ => false
+  }
+  ok && (!successful ||
+    (number_present(attempt, "first_byte_ms") &&
+      number_present(attempt, "completed_ms")))
 }
 
 fn string_array_present(run : Json, key : String) -> Bool {
@@ -579,8 +587,8 @@ fn bootstrap_mean(values : Array[Int], seed : Int, success_scale : Int) -> Inter
   bootstrap.sort()
   {
     estimate: estimate * success_scale,
-    lower: bootstrap[50],
-    upper: bootstrap[1949],
+    lower: bootstrap[99],
+    upper: bootstrap[1899],
   }
 }
 
@@ -615,7 +623,7 @@ fn bootstrap_p95(pairs : Array[Pair], seed : Int) -> Interval {
     })
   }
   bootstrap.sort()
-  { estimate, lower: bootstrap[50], upper: bootstrap[1949] }
+  { estimate, lower: bootstrap[99], upper: bootstrap[1899] }
 }
 
 fn make_pairs(runs : Array[Json]) -> Array[Pair] {
@@ -933,7 +941,7 @@ fn markdown(report : Report, analysis : Analysis, final_decision : Json) -> Stri
       analysis.transparent_tool_calls.to_string() + ".",
     "Success difference (basis points): " +
       analysis.success_difference_basis_points.to_string() +
-      "; 95% bootstrap interval: " +
+      "; 95% one-sided bootstrap decision bounds: " +
       (if analysis.confidence_intervals_available {
         ToJson::to_json(analysis.success_difference_ci).stringify()
       } else {
@@ -941,7 +949,7 @@ fn markdown(report : Report, analysis : Analysis, final_decision : Json) -> Stri
       }) + ".",
     "p95 difference (basis points): " +
       analysis.p95_difference_basis_points.to_string() +
-      "; 95% bootstrap interval: " +
+      "; 95% one-sided bootstrap decision bounds: " +
       (if analysis.confidence_intervals_available {
         ToJson::to_json(analysis.p95_difference_ci).stringify()
       } else {
@@ -1006,7 +1014,7 @@ async fn main {
   let analysis : Analysis = {
     schema_version: 5,
     experiment_id: report.experiment_id,
-    ci_method: "paired nonparametric bootstrap",
+    ci_method: "paired nonparametric bootstrap, 95% one-sided decision bounds",
     bootstrap_iterations: 2_000,
     confidence_intervals_available: !pairs.is_empty(),
     relay_clean_pairs_available: !pairs.is_empty(),

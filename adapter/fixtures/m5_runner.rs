@@ -132,6 +132,7 @@ struct EventSummary {
 #[derive(Clone, Debug)]
 struct AttemptRecord {
     value: Value,
+    request_group: String,
     provider_error: bool,
     transport_error: bool,
     successful: bool,
@@ -1665,6 +1666,7 @@ fn parse_attempts(
         .collect();
     request_paths.sort();
     let mut records = Vec::new();
+    let mut group_counts = BTreeMap::new();
     for (index, request_path) in request_paths.iter().enumerate() {
         let prefix = request_path
             .to_string_lossy()
@@ -1675,11 +1677,19 @@ fn parse_attempts(
             .and_then(|name| name.to_str())
             .unwrap_or("attempt")
             .to_owned();
+        let request_group = request_group(request_path, &attempt_id);
+        let retry_index = next_retry_index(&mut group_counts, &request_group);
         let response_path = PathBuf::from(format!("{prefix}-response.json"));
         let request_time = file_elapsed(request_path, wall_start, mono_start)
             .unwrap_or((index as i64).min(elapsed_ms.max(0)));
-        let response_time = file_elapsed(&response_path, wall_start, mono_start);
         let response = read_json(&response_path);
+        let first_byte_time = response
+            .as_ref()
+            .and_then(|value| dump_timestamp_elapsed(value, "first_byte_timestamp_ms", wall_start));
+        let response_time = response
+            .as_ref()
+            .and_then(|value| dump_timestamp_elapsed(value, "completed_timestamp_ms", wall_start))
+            .or_else(|| file_elapsed(&response_path, wall_start, mono_start));
         let status = response
             .as_ref()
             .and_then(|value| value.get("status"))
@@ -1699,7 +1709,8 @@ fn parse_attempts(
         let usage = usage_from_body(&body);
         let mut attempt = Map::new();
         attempt.insert("attempt_id".to_owned(), json!(attempt_id));
-        attempt.insert("retry_index".to_owned(), json!(index as i64));
+        attempt.insert("request_group".to_owned(), json!(request_group.clone()));
+        attempt.insert("retry_index".to_owned(), json!(retry_index));
         attempt.insert("started_ms".to_owned(), json!(request_time.max(0)));
         if let Some(status) = status {
             attempt.insert("http_status".to_owned(), json!(status));
@@ -1707,8 +1718,9 @@ fn parse_attempts(
         if let Some(completed_ms) = response_time {
             attempt.insert("completed_ms".to_owned(), json!(completed_ms.max(0)));
         }
-        // The stock proxy dump records completion but not the first byte.  Do
-        // not invent a first-byte timestamp; probe artifacts carry that metric.
+        if let Some(first_byte_ms) = first_byte_time {
+            attempt.insert("first_byte_ms".to_owned(), json!(first_byte_ms.max(0)));
+        }
         attempt.insert("stream_disconnected".to_owned(), json!(transport_error));
         attempt.insert("provider_error".to_owned(), json!(provider_error));
         attempt.insert("recovered".to_owned(), json!(false));
@@ -1737,6 +1749,7 @@ fn parse_attempts(
         }
         records.push(AttemptRecord {
             value: Value::Object(attempt),
+            request_group,
             provider_error,
             transport_error,
             successful,
@@ -1751,18 +1764,43 @@ fn mark_recovered(records: &mut [AttemptRecord]) {
     // Mark only failures that are followed by a successful attempt in the
     // same request sequence. A later failure must not inherit recovery from
     // an earlier success.
-    let mut successful_after = false;
+    let mut successful_after = HashSet::new();
     for index in (0..records.len()).rev() {
-        if successful_after
+        if successful_after.contains(&records[index].request_group)
             && (records[index].provider_error || records[index].transport_error)
             && let Some(object) = records[index].value.as_object_mut()
         {
             object.insert("recovered".to_owned(), json!(true));
         }
         if records[index].successful {
-            successful_after = true;
+            successful_after.insert(records[index].request_group.clone());
         }
     }
+}
+
+fn request_group(path: &Path, fallback: &str) -> String {
+    read_json(path)
+        .and_then(|value| value.get("body").cloned())
+        .and_then(|body| serde_json::to_vec(&body).ok())
+        .map(|body| stable_digest(&body))
+        .unwrap_or_else(|| format!("unreadable:{fallback}"))
+}
+
+fn next_retry_index(counts: &mut BTreeMap<String, i64>, group: &str) -> i64 {
+    let count = counts.entry(group.to_owned()).or_default();
+    let index = *count;
+    *count += 1;
+    index
+}
+
+fn dump_timestamp_elapsed(value: &Value, key: &str, wall_start: SystemTime) -> Option<i64> {
+    let timestamp_ms = value.get(key)?.as_u64()? as u128;
+    let wall_start_ms = wall_start.duration_since(UNIX_EPOCH).ok()?.as_millis();
+    Some(
+        timestamp_ms
+            .saturating_sub(wall_start_ms)
+            .min(i64::MAX as u128) as i64,
+    )
 }
 
 fn file_elapsed(path: &Path, wall_start: SystemTime, mono_start: Instant) -> Option<i64> {
@@ -2707,6 +2745,15 @@ mod tests {
             Some(1_700_000_000_123)
         );
         assert_eq!(proxy_timestamp_ms(Path::new("response.json")), None);
+        let wall_start = UNIX_EPOCH + Duration::from_millis(1_700_000_000_000);
+        assert_eq!(
+            dump_timestamp_elapsed(
+                &json!({"first_byte_timestamp_ms": 1_700_000_000_123_u64}),
+                "first_byte_timestamp_ms",
+                wall_start,
+            ),
+            Some(123),
+        );
     }
 
     #[test]
@@ -2736,6 +2783,7 @@ mod tests {
         let records = vec![
             AttemptRecord {
                 value: Value::Object(failed_before),
+                request_group: "request-a".to_owned(),
                 provider_error: true,
                 transport_error: false,
                 successful: false,
@@ -2743,6 +2791,7 @@ mod tests {
             },
             AttemptRecord {
                 value: Value::Object(success),
+                request_group: "request-a".to_owned(),
                 provider_error: false,
                 transport_error: false,
                 successful: true,
@@ -2750,6 +2799,7 @@ mod tests {
             },
             AttemptRecord {
                 value: Value::Object(failed_after),
+                request_group: "request-a".to_owned(),
                 provider_error: true,
                 transport_error: false,
                 successful: false,
@@ -2760,6 +2810,32 @@ mod tests {
         mark_recovered(&mut records);
         assert_eq!(records[0].value["recovered"], json!(true));
         assert_eq!(records[1].value["recovered"], json!(false));
+        assert_eq!(records[2].value["recovered"], json!(false));
+    }
+
+    #[test]
+    fn retry_indices_and_recovery_are_scoped_to_request_body() {
+        let mut counts = BTreeMap::new();
+        assert_eq!(next_retry_index(&mut counts, "request-a"), 0);
+        assert_eq!(next_retry_index(&mut counts, "request-b"), 0);
+        assert_eq!(next_retry_index(&mut counts, "request-a"), 1);
+
+        let record = |group: &str, provider_error: bool, successful: bool| AttemptRecord {
+            value: json!({"recovered": false}),
+            request_group: group.to_owned(),
+            provider_error,
+            transport_error: false,
+            successful,
+            usage_complete: successful,
+        };
+        let mut records = vec![
+            record("request-a", true, false),
+            record("request-b", false, true),
+            record("request-c", true, false),
+            record("request-a", false, true),
+        ];
+        mark_recovered(&mut records);
+        assert_eq!(records[0].value["recovered"], json!(true));
         assert_eq!(records[2].value["recovered"], json!(false));
     }
 }
