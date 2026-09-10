@@ -152,7 +152,7 @@ jobs:
   deterministic-macos:
     needs: validate-online
     if: needs.validate-online.result == 'success' && inputs.deterministic_run_id == ''
-    runs-on: macos-14
+    runs-on: macos-latest
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v5

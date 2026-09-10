@@ -23,7 +23,7 @@ B0/B1 的主比较回答后端问题，B2 用来分离 wrapper 自身开销。B2
 - Linux 是在线 Codex 和默认替换结论的主平台。
 - macOS 只用于本地运行时、语义和回放对照。
 - 本协议不对 Windows 作结论。
-- 正式 CI 固定 MoonBit compiler `0.10.12+1634b282e`、`moonbitlang/async@0.21.3` 和仓库 `rust-toolchain.toml`；不得在 W1--W3 之间升级。三个窗口必须使用同一 implementation SHA、runner/evaluator hash、model、reasoning effort、prompt/fixture hash 和 tool catalog。
+- 正式 CI 固定 MoonBit compiler `0.10.12+1634b282e`、当前最新依赖 `moonbitlang/async@0.21.3` 和仓库 `rust-toolchain.toml`；不得在 W1--W3 之间升级。Linux 在线 runner 固定为 `ubuntu-24.04`；macOS 确定性 runner 使用 async 官方矩阵已验证的 `macos-latest`，但只在 pilot 采集一次并冻结，实际 OS、架构和工具链以该 run 的 artifact 与 Actions 元数据为准。三个窗口必须使用同一 implementation SHA、runner/evaluator hash、model、reasoning effort、prompt/fixture hash 和 tool catalog。
 - 每个 block 固定 task、model、reasoning effort、tool catalog、prompt hash、fixture hash、seed、workspace 初始化方式和 timeout。
 - block 内两个 backend 串行执行，顺序由带 seed 的 planner 决定；同一 block 的两次运行共享任务定义但使用独立 workspace/home。formal 的 20 次重复连续划分为 7/7/6 三个窗口，每个窗口由独立 CI workflow run 收集，W2/W3 只能接续前一窗口的完整前缀 artifact。
 - block artifact 必须保存 `relay_health`、`time_window` 和该 block 的 `runs`；报告顶层另保存完整 health、`mode`、`planned_blocks` 和 `start_block`，使单个脱敏 block 可以重建判断。
