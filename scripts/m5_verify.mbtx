@@ -142,14 +142,21 @@ async fn main {
   let runtime = @shell.Cmd(
     "moon",
     ["run", "scripts/m5_runtime.mbtx"],
-    env={ "M5_COLD_RUNS": "1", "M5_WARM_RUNS": "1" },
+    env={
+      "M5_COLD_RUNS": "1",
+      "M5_WARM_RUNS": "1",
+      "M5_CHILD_START_DELAY_MS": "200",
+    },
   ).output(timeout_ms=120_000)
   runtime.check()
   guard @json.parse(runtime.stdout()) is {
     "schema_version": 5,
     "samples": Array(runtime_samples),
     ..
-  } && runtime_samples.length() > 0 else {
+  } && runtime_samples.length() > 0 && runtime_samples.all(sample => match sample {
+    { "content_ok": true, "child_start_marker": true, .. } => true
+    _ => false
+  }) else {
     fail("M5 runtime artifact is not versioned")
   }
   let replay = @shell.Cmd(

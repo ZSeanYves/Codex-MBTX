@@ -159,6 +159,8 @@ relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留�
 
 runner 不得删除或覆盖已有 block artifact。未设置 M5_RUNNER 或 relay health 不达标时，入口仍保存 plan、health 和 INCONCLUSIVE report，不发起在线样本。
 
+Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d` 上只完成确定性阶段，未发起 relay probe 或在线 block。该 run 的 Darwin lifecycle 样本有 3/21600 次在固定 80 ms 等待结束时 child 尚未写出 start marker（Shell 2 次、bare proxy 1 次），跨平台 manifest 按零回归门槛拒绝了产物。后续版本改为 child 先写 start marker 和唯一 receipt，harness 观测 receipt 后才开始 stop/timeout/cancel 计时；离线验证注入 200 ms 启动延迟以防固定 sleep 回归。该无效 run 仅作为 fixture 缺陷诊断证据，不得并入 pilot 或 formal 统计。
+
 ## Artifact
 
 每次运行保存：

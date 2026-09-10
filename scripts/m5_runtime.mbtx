@@ -79,6 +79,20 @@ fn env_int(name : String, fallback : Int) -> Int {
   }
 }
 
+fn env_nonnegative_int(name : String, fallback : Int) -> Int {
+  match @env.get_env_var(name) {
+    Some(value) => try {
+      match @json.parse(value) {
+        Number(number, ..) if number >= 0 && number <= 5_000 => number.to_int()
+        _ => fallback
+      }
+    } catch {
+      _ => fallback
+    }
+    None => fallback
+  }
+}
+
 fn percentile(values : Array[Int], p : Int) -> Int {
   let sorted = values.copy()
   sorted.sort()
@@ -99,6 +113,16 @@ fn marker_ms(text : String, marker : String) -> Int? {
     }
   }
   None
+}
+
+async fn wait_for_receipt(path : String, expected : String) -> Bool {
+  for _ in 0..<1_000 {
+    if @fs.read_file(path).text() == expected {
+      return true
+    }
+    @async.sleep(5)
+  }
+  false
 }
 
 fn runtime_scenarios() -> Array[String] {
@@ -178,26 +202,38 @@ async fn run_lifecycle_once(
   backend : String,
   phase : String,
   index : Int,
+  child_start_delay_ms : Int,
 ) -> Sample {
   let body = if scenario == "background" {
     "print('started',flush=True);time.sleep(0.04);print('complete',flush=True)"
   } else {
     "print('started',flush=True);time.sleep(0.5);print('late',flush=True)"
   }
+  let receipt_path =
+    "_build/m5-runtime-receipts/" + backend + "-" + phase + "-" + scenario +
+    "-" + index.to_string()
+  let receipt_value = backend + ":" + phase + ":" + scenario + ":" + index.to_string()
+  @fs.write_file(receipt_path, "pending")
   let child =
     "import sys,time\n" +
+    "delay_ms=int(sys.argv[3])\n" +
+    "if delay_ms: time.sleep(delay_ms/1000)\n" +
     "sys.stderr.write('__M5_CHILD_START__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush()\n" +
+    "with open(sys.argv[1],'w') as receipt:\n receipt.write(sys.argv[2]); receipt.flush()\n" +
     body +
     "\nsys.stderr.write('__M5_CHILD_END__:'+str(time.monotonic_ns()//1000000)+'\\n'); sys.stderr.flush()\n"
   let started = @async.now()
-  let (code, stdout, stderr, events, poll_observed) = @async.with_task_group() <| group => {
+  let (code, stdout, stderr, events, poll_observed, start_receipt_observed) =
+    @async.with_task_group() <| group => {
     let (stdout_reader, stdout_writer) = @process.read_from_process()
     defer stdout_reader.close()
     defer stdout_writer.close()
     let (stderr_reader, stderr_writer) = @process.read_from_process()
     defer stderr_reader.close()
     defer stderr_writer.close()
-    let command_args = ["-c", child]
+    let command_args = [
+      "-c", child, receipt_path, receipt_value, child_start_delay_ms.to_string(),
+    ]
     let command = if backend == "shell" { "python3" } else { mbtx }
     let args = if backend == "shell" {
       command_args
@@ -216,9 +252,11 @@ async fn run_lifecycle_once(
     let stderr_task = group.spawn(() => stderr_reader.read_all().text())
     let events : Array[String] = ["launch"]
     let mut poll_observed = false
+    let start_receipt_observed = wait_for_receipt(receipt_path, receipt_value)
     let code = if scenario == "background" {
       @async.sleep(20)
-      poll_observed = @shell.Cmd("kill", ["-0", pid.to_string()]).output().exit_code() == 0
+      poll_observed = start_receipt_observed &&
+        @shell.Cmd("kill", ["-0", pid.to_string()]).output().exit_code() == 0
       events.push("poll")
       let code = @process.wait_pid(pid)
       events.push("exit")
@@ -233,7 +271,7 @@ async fn run_lifecycle_once(
     events.push("reap")
     let stdout = stdout_task.wait()
     let stderr = stderr_task.wait()
-    (code, stdout, stderr, events, poll_observed)
+    (code, stdout, stderr, events, poll_observed, start_receipt_observed)
   }
   let elapsed = (@async.now() - started).to_int()
   let child_start_ms = marker_ms(stderr, "__M5_CHILD_START__:")
@@ -250,10 +288,10 @@ async fn run_lifecycle_once(
   let completed = scenario == "background"
   let child_processes_clean = !stdout.contains("late")
   let content_ok = if completed {
-    code == 0 && stdout == "started\ncomplete\n" &&
+    start_receipt_observed && code == 0 && stdout == "started\ncomplete\n" &&
       events == ["launch", "poll", "exit", "reap"] && poll_observed
   } else {
-    code != 0 && stdout == "started\n" && child_processes_clean &&
+    start_receipt_observed && code != 0 && stdout == "started\n" && child_processes_clean &&
       events.length() == 3
   }
   {
@@ -289,10 +327,18 @@ async fn run_once(
   backend : String,
   phase : String,
   index : Int,
+  child_start_delay_ms : Int,
 ) -> Sample {
   if scenario == "background" || scenario == "stop" ||
     scenario == "timeout" || scenario == "cancel" {
-    return run_lifecycle_once(mbtx, scenario, backend, phase, index)
+    return run_lifecycle_once(
+      mbtx,
+      scenario,
+      backend,
+      phase,
+      index,
+      child_start_delay_ms,
+    )
   }
   let body = if scenario == "argv" {
     "print(repr(sys.argv[1:]))\n"
@@ -422,14 +468,27 @@ async fn main {
   }
   let cold_target = env_int("M5_COLD_RUNS", 200)
   let warm_target = env_int("M5_WARM_RUNS", 1000)
+  let child_start_delay_ms = env_nonnegative_int("M5_CHILD_START_DELAY_MS", 0)
   let mbtx = resolve_mbtx()
+  if !@fs.exists("_build/m5-runtime-receipts") {
+    @fs.mkdir("_build/m5-runtime-receipts", recursive=true)
+  }
   let all : Array[Sample] = []
   for backend in ["shell", "bare-proxy"] {
     for phase in ["cold", "warm"] {
       let count = if phase == "cold" { cold_target } else { warm_target }
       for scenario in selected_runtime_scenarios() {
         for index in 0..<count {
-          all.push(run_once(mbtx, scenario, if backend == "shell" { "shell" } else { "bare-proxy" }, phase, index))
+          all.push(
+            run_once(
+              mbtx,
+              scenario,
+              if backend == "shell" { "shell" } else { "bare-proxy" },
+              phase,
+              index,
+              child_start_delay_ms,
+            ),
+          )
         }
       }
     }
