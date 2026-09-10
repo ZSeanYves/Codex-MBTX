@@ -15,7 +15,7 @@ fn env_or(name : String, fallback : String) -> String {
   @env.get_env_var(name).unwrap_or(fallback)
 }
 
-fn time_window() -> Int {
+fn time_window() -> Int raise {
   match @env.get_env_var("M5_TIME_WINDOW") {
     Some(value) => try {
       match @json.parse(value) {

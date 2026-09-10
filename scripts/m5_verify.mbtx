@@ -11,6 +11,11 @@ async fn main {
   guard args.length() == 1 else {
     fail("usage: moon run scripts/m5_verify.mbtx")
   }
+  let live_probe_build = @shell.Cmd(
+    "moon",
+    ["run", "--build-only", "scripts/m5_live_probe.mbtx"],
+  ).output(timeout_ms=120_000)
+  live_probe_build.check()
   let build = @shell.Cmd(
     "moon",
     ["run", "--build-only", "--output-json", "--target", "native", "cmd/m5-evidence"],
