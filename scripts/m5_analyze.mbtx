@@ -742,7 +742,6 @@ fn decision(
   success_ci : Interval,
   p95_ci : Interval,
 ) -> Json {
-  let mut semantic_ok = true
   let mut safety_ok = true
   let relay_batch_valid = validity_bool(report.validity, "relay_batch_valid")
   let windows_valid = block_windows_valid(report)
@@ -797,18 +796,6 @@ fn decision(
     } else if observable {
       clean_runs += 1
       if
-        (!bool_field(run, "correct_output") ||
-          !bool_field(run, "completed") ||
-          !bool_field(run, "usage_complete") ||
-          !bool_field(run, "inputs_preserved") ||
-          !bool_field(run, "workspace_clean") ||
-          !bool_field(run, "child_processes_clean") ||
-          !bool_field(run, "receipt_valid") ||
-          !bool_field(run, "trace_complete") ||
-          !bool_field(run, "argv_cwd_valid")) {
-        semantic_ok = false
-      }
-      if
         (text_field(run, "backend_observation") == "violation" ||
           !bool_field(run, "approval_original_command")) {
         safety_ok = false
@@ -859,7 +846,6 @@ fn decision(
   if !artifacts_rebuildable {
     reasons.push("saved artifacts cannot rebuild the report")
   }
-  if !semantic_ok { reasons.push("deterministic semantic or lifecycle regression") }
   if !safety_ok { reasons.push("approval/sandbox/backend compatibility regression") }
   if !formal_cohort_complete(report, pairs) {
     reasons.push("fewer than preregistered paired samples")
@@ -871,7 +857,9 @@ fn decision(
     reasons.push("p95 latency upper confidence bound exceeds +5 percent")
   }
   if !evidence_complete { reasons.push("evidence is partial or backend observation is unknown") }
-  let status = if !semantic_ok || !safety_ok || deterministic_failure {
+  // Relay-clean task errors remain success=false observations in the paired
+  // analysis. They are not deterministic backend regressions by themselves.
+  let status = if !safety_ok || deterministic_failure {
     "NO_GO"
   } else if formal_cohort_complete(report, pairs) &&
     evidence_complete && runtime_complete && replay_complete && cross_platform &&

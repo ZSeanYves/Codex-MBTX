@@ -99,6 +99,8 @@ relay-clean conditional 只使用 provider/transport 完整、observability 为 
 - `analysis.json` 固定记录 CI 方法和 2000 次重采样次数，便于从脱敏 pairs.csv 重建；
 - bootstrap/permutation 的重建输入和版本。
 
+relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留在成对成功率和置信区间中；单次或两臂共同的模型任务错误本身不是“确定性后端回归”，不得直接升级为 `NO_GO`。`NO_GO` 的确定性语义依据来自 runtime/replay，安全兼容依据来自可观测的 approval/backend violation。
+
 不使用简单总平均值，不把 missing usage 当作零成本。没有独立账单或可信价格数据时，只报告 token，禁止推导费用。
 
 ## 默认替换门槛

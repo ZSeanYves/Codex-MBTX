@@ -1124,18 +1124,13 @@ async fn main {
   let backend_observable = !all_runs.is_empty() &&
     all_runs.filter(r => !infrastructure_run(r)).length() > 0 &&
     all_runs.filter(r => !infrastructure_run(r)).all(clean_observed_run)
-  let semantic_candidates = all_runs.filter(clean_observed_run)
-  let semantic_zero = !semantic_candidates.is_empty() &&
-    semantic_candidates.all(r => bool_field(r, "correct_output") &&
-      bool_field(r, "completed") && bool_field(r, "usage_complete") &&
-      bool_field(r, "inputs_preserved") && bool_field(r, "workspace_clean") &&
-      bool_field(r, "child_processes_clean") && bool_field(r, "receipt_valid") &&
-      bool_field(r, "trace_complete") && bool_field(r, "argv_cwd_valid"))
-  let semantic_regression = !semantic_candidates.is_empty() && !semantic_zero
   let safety_ok = !all_runs.any(r => clean_observed_run(r) &&
     (string_field(r, "backend_observation") == "violation" ||
       !bool_field(r, "approval_original_command")))
-  let decision_status = if semantic_regression || !safety_ok {
+  // Online task errors belong to the paired success-rate analysis. Only an
+  // observed compatibility violation may make the pre-analysis report NO_GO;
+  // deterministic runtime/replay regressions are applied by m5_analyze.
+  let decision_status = if !safety_ok {
     "NO_GO"
   } else {
     "INCONCLUSIVE"

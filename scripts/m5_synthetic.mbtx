@@ -45,6 +45,9 @@ async fn main {
       })
       for backend in ["shell", "transparent"] {
         let elapsed = if backend == "shell" { 100 } else { 105 }
+        // A paired online model error must affect success statistics without
+        // being mislabeled as a deterministic backend regression.
+        let correct_output = index != 0
         runs.push({
           "run_id": block_id + "-" + backend,
           "block_id": block_id,
@@ -69,7 +72,7 @@ async fn main {
           "backend_observation": "compliant",
           "completed": true,
           "usage_complete": true,
-          "correct_output": true,
+          "correct_output": correct_output,
           "inputs_preserved": true,
           "workspace_clean": true,
           "child_processes_clean": true,
@@ -80,7 +83,7 @@ async fn main {
           "workspace_diff": {"entries": [], "permissions_unchanged": true, "symlinks_unchanged": true},
           "receipt": {},
           "process_trace": [],
-          "failure_category": "none",
+          "failure_category": if correct_output { "none" } else { "incorrect_output" },
         })
       }
     }
@@ -160,6 +163,8 @@ async fn main {
   analysis.check()
   guard @json.parse(analysis.stdout()) is {
     "pair_count": 160,
+    "shell_successes": 159,
+    "transparent_successes": 159,
     "success_difference_ci": { "lower": 0, "upper": 0, .. },
     "p95_difference_ci": { "upper": 500, .. },
     ..
