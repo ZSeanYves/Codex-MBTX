@@ -52,7 +52,7 @@ script-capability cohort 保留现有 6 个 MoonBit 任务，独立报告。
 
 正式在线样本为每个 process 任务 20--30 个成对 block，至少分布在三个独立时间窗口；pilot 为每个任务 5 个成对 block，只用于发现协议或基础设施缺陷，不宣布默认替换。script cohort 每任务 10--20 对样本。
 
-本地确定性 runtime 默认执行 argv、stdin/EOF/UTF-8、cwd/env、大输出、非零退出以及 background/poll、stop、timeout、cancel 共 9 个场景，每个场景 200 次冷启动和 1000 次热启动；冷启动和热启动都保留独立 child launch，热启动只复用已构建的 MBTX binary 与 harness，不伪装成持久 daemon，因而报告会把这一测量边界写明。可通过 M5_COLD_RUNS、M5_WARM_RUNS 和 M5_SCENARIOS 做短 smoke。child 输出内部开始/结束标记，外部 harness 以单调时钟测量 wrapper 和回收开销；主动取消场景允许没有 child end marker，但必须有 start marker、reap 顺序和无 late output。
+本地确定性 runtime 默认执行 argv、stdin/EOF/UTF-8、cwd/env、大输出、非零退出以及 background/poll、stop、timeout、cancel 共 9 个场景，每个场景 200 次冷启动和 1000 次热启动；同一 scenario/phase/index 的 Shell 与 bare proxy 构成相邻配对，按 index 奇偶执行 AB/BA 交替顺序，并在每条样本保存 `pair_order` 和 `pair_position`，避免整臂串行时机器负载漂移压过几毫秒 wrapper 差异。artifact 同时保存每个 scenario/phase 的 `bare-proxy - shell` 配对延迟 p50/p95/p99、AB/BA 子组中位数和 win/tie/loss，validator 会从原始样本核对配对顺序与摘要规模。冷启动和热启动都保留独立 child launch，热启动只复用已构建的 MBTX binary 与 harness，不伪装成持久 daemon，因而报告会把这一测量边界写明。可通过 M5_COLD_RUNS、M5_WARM_RUNS 和 M5_SCENARIOS 做短 smoke。child 输出内部开始/结束标记，外部 harness 以单调时钟测量 wrapper 和回收开销；主动取消场景允许没有 child end marker，但必须有 start marker、reap 顺序和无 late output。
 
 ## Oracle 和可观测性
 
@@ -160,6 +160,8 @@ relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留�
 runner 不得删除或覆盖已有 block artifact。未设置 M5_RUNNER 或 relay health 不达标时，入口仍保存 plan、health 和 INCONCLUSIVE report，不发起在线样本。
 
 Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d` 上只完成确定性阶段，未发起 relay probe 或在线 block。该 run 的 Darwin lifecycle 样本有 3/21600 次在固定 80 ms 等待结束时 child 尚未写出 start marker（Shell 2 次、bare proxy 1 次），跨平台 manifest 按零回归门槛拒绝了产物。后续版本改为 child 先写 start marker 和唯一 receipt，harness 观测 receipt 后才开始 stop/timeout/cancel 计时；离线验证注入 200 ms 启动延迟以防固定 sleep 回归。该无效 run 仅作为 fixture 缺陷诊断证据，不得并入 pilot 或 formal 统计。
+
+第二次诊断 run `34519793691` 在 implementation `474e463` 上完成了 Linux/Darwin 零回归确定性证据，但 runtime 仍按整臂顺序先执行全部 Shell、再执行全部 bare proxy；Darwin 简短任务的时延方向反转表明时段负载漂移可能压过 wrapper 差异。该 run 在 relay probe 前取消，未产生在线 block；后续版本把 runtime 改为相邻配对且 AB/BA 交替，并由 artifact validator 验证实际顺序。该 run 只证明 receipt 修复与语义零回归，不进入最终性能或在线结论。
 
 ## Artifact
 

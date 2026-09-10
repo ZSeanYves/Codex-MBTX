@@ -48,6 +48,10 @@ fn number_field(value : Json, key : String) -> Int {
   }
 }
 
+fn number_present(value : Json, key : String) -> Bool {
+  field(value, key) is Some(Number(_, ..))
+}
+
 fn string_array_field(value : Json, key : String) -> Bool {
   match field(value, key) {
     Some(Array(values)) => values.all(item => item is String(_))
@@ -66,14 +70,67 @@ fn runtime_sample_count(
     string_field(sample, "phase") == phase).length()
 }
 
+fn runtime_pair_schedule_valid(samples : Array[Json]) -> Bool {
+  if samples.length() % 2 != 0 { return false }
+  let mut offset = 0
+  while offset < samples.length() {
+    let left = samples[offset]
+    let right = samples[offset + 1]
+    let index = number_field(left, "sample_index")
+    let right_index = number_field(right, "sample_index")
+    let order = if index % 2 == 0 { "AB" } else { "BA" }
+    let first_backend = if order == "AB" { "shell" } else { "bare-proxy" }
+    let second_backend = if order == "AB" { "bare-proxy" } else { "shell" }
+    if index < 0 || index != right_index || string_field(left, "scenario") !=
+      string_field(right, "scenario") || string_field(left, "phase") !=
+      string_field(right, "phase") || string_field(left, "pair_order") != order ||
+      string_field(right, "pair_order") != order ||
+      string_field(left, "backend") != first_backend ||
+      string_field(right, "backend") != second_backend ||
+      number_field(left, "pair_position") != 0 ||
+      number_field(right, "pair_position") != 1 {
+      return false
+    }
+    offset += 2
+  }
+  true
+}
+
+fn runtime_pair_summaries_valid(summaries : Array[Json]) -> Bool {
+  !summaries.is_empty() && summaries.all(summary =>
+    !string_field(summary, "scenario").is_empty() &&
+    !string_field(summary, "phase").is_empty() &&
+    [
+      "pairs", "delta_p50_ms", "delta_p95_ms", "delta_p99_ms",
+      "ab_delta_p50_ms", "ba_delta_p50_ms", "shell_wins", "proxy_wins",
+      "ties",
+    ].all(key => number_present(summary, key)))
+}
+
+fn runtime_pair_summary_pairs(
+  summaries : Array[Json],
+  scenario : String,
+  phase : String,
+) -> Int {
+  for summary in summaries {
+    if string_field(summary, "scenario") == scenario &&
+      string_field(summary, "phase") == phase {
+      return number_field(summary, "pairs")
+    }
+  }
+  -1
+}
+
 fn runtime_quality(value : Json) -> Bool {
   match value {
     {
       "schema_version": 5,
+      "schedule": "paired-alternating-ab-ba",
       "cold_target": Number(cold_target, ..),
       "warm_target": Number(warm_target, ..),
       "samples": Array(samples),
       "summaries": Array(summaries),
+      "pair_summaries": Array(pair_summaries),
       "platform": String(_),
       ..
     } => {
@@ -96,7 +153,7 @@ fn runtime_quality(value : Json) -> Bool {
       let summaries_shape_ok = !summaries.is_empty() && summaries.all(summary =>
         number_field(summary, "marker_failures") == 0)
       let counts_ok = cold_target >= 200.0 && warm_target >= 1_000.0 &&
-        summaries.length() >= 36 &&
+        summaries.length() >= 36 && pair_summaries.length() >= 18 &&
         scenarios.all(scenario =>
           ["shell", "bare-proxy"].all(backend =>
             ["cold", "warm"].all(phase => {
@@ -106,8 +163,17 @@ fn runtime_quality(value : Json) -> Bool {
                 warm_target.to_int()
               }
               runtime_sample_count(samples, scenario, backend, phase) >= target
-            })))
-      samples_shape_ok && summaries_shape_ok && counts_ok
+            })) && ["cold", "warm"].all(phase => {
+            let target = if phase == "cold" {
+              cold_target.to_int()
+            } else {
+              warm_target.to_int()
+            }
+            runtime_pair_summary_pairs(pair_summaries, scenario, phase) >= target
+          }))
+      samples_shape_ok && summaries_shape_ok && counts_ok &&
+        runtime_pair_schedule_valid(samples) &&
+        runtime_pair_summaries_valid(pair_summaries)
     }
     _ => false
   }

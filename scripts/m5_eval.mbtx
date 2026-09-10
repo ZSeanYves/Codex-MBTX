@@ -150,13 +150,17 @@ async fn runtime_artifact_valid(path : String) -> Bool {
   try {
     guard @json.parse(@fs.read_file(path).text()) is {
       "schema_version": 5,
+      "schedule": "paired-alternating-ab-ba",
       "samples": Array(samples),
       "summaries": Array(summaries),
+      "pair_summaries": Array(pair_summaries),
       ..
     } else {
       return false
     }
     !samples.is_empty() && !summaries.is_empty() &&
+    runtime_pair_summaries_valid(pair_summaries) &&
+    runtime_pair_schedule_valid(samples) &&
     samples.all(sample => {
       let lifecycle = string_field(sample, "lifecycle_status")
       bool_field(sample, "content_ok") &&
@@ -190,6 +194,66 @@ fn runtime_sample_count(
   samples.filter(sample => string_field(sample, "scenario") == scenario &&
     string_field(sample, "backend") == backend &&
     string_field(sample, "phase") == phase).length()
+}
+
+fn runtime_pair_schedule_valid(samples : Array[Json]) -> Bool {
+  if samples.length() % 2 != 0 { return false }
+  let mut offset = 0
+  while offset < samples.length() {
+    let left = samples[offset]
+    let right = samples[offset + 1]
+    let index = match field(left, "sample_index") {
+      Some(Number(value, ..)) => value.to_int()
+      _ => return false
+    }
+    let right_index = match field(right, "sample_index") {
+      Some(Number(value, ..)) => value.to_int()
+      _ => return false
+    }
+    let order = if index % 2 == 0 { "AB" } else { "BA" }
+    let first_backend = if order == "AB" { "shell" } else { "bare-proxy" }
+    let second_backend = if order == "AB" { "bare-proxy" } else { "shell" }
+    if index != right_index || string_field(left, "scenario") !=
+      string_field(right, "scenario") || string_field(left, "phase") !=
+      string_field(right, "phase") || string_field(left, "pair_order") != order ||
+      string_field(right, "pair_order") != order ||
+      string_field(left, "backend") != first_backend ||
+      string_field(right, "backend") != second_backend ||
+      field(left, "pair_position") != Some(0) ||
+      field(right, "pair_position") != Some(1) {
+      return false
+    }
+    offset += 2
+  }
+  true
+}
+
+fn runtime_pair_summaries_valid(summaries : Array[Json]) -> Bool {
+  !summaries.is_empty() && summaries.all(summary =>
+    !string_field(summary, "scenario").is_empty() &&
+    !string_field(summary, "phase").is_empty() &&
+    [
+      "pairs", "delta_p50_ms", "delta_p95_ms", "delta_p99_ms",
+      "ab_delta_p50_ms", "ba_delta_p50_ms", "shell_wins", "proxy_wins",
+      "ties",
+    ].all(key => number_field(summary, key)))
+}
+
+fn runtime_pair_summary_pairs(
+  summaries : Array[Json],
+  scenario : String,
+  phase : String,
+) -> Int {
+  for summary in summaries {
+    if string_field(summary, "scenario") == scenario &&
+      string_field(summary, "phase") == phase {
+      return match field(summary, "pairs") {
+        Some(Number(value, ..)) => value.to_int()
+        _ => -1
+      }
+    }
+  }
+  -1
 }
 
 async fn replay_artifact_valid(path : String) -> Bool {
@@ -235,10 +299,12 @@ async fn runtime_artifact_complete(path : String) -> Bool {
   try {
     guard @json.parse(@fs.read_file(path).text()) is {
       "schema_version": 5,
+      "schedule": "paired-alternating-ab-ba",
       "cold_target": Number(cold_target, ..),
       "warm_target": Number(warm_target, ..),
       "samples": Array(samples),
       "summaries": Array(summaries),
+      "pair_summaries": Array(pair_summaries),
       ..
     } else {
       return false
@@ -248,6 +314,9 @@ async fn runtime_artifact_complete(path : String) -> Bool {
       "background", "stop", "timeout", "cancel",
     ]
     cold_target >= 200 && warm_target >= 1_000 && summaries.length() >= 36 &&
+      pair_summaries.length() >= 18 &&
+      runtime_pair_summaries_valid(pair_summaries) &&
+      runtime_pair_schedule_valid(samples) &&
       scenarios.all(scenario =>
         ["shell", "bare-proxy"].all(backend =>
           ["cold", "warm"].all(phase => {
@@ -257,7 +326,14 @@ async fn runtime_artifact_complete(path : String) -> Bool {
               warm_target.to_int()
             }
             runtime_sample_count(samples, scenario, backend, phase) >= target
-          })))
+          })) && ["cold", "warm"].all(phase => {
+          let target = if phase == "cold" {
+            cold_target.to_int()
+          } else {
+            warm_target.to_int()
+          }
+          runtime_pair_summary_pairs(pair_summaries, scenario, phase) >= target
+        }))
   } catch {
     _ => false
   }
@@ -301,10 +377,12 @@ fn platform_runtime_quality(value : Json) -> Bool {
   match value {
     {
       "schema_version": 5,
+      "schedule": "paired-alternating-ab-ba",
       "cold_target": Number(cold_target, ..),
       "warm_target": Number(warm_target, ..),
       "samples": Array(samples),
       "summaries": Array(summaries),
+      "pair_summaries": Array(pair_summaries),
       "platform": String(_),
       ..
     } => {
@@ -330,7 +408,7 @@ fn platform_runtime_quality(value : Json) -> Bool {
           _ => false
         })
       let counts_ok = cold_target >= 200.0 && warm_target >= 1_000.0 &&
-        summaries.length() >= 36 &&
+        summaries.length() >= 36 && pair_summaries.length() >= 18 &&
         scenarios.all(scenario =>
           ["shell", "bare-proxy"].all(backend =>
             ["cold", "warm"].all(phase => {
@@ -340,8 +418,17 @@ fn platform_runtime_quality(value : Json) -> Bool {
                 warm_target.to_int()
               }
               runtime_sample_count(samples, scenario, backend, phase) >= target
-            })))
-      samples_ok && summaries_ok && counts_ok
+            })) && ["cold", "warm"].all(phase => {
+            let target = if phase == "cold" {
+              cold_target.to_int()
+            } else {
+              warm_target.to_int()
+            }
+            runtime_pair_summary_pairs(pair_summaries, scenario, phase) >= target
+          }))
+      samples_ok && summaries_ok && counts_ok &&
+        runtime_pair_schedule_valid(samples) &&
+        runtime_pair_summaries_valid(pair_summaries)
     }
     _ => false
   }

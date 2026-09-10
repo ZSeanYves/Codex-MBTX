@@ -6,6 +6,53 @@ import {
   "moonbitlang/core/json",
 }
 
+fn field(value : Json, key : String) -> Json? {
+  match value {
+    Object(fields) => fields.get(key)
+    _ => None
+  }
+}
+
+fn string_field(value : Json, key : String) -> String {
+  match field(value, key) {
+    Some(String(text)) => text
+    _ => ""
+  }
+}
+
+fn number_field(value : Json, key : String) -> Int {
+  match field(value, key) {
+    Some(Number(number, ..)) => number.to_int()
+    _ => -1
+  }
+}
+
+fn runtime_pair_schedule_valid(samples : Array[Json]) -> Bool {
+  if samples.length() % 2 != 0 { return false }
+  let mut offset = 0
+  while offset < samples.length() {
+    let left = samples[offset]
+    let right = samples[offset + 1]
+    let index = number_field(left, "sample_index")
+    let order = if index % 2 == 0 { "AB" } else { "BA" }
+    let first_backend = if order == "AB" { "shell" } else { "bare-proxy" }
+    let second_backend = if order == "AB" { "bare-proxy" } else { "shell" }
+    if index < 0 || index != number_field(right, "sample_index") ||
+      string_field(left, "scenario") != string_field(right, "scenario") ||
+      string_field(left, "phase") != string_field(right, "phase") ||
+      string_field(left, "pair_order") != order ||
+      string_field(right, "pair_order") != order ||
+      string_field(left, "backend") != first_backend ||
+      string_field(right, "backend") != second_backend ||
+      number_field(left, "pair_position") != 0 ||
+      number_field(right, "pair_position") != 1 {
+      return false
+    }
+    offset += 2
+  }
+  true
+}
+
 async fn main {
   let args = @env.args()
   guard args.length() == 1 else {
@@ -143,20 +190,23 @@ async fn main {
     "moon",
     ["run", "scripts/m5_runtime.mbtx"],
     env={
-      "M5_COLD_RUNS": "1",
-      "M5_WARM_RUNS": "1",
+      "M5_COLD_RUNS": "2",
+      "M5_WARM_RUNS": "2",
       "M5_CHILD_START_DELAY_MS": "200",
     },
   ).output(timeout_ms=120_000)
   runtime.check()
   guard @json.parse(runtime.stdout()) is {
     "schema_version": 5,
+    "schedule": "paired-alternating-ab-ba",
     "samples": Array(runtime_samples),
+    "pair_summaries": Array(pair_summaries),
     ..
-  } && runtime_samples.length() > 0 && runtime_samples.all(sample => match sample {
+  } && runtime_samples.length() == 72 && pair_summaries.length() == 18 &&
+  runtime_samples.all(sample => match sample {
     { "content_ok": true, "child_start_marker": true, .. } => true
     _ => false
-  }) else {
+  }) && runtime_pair_schedule_valid(runtime_samples) else {
     fail("M5 runtime artifact is not versioned")
   }
   let replay = @shell.Cmd(
