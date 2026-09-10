@@ -153,6 +153,29 @@ struct HelperStreams {
     stderr: String,
 }
 
+struct AgentInvocation<'a> {
+    workspace: &'a Path,
+    receipt_file: &'a Path,
+    home: &'a Path,
+    agent_dir: &'a Path,
+    trace_file: &'a Path,
+    launcher_trace: &'a Path,
+    output_prefix: &'a Path,
+    prompt: &'a str,
+}
+
+struct EvidenceArtifact<'a> {
+    block: &'a BlockSpec,
+    backend: &'a str,
+    root: &'a Path,
+    agent: &'a AgentResult,
+    attempts: &'a [AttemptRecord],
+    trace: &'a TraceSummary,
+    helper_streams: &'a HelperStreams,
+    manifest: &'a [String],
+    run: &'a Map<String, Value>,
+}
+
 struct CleanupDir(PathBuf);
 
 impl Drop for CleanupDir {
@@ -464,15 +487,16 @@ fn execute_arm_inner(
     let agent = run_agent(
         config,
         task,
-        backend,
-        &workspace,
-        &receipt_file,
-        &home,
-        &agent_dir,
-        &trace_file,
-        &launcher_trace,
-        &output_prefix,
-        &prompt,
+        AgentInvocation {
+            workspace: &workspace,
+            receipt_file: &receipt_file,
+            home: &home,
+            agent_dir: &agent_dir,
+            trace_file: &trace_file,
+            launcher_trace: &launcher_trace,
+            output_prefix: &output_prefix,
+            prompt: &prompt,
+        },
     )?;
     let child_processes_clean = cleanup_agent_processes(config);
     stop_proxy(&mut proxy);
@@ -720,15 +744,17 @@ fn execute_arm_inner(
     );
     persist_evidence(
         config,
-        block,
-        backend,
-        &root,
-        &agent,
-        &attempts,
-        &trace,
-        &helper_streams,
-        &actual_manifest,
-        &run,
+        EvidenceArtifact {
+            block,
+            backend,
+            root: &root,
+            agent: &agent,
+            attempts: &attempts,
+            trace: &trace,
+            helper_streams: &helper_streams,
+            manifest: &actual_manifest,
+            run: &run,
+        },
     );
     Ok(Value::Object(run))
 }
@@ -1058,25 +1084,23 @@ fn start_proxy(config: &RunnerConfig, private: &Path, key: &str) -> Result<Proxy
     let mut child = command
         .spawn()
         .map_err(|error| format!("starting relay proxy: {error}"))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        if let Err(error) = stdin
+    if let Some(mut stdin) = child.stdin.take()
+        && let Err(error) = stdin
             .write_all(key.as_bytes())
             .and_then(|_| stdin.write_all(b"\n"))
-        {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(io_error(error));
-        }
+    {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(io_error(error));
     }
     let mut port = None;
     for _ in 0..100 {
-        if server_info.is_file() {
-            if let Some(value) =
+        if server_info.is_file()
+            && let Some(value) =
                 read_json(&server_info).and_then(|value| value.get("port").and_then(Value::as_u64))
-            {
-                port = Some(value as u16);
-                break;
-            }
+        {
+            port = Some(value as u16);
+            break;
         }
         if child.try_wait().map_err(io_error)?.is_some() {
             return Err("relay proxy exited before writing server info".to_owned());
@@ -1112,16 +1136,18 @@ fn stop_proxy(proxy: &mut ProxyHandle) {
 fn run_agent(
     config: &RunnerConfig,
     task: &TaskSpec,
-    _backend: &str,
-    workspace: &Path,
-    receipt_file: &Path,
-    home: &Path,
-    agent_dir: &Path,
-    trace_file: &Path,
-    launcher_trace: &Path,
-    output_prefix: &Path,
-    prompt: &str,
+    invocation: AgentInvocation<'_>,
 ) -> Result<AgentResult, String> {
+    let AgentInvocation {
+        workspace,
+        receipt_file,
+        home,
+        agent_dir,
+        trace_file,
+        launcher_trace,
+        output_prefix,
+        prompt,
+    } = invocation;
     if !config.allow_unprivileged && !user_exists(&config.agent_user) {
         return Err(format!(
             "dedicated evaluator user {} does not exist",
@@ -1585,10 +1611,10 @@ fn inspect_item(value: &Value, summary: &mut EventSummary) {
             add_tool(summary, "exec_command", None);
         }
     }
-    if typ == "function_call" || typ == "custom_tool_call" {
-        if let Some(name) = object.get("name").and_then(Value::as_str) {
-            add_tool(summary, name, object.get("call_id").and_then(Value::as_str));
-        }
+    if (typ == "function_call" || typ == "custom_tool_call")
+        && let Some(name) = object.get("name").and_then(Value::as_str)
+    {
+        add_tool(summary, name, object.get("call_id").and_then(Value::as_str));
     }
 }
 
@@ -1616,10 +1642,10 @@ fn inspect_usage(value: &Value, summary: &mut EventSummary) {
 }
 
 fn add_tool(summary: &mut EventSummary, name: &str, call_id: Option<&str>) {
-    if let Some(call_id) = call_id {
-        if !summary.seen_ids.insert(format!("tool:{call_id}")) {
-            return;
-        }
+    if let Some(call_id) = call_id
+        && !summary.seen_ids.insert(format!("tool:{call_id}"))
+    {
+        return;
     }
     *summary.tool_counts.entry(name.to_owned()).or_default() += 1;
 }
@@ -1727,10 +1753,11 @@ fn mark_recovered(records: &mut [AttemptRecord]) {
     // an earlier success.
     let mut successful_after = false;
     for index in (0..records.len()).rev() {
-        if successful_after && (records[index].provider_error || records[index].transport_error) {
-            if let Some(object) = records[index].value.as_object_mut() {
-                object.insert("recovered".to_owned(), json!(true));
-            }
+        if successful_after
+            && (records[index].provider_error || records[index].transport_error)
+            && let Some(object) = records[index].value.as_object_mut()
+        {
+            object.insert("recovered".to_owned(), json!(true));
         }
         if records[index].successful {
             successful_after = true;
@@ -2080,10 +2107,10 @@ fn read_json(path: &Path) -> Option<Value> {
 
 fn write_json_atomic(path: &Path, value: &Value) {
     let temporary = path.with_extension(format!("tmp-{}", std::process::id()));
-    if let Ok(bytes) = serde_json::to_vec(value) {
-        if fs::write(&temporary, bytes).is_ok() {
-            let _ = fs::rename(temporary, path);
-        }
+    if let Ok(bytes) = serde_json::to_vec(value)
+        && fs::write(&temporary, bytes).is_ok()
+    {
+        let _ = fs::rename(temporary, path);
     }
 }
 
@@ -2303,14 +2330,12 @@ fn classify(
         if let Some(mut stdin) = child.stdin.take() {
             let _ = stdin.write_all(input.to_string().as_bytes());
         }
-        if let Ok(output) = child.wait_with_output() {
-            if output.status.success() {
-                if let Ok(value) = serde_json::from_slice::<Value>(&output.stdout) {
-                    if let Some(category) = value.get("failure_category").and_then(Value::as_str) {
-                        return category.to_owned();
-                    }
-                }
-            }
+        if let Ok(output) = child.wait_with_output()
+            && output.status.success()
+            && let Ok(value) = serde_json::from_slice::<Value>(&output.stdout)
+            && let Some(category) = value.get("failure_category").and_then(Value::as_str)
+        {
+            return category.to_owned();
         }
     }
     local_classify(
@@ -2381,18 +2406,18 @@ fn local_classify(
     .to_owned()
 }
 
-fn persist_evidence(
-    config: &RunnerConfig,
-    block: &BlockSpec,
-    backend: &str,
-    root: &Path,
-    agent: &AgentResult,
-    attempts: &[AttemptRecord],
-    trace: &TraceSummary,
-    helper_streams: &HelperStreams,
-    manifest: &[String],
-    run: &Map<String, Value>,
-) {
+fn persist_evidence(config: &RunnerConfig, evidence: EvidenceArtifact<'_>) {
+    let EvidenceArtifact {
+        block,
+        backend,
+        root,
+        agent,
+        attempts,
+        trace,
+        helper_streams,
+        manifest,
+        run,
+    } = evidence;
     let block_dir = sanitize_component(&block.block_id);
     let backend_dir = sanitize_component(backend);
     let directory = config.artifact_dir.join(block_dir).join(backend_dir);
@@ -2494,10 +2519,9 @@ fn sanitize_output(value: &str, config: &RunnerConfig, root: &Path) -> String {
     }
     if let Ok(key) =
         std::env::var("M5_API_KEY").or_else(|_| std::env::var("OPENROUTER_ICU_API_KEY"))
+        && !key.is_empty()
     {
-        if !key.is_empty() {
-            output = output.replace(&key, "[REDACTED]");
-        }
+        output = output.replace(&key, "[REDACTED]");
     }
     if output.len() > MAX_ARTIFACT_BYTES {
         output.truncate(MAX_ARTIFACT_BYTES);
