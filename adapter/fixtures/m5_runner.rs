@@ -1327,8 +1327,20 @@ fn run_agent(
         }
         thread::sleep(Duration::from_millis(100));
     };
-    let stdout = join_capture(stdout_thread);
-    let stderr = join_capture(stderr_thread);
+    // A timed-out Codex process can leave a descendant holding one of the
+    // inherited pipes open. Do not let an unbounded join hide that leak (or
+    // consume the whole evaluator timeout); the post-run observer below must
+    // get a chance to see and clean those processes.
+    let stdout = if timed_out {
+        join_capture_bounded(stdout_thread, Duration::from_secs(1))
+    } else {
+        join_capture(stdout_thread)
+    };
+    let stderr = if timed_out {
+        join_capture_bounded(stderr_thread, Duration::from_secs(1))
+    } else {
+        join_capture(stderr_thread)
+    };
     let codex_exit_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
     let elapsed_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
     let metadata = capture_meta
@@ -1429,6 +1441,21 @@ fn capture_pipe<R: Read + Send + 'static>(
 
 fn join_capture(handle: JoinHandle<Vec<u8>>) -> Vec<u8> {
     handle.join().unwrap_or_default()
+}
+
+fn join_capture_bounded(handle: JoinHandle<Vec<u8>>, timeout: Duration) -> Vec<u8> {
+    let deadline = Instant::now() + timeout;
+    while !handle.is_finished() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(10));
+    }
+    if handle.is_finished() {
+        handle.join().unwrap_or_default()
+    } else {
+        // Dropping a JoinHandle detaches the reader. The dedicated-user
+        // process observer will terminate the owner of the pipe immediately
+        // after this function returns, allowing the detached reader to exit.
+        Vec::new()
+    }
 }
 
 fn observe_and_cleanup_agent_processes(config: &RunnerConfig) -> ProcessCleanupObservation {

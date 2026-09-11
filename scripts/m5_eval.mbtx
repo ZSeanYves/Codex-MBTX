@@ -627,11 +627,38 @@ async fn run_runner(
   block : M5Block,
 ) -> Array[Json] ? {
   let block_json = ToJson::to_json(block).stringify()
-  let output = @shell.Cmd(
-    runner,
-    ["--block", block.block_id],
-    stdin=@shell.Stdin::Text(block_json),
-  ).output(timeout_ms=900_000, max_output_bytes=8_388_608)
+  let output = try {
+    @shell.Cmd(
+      runner,
+      ["--block", block.block_id],
+      stdin=@shell.Stdin::Text(block_json),
+    ).output(timeout_ms=900_000, max_output_bytes=8_388_608)
+  } catch {
+    @async.TimeoutError => {
+      let runner_artifact : Json = {
+        "schema_version": 5,
+        "block_id": block.block_id,
+        "exit_code": (-1).to_json(),
+        "stdout": "",
+        "stderr": "runner command timed out",
+        "timeout": true,
+      }
+      put_runner_artifact(block.block_id, runner_artifact.stringify())
+      return None
+    }
+    _ => {
+      let runner_artifact : Json = {
+        "schema_version": 5,
+        "block_id": block.block_id,
+        "exit_code": (-1).to_json(),
+        "stdout": "",
+        "stderr": "runner command failed while collecting output",
+        "runner_error": true,
+      }
+      put_runner_artifact(block.block_id, runner_artifact.stringify())
+      return None
+    }
+  }
   let runner_artifact : Json = {
     "schema_version": 5,
     "block_id": block.block_id,
