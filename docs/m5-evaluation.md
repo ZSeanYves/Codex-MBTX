@@ -56,7 +56,7 @@ script-capability cohort 保留现有 6 个 MoonBit 任务，独立报告。
 
 ## Oracle 和可观测性
 
-每个 fixture 的机器可读 contract 包含 `fixture_nonce`、`receipt_path`、`expected_stdout`、`expected_stderr`、`expected_exit_code` 和排序后的 `expected_manifest`；运行时还必须生成 helper receipt 与独立 process trace。`workspace_diff` 至少包含 `entries`、`permissions_unchanged` 和 `symlinks_unchanged`，entries 中保存路径、类型、权限和脱敏 digest/target，不能只报一个成功布尔值。`host_cancel_timeout` 使用 `expected_exit_code=-1` 表示主动取消，不把平台相关 signal 编码混入语义结果。重试任务的每次中间退出仍放在 `attempts` 中，不能被终态字段覆盖。通过条件必须同时满足：
+每个 fixture 的机器可读 contract 包含 `fixture_nonce` 模板、`receipt_path`、`expected_stdout`、`expected_stderr`、`expected_exit_code` 和排序后的 `expected_manifest`；在线 runner 在每个 block 开始时生成新的运行时 nonce，同一 block 的 Shell 与 Transparent 两臂共享该 nonce，且每条 run 和 helper receipt 必须保存相同值。evaluator 与 analyzer 会拒绝空 nonce，以及任何声称 `receipt_valid=true` 却无法与 run 的 task/nonce 对应的证据。运行时还必须生成 helper receipt 与独立 process trace。`workspace_diff` 至少包含 `entries`、`permissions_unchanged` 和 `symlinks_unchanged`，entries 中保存路径、类型、权限和脱敏 digest/target，不能只报一个成功布尔值。`host_cancel_timeout` 使用 `expected_exit_code=-1` 表示主动取消，不把平台相关 signal 编码混入语义结果。重试任务的每次中间退出仍放在 `attempts` 中，不能被终态字段覆盖。通过条件必须同时满足：
 
 - 任务目标或 result.json 正确；
 - helper 确实执行；
@@ -180,6 +180,8 @@ Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失�
 第七次诊断 run `34564607726` 在 implementation `5d42840` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。静态复核发现 probe 的旧 p95 使用 `(n-1)*p` 下取整：当一次 probe 无 first-byte、只剩 9 个值时会选择第 8 大秩，run `34562806033` 因而把一个 15019 ms 观测排除并报告 3419 ms。该方法在 9--10 个小样本上不够保守；后续版本固定为 nearest-rank，并增加 9 个可观测值中最慢值为 15001 ms 时健康门禁必须失败的回归测试。该取消 run 没有完成 artifact，不进入任何性能、pilot 或 formal 统计。
 
 第八次诊断 run `34565719119` 在 implementation `eb12f85` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。runner 的旧 teardown 在检查前先对专用评测用户执行 `pkill -KILL`，所以 `child_processes_clean=true` 只能证明 harness 最终清理成功，不能排除 backend 曾遗留子进程。后续版本改为固定宽限后先观测该 UID 的所有进程，再单独记录并执行兜底清理；任何预清理残留都保持 lifecycle failure。该取消 run 没有完成 artifact，不进入任何性能、pilot 或 formal 统计。
+
+第九次诊断 run `34567805251` 在 implementation `f194ab5` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。最终只读协议审计发现 suite 中的 `fixture_nonce` 仍是任务版本常量，重复 block 无法用 nonce 证明 receipt 属于本次运行。后续版本在 runner 中为每个 block 生成新的运行时 nonce，让成对两臂使用相同值，并要求 run 与有效 receipt 的 task/nonce 一致。该取消 run 的 deterministic artifact 不复用，也不进入任何性能、pilot 或 formal 统计。
 
 ## Artifact
 

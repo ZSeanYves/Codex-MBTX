@@ -236,6 +236,8 @@ fn real_main() -> Result<(), String> {
     let task = config
         .as_ref()
         .and_then(|cfg| fetch_task(&cfg.evidence, &block.task).ok());
+    let runtime_nonce = runtime_fixture_nonce(&block);
+    let task = task.map(|task| bind_runtime_nonce(&task, &runtime_nonce));
     let mut runs = Vec::with_capacity(2);
     for backend in &block.order {
         if backend != "shell" && backend != "transparent" {
@@ -248,12 +250,14 @@ fn real_main() -> Result<(), String> {
                 backend,
                 "runner configuration is incomplete",
                 "transport_error",
+                &runtime_nonce,
             ),
             (_, None) => unavailable_run(
                 &block,
                 backend,
                 "M5 evidence binary could not provide the fixture",
                 "transport_error",
+                &runtime_nonce,
             ),
         };
         runs.push(run);
@@ -452,8 +456,35 @@ fn trusted_command(program: &Path, args: &[&str]) -> Result<std::process::Output
 fn execute_arm(config: &RunnerConfig, block: &BlockSpec, task: &TaskSpec, backend: &str) -> Value {
     match execute_arm_inner(config, block, task, backend) {
         Ok(run) => run,
-        Err(error) => unavailable_run(block, backend, &error, "transport_error"),
+        Err(error) => unavailable_run(
+            block,
+            backend,
+            &error,
+            "transport_error",
+            &task.fixture_nonce,
+        ),
     }
+}
+
+fn runtime_fixture_nonce(block: &BlockSpec) -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    let material = format!("{}:{}:{now}", block.block_id, std::process::id());
+    format!("m5-runtime-{}", stable_digest(material.as_bytes()))
+}
+
+fn bind_runtime_nonce(task: &TaskSpec, nonce: &str) -> TaskSpec {
+    let mut bound = task.clone();
+    let template_nonce = bound.fixture_nonce.clone();
+    if let Some(expected) = bound.expected.as_object_mut()
+        && expected.get("nonce").and_then(Value::as_str) == Some(template_nonce.as_str())
+    {
+        expected.insert("nonce".to_owned(), json!(nonce));
+    }
+    bound.fixture_nonce = nonce.to_owned();
+    bound
 }
 
 fn execute_arm_inner(
@@ -620,7 +651,7 @@ fn execute_arm_inner(
         approval_original_command,
         agent.timed_out,
     );
-    let mut run = base_run(block, task, backend);
+    let mut run = base_run(block, backend, &task.fixture_nonce);
     insert(&mut run, "started_ms", json!(0));
     // All timestamps in a run are relative to this run's monotonic origin.
     // Keep the explicit start/end pair even when the optional event markers
@@ -795,15 +826,19 @@ fn execute_arm_inner(
     Ok(Value::Object(run))
 }
 
-fn base_run(block: &BlockSpec, task: &TaskSpec, backend: &str) -> Map<String, Value> {
+fn base_run(block: &BlockSpec, backend: &str, fixture_nonce: &str) -> Map<String, Value> {
     let mut run = Map::new();
     run.insert(
         "run_id".to_owned(),
         Value::String(format!("{}-{backend}", block.block_id)),
     );
     run.insert("block_id".to_owned(), Value::String(block.block_id.clone()));
-    run.insert("task".to_owned(), Value::String(task.id.clone()));
+    run.insert("task".to_owned(), Value::String(block.task.clone()));
     run.insert("backend".to_owned(), Value::String(backend.to_owned()));
+    run.insert(
+        "fixture_nonce".to_owned(),
+        Value::String(fixture_nonce.to_owned()),
+    );
     run.insert("stdout".to_owned(), Value::String(String::new()));
     run.insert("stderr".to_owned(), Value::String(String::new()));
     run.insert("exit_code".to_owned(), json!(-1));
@@ -864,31 +899,17 @@ fn base_run(block: &BlockSpec, task: &TaskSpec, backend: &str) -> Map<String, Va
     run.insert("monotonic_start_ms".to_owned(), json!(0));
     run.insert("monotonic_end_ms".to_owned(), json!(0));
     run.insert("ended_ms".to_owned(), json!(0));
-    let _ = task;
     run
 }
 
-fn unavailable_run(block: &BlockSpec, backend: &str, reason: &str, relay_status: &str) -> Value {
-    let mut run = base_run(
-        block,
-        &TaskSpec {
-            id: block.task.clone(),
-            cohort: "process".to_owned(),
-            prompt: String::new(),
-            inputs: BTreeMap::new(),
-            expected: Value::Null,
-            expected_stdout: String::new(),
-            expected_stderr: String::new(),
-            expected_exit_code: -1,
-            expected_manifest: Vec::new(),
-            editable: None,
-            background: false,
-            fixture_nonce: String::new(),
-            receipt_path: ".m5/receipt.json".to_owned(),
-            oracle: String::new(),
-        },
-        backend,
-    );
+fn unavailable_run(
+    block: &BlockSpec,
+    backend: &str,
+    reason: &str,
+    relay_status: &str,
+    fixture_nonce: &str,
+) -> Value {
+    let mut run = base_run(block, backend, fixture_nonce);
     run.insert(
         "relay_status".to_owned(),
         Value::String(relay_status.to_owned()),
@@ -2726,6 +2747,33 @@ mod tests {
             &json!({"nonce":"n", "cwd":"/private"})
         ));
         assert!(!json_subset(&json!({"nonce":"n"}), &json!({"nonce":"x"})));
+    }
+
+    #[test]
+    fn runtime_nonce_rebinds_the_fixture_oracle() {
+        let task = TaskSpec {
+            id: "host_cwd_environment".to_owned(),
+            cohort: "process".to_owned(),
+            prompt: String::new(),
+            inputs: BTreeMap::new(),
+            expected: json!({"nonce":"m5-template", "other":true}),
+            expected_stdout: String::new(),
+            expected_stderr: String::new(),
+            expected_exit_code: 0,
+            expected_manifest: Vec::new(),
+            editable: None,
+            background: false,
+            fixture_nonce: "m5-template".to_owned(),
+            receipt_path: ".m5/receipt.json".to_owned(),
+            oracle: "json_subset+workspace_manifest+process_trace".to_owned(),
+        };
+        let bound = bind_runtime_nonce(&task, "m5-runtime-fresh");
+        assert_eq!(bound.fixture_nonce, "m5-runtime-fresh");
+        assert_eq!(
+            bound.expected,
+            json!({"nonce":"m5-runtime-fresh", "other":true})
+        );
+        assert_eq!(task.fixture_nonce, "m5-template");
     }
 
     #[test]

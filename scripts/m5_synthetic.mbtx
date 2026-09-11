@@ -45,6 +45,7 @@ async fn main {
       })
       for backend in ["shell", "transparent"] {
         let elapsed = if backend == "shell" { 100 } else { 105 }
+        let fixture_nonce = "m5-runtime-" + block_id
         // A paired online model error must affect success statistics without
         // being mislabeled as a deterministic backend regression.
         let correct_output = index != 0
@@ -53,6 +54,7 @@ async fn main {
           "block_id": block_id,
           "task": task,
           "backend": backend,
+          "fixture_nonce": fixture_nonce,
           "started_ms": 0,
           "monotonic_start_ms": 0,
           "monotonic_end_ms": elapsed,
@@ -85,7 +87,12 @@ async fn main {
           "argv_cwd_valid": true,
           "approval_original_command": true,
           "workspace_diff": {"entries": [], "permissions_unchanged": true, "symlinks_unchanged": true},
-          "receipt": {},
+          "receipt": {
+            "task": task,
+            "nonce": fixture_nonce,
+            "helper": "synthetic-helper",
+            "status": "completed",
+          },
           "process_trace": [],
           "failure_category": if correct_output { "none" } else { "incorrect_output" },
         })
@@ -181,5 +188,45 @@ async fn main {
   } else {
     fail("synthetic decision gate changed")
   }
+  let valid_report = @fs.read_file("_build/m5-results/report.json").text()
+  let tampered_report = match @json.parse(valid_report) {
+    Object(report_fields) => {
+      guard report_fields.get("runs") is Some(Array(run_values)) &&
+        !run_values.is_empty() else {
+        fail("synthetic report has no runs to tamper")
+      }
+      guard run_values[0] is Object(run_fields) &&
+        run_fields.get("receipt") is Some(Object(receipt_fields)) else {
+        fail("synthetic report has no receipt to tamper")
+      }
+      receipt_fields["nonce"] = "tampered-nonce".to_json()
+      run_fields["receipt"] = Json::object(receipt_fields)
+      run_values[0] = Json::object(run_fields)
+      report_fields["runs"] = Json::array(run_values)
+      Json::object(report_fields)
+    }
+    _ => fail("synthetic report is not an object")
+  }
+  @fs.write_file(
+    "_build/m5-results/report.json",
+    tampered_report.stringify(),
+  )
+  let reject_tampered = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_analyze.mbtx"],
+  ).output(timeout_ms=120_000)
+  reject_tampered.check()
+  guard @json.parse(@fs.read_file("_build/m5-results/report.json").text()) is {
+    "decision": { "status": "INCONCLUSIVE", .. },
+    ..
+  } else {
+    fail("tampered fixture nonce was accepted")
+  }
+  @fs.write_file("_build/m5-results/report.json", valid_report)
+  let restore = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_analyze.mbtx"],
+  ).output(timeout_ms=120_000)
+  restore.check()
   println("M5 synthetic aggregation fixture passed")
 }

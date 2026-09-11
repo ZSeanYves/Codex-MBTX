@@ -81,6 +81,7 @@ pub(all) struct M5RunObservation {
   block_id : String
   task : String
   backend : String
+  fixture_nonce : String
   started_ms : Int
   monotonic_start_ms : Int?
   monotonic_end_ms : Int?

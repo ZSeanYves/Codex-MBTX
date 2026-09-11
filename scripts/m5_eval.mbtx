@@ -819,10 +819,33 @@ fn process_cleanup_evidence_valid(run : Json) -> Bool {
     bool_field(run, "harness_cleanup_succeeded"))
 }
 
+fn fixture_receipt_evidence_valid(run : Json) -> Bool {
+  let nonce = string_field(run, "fixture_nonce")
+  if nonce.is_empty() {
+    false
+  } else if !bool_field(run, "receipt_valid") {
+    true
+  } else {
+    match field(run, "receipt") {
+      Some(Object(fields)) => {
+        let status_valid = match fields.get("status") {
+          Some(String("completed" | "stopped")) => true
+          _ => false
+        }
+        fields.get("task") == Some(string_field(run, "task").to_json()) &&
+        fields.get("nonce") == Some(nonce.to_json()) &&
+        (fields.get("helper") is Some(String(helper)) && !helper.is_empty()) &&
+        status_valid
+      }
+      _ => false
+    }
+  }
+}
+
 fn required_run_fields_present(run : Json) -> Bool {
   let required_strings = [
     "run_id", "block_id", "task", "backend", "relay_status", "observability",
-    "backend_observation", "failure_category",
+    "backend_observation", "failure_category", "fixture_nonce",
   ]
   let required_bools = [
     "completed", "usage_complete", "correct_output", "inputs_preserved",
@@ -851,7 +874,7 @@ fn required_run_fields_present(run : Json) -> Bool {
     tool_counts_valid(run) &&
     workspace_diff_valid(run) && object_field(run, "receipt") &&
     string_array_field(run, "process_trace") &&
-    process_cleanup_evidence_valid(run)
+    process_cleanup_evidence_valid(run) && fixture_receipt_evidence_valid(run)
 }
 
 fn timing_fields_valid(run : Json) -> Bool {
