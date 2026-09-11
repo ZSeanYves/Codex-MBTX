@@ -1951,18 +1951,48 @@ fn request_tool_catalog(body: &Value) -> Option<Vec<String>> {
     }
     let mut names = Vec::with_capacity(tool_values.len());
     for tool in tool_values {
-        let name = tool
-            .get("name")
-            .and_then(Value::as_str)
-            .or_else(|| tool.get("type").and_then(Value::as_str))?;
-        if name.is_empty() {
-            return None;
-        }
-        names.push(name.to_owned());
+        append_tool_names(tool, None, &mut names)?;
+    }
+    if names.is_empty() {
+        return None;
     }
     names.sort();
     names.dedup();
     Some(names)
+}
+
+fn append_tool_names(tool: &Value, namespace: Option<&str>, names: &mut Vec<String>) -> Option<()> {
+    if tool.get("type").and_then(Value::as_str) == Some("namespace") {
+        let name = tool.get("name").and_then(Value::as_str)?;
+        let nested = tool.get("tools")?.as_array()?;
+        if nested.is_empty() {
+            return None;
+        }
+        // The default Responses Lite namespace is only a wire grouping. Keep
+        // its child names unchanged; qualify non-default namespaces so two
+        // same-named tools cannot be conflated in the audit.
+        let child_namespace = if name == "functions" {
+            namespace
+        } else {
+            Some(name)
+        };
+        for child in nested {
+            append_tool_names(child, child_namespace, names)?;
+        }
+        return Some(());
+    }
+    let name = tool
+        .get("name")
+        .and_then(Value::as_str)
+        .or_else(|| tool.get("type").and_then(Value::as_str))?;
+    if name.is_empty() {
+        return None;
+    }
+    names.push(match namespace {
+        Some(namespace) => format!("{namespace}.{name}"),
+        None => name.to_owned(),
+    });
+    Some(())
 }
 
 fn function_call_arguments(item: &Value) -> Option<Value> {
@@ -3455,10 +3485,16 @@ mod tests {
                     "type": "additional_tools",
                     "role": "developer",
                     "tools": [
-                        {"type": "function", "name": "write_stdin"},
-                        {"type": "custom", "name": "apply_patch"},
-                        {"type": "function", "name": "exec_command"},
-                        {"type": "function", "name": "view_image"}
+                        {
+                            "type": "namespace",
+                            "name": "functions",
+                            "tools": [
+                                {"type": "function", "name": "write_stdin"},
+                                {"type": "custom", "name": "apply_patch"},
+                                {"type": "function", "name": "exec_command"},
+                                {"type": "function", "name": "view_image"}
+                            ]
+                        }
                     ]
                 }]
             }
