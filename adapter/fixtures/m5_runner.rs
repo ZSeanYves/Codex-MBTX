@@ -502,7 +502,7 @@ fn execute_arm_inner(
     let child_processes_clean = cleanup_agent_processes(config);
     stop_proxy(&mut proxy);
     let trace = read_trace(&trace_file, &launcher_trace);
-    let helper_streams = read_helper_streams(&agent_dir);
+    let helper_streams = read_helper_streams(&agent_dir, task, &trace);
     let events_path = agent_dir.join("events.jsonl");
     let stderr_path = agent_dir.join("agent-stderr.txt");
     write_bounded(&events_path, agent.stdout.as_bytes());
@@ -522,7 +522,7 @@ fn execute_arm_inner(
     let result_value = serde_json::from_str::<Value>(&result_text).unwrap_or(Value::Null);
     let mut receipt = read_json(&receipt_file).unwrap_or_else(|| json!({}));
     let result_exists = result_path.is_file();
-    let mut exit_code = final_helper_exit(&trace).unwrap_or(-1);
+    let mut exit_code = final_helper_exit(task, &trace).unwrap_or(-1);
     if task.id == "host_cancel_timeout" && !result_exists {
         exit_code = -1;
         // The runner owns the cancellation cleanup. Bind the receipt to the
@@ -532,7 +532,7 @@ fn execute_arm_inner(
             receipt = json!({
                 "task": task.id,
                 "nonce": task.fixture_nonce,
-                "helper": "cancelled-child",
+                "helper": expected_helper(task).unwrap_or_else(|| "cancelled-child".to_owned()),
                 "status": "stopped",
             });
             write_json_atomic(&receipt_file, &receipt);
@@ -1173,6 +1173,9 @@ fn run_agent(
     environment.insert("CODEX_HOME".to_owned(), home.to_string_lossy().to_string());
     environment.insert("M5_TASK".to_owned(), task.id.clone());
     environment.insert("M5_TASK_NONCE".to_owned(), task.fixture_nonce.clone());
+    if let Some(helper) = expected_helper(task) {
+        environment.insert("M5_EXPECTED_HELPER".to_owned(), helper);
+    }
     environment.insert(
         "M5_TRACE_FILE".to_owned(),
         trace_file.to_string_lossy().to_string(),
@@ -1306,6 +1309,8 @@ fn user_exists(user: &str) -> bool {
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .args(["-u", user])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
@@ -1488,28 +1493,45 @@ fn read_json_lines(path: &Path) -> Vec<Value> {
         .collect()
 }
 
-fn read_helper_streams(agent_dir: &Path) -> HelperStreams {
+fn read_helper_streams(agent_dir: &Path, task: &TaskSpec, trace: &TraceSummary) -> HelperStreams {
+    let expected = expected_helper(task);
     let mut stdout_paths = Vec::new();
     let mut stderr_paths = Vec::new();
-    if let Ok(entries) = fs::read_dir(agent_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = path
-                .file_name()
-                .and_then(|value| value.to_str())
-                .unwrap_or_default();
-            if name.starts_with("command-output-") && name.ends_with(".stdout") {
+    for record in &trace.command_exits {
+        let helper = record
+            .get("helper")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if expected.as_deref().is_none_or(|value| value == helper) {
+            if let Some(path) = command_output_path(agent_dir, record, "stdout_path", ".stdout") {
                 stdout_paths.push(path);
-            } else if name.starts_with("command-output-") && name.ends_with(".stderr") {
+            }
+            if let Some(path) = command_output_path(agent_dir, record, "stderr_path", ".stderr") {
                 stderr_paths.push(path);
             }
         }
     }
-    stdout_paths.sort();
-    stderr_paths.sort();
     HelperStreams {
         stdout: concatenate_stream_files(&stdout_paths),
         stderr: concatenate_stream_files(&stderr_paths),
+    }
+}
+
+fn command_output_path(
+    agent_dir: &Path,
+    record: &Value,
+    field: &str,
+    suffix: &str,
+) -> Option<PathBuf> {
+    let path = PathBuf::from(record.get(field)?.as_str()?);
+    let name = path.file_name()?.to_str()?;
+    if path.parent() == Some(agent_dir)
+        && name.starts_with("command-output-")
+        && name.ends_with(suffix)
+    {
+        Some(path)
+    } else {
+        None
     }
 }
 
@@ -2221,19 +2243,51 @@ fn receipt_string<'a>(value: &'a Value, key: &str) -> &'a str {
 }
 
 fn receipt_valid(task: &TaskSpec, receipt: &Value) -> bool {
+    let helper = receipt_string(receipt, "helper");
+    let helper_matches = expected_helper(task)
+        .as_deref()
+        .is_none_or(|expected| expected == helper);
     receipt.get("task").and_then(Value::as_str) == Some(task.id.as_str())
         && receipt.get("nonce").and_then(Value::as_str) == Some(task.fixture_nonce.as_str())
-        && !receipt_string(receipt, "helper").is_empty()
+        && !helper.is_empty()
+        && helper_matches
         && matches!(receipt_string(receipt, "status"), "completed" | "stopped")
 }
 
-fn final_helper_exit(trace: &TraceSummary) -> Option<i32> {
+fn final_helper_exit(task: &TaskSpec, trace: &TraceSummary) -> Option<i32> {
+    let expected = expected_helper(task);
     trace.command_exits.iter().rev().find_map(|value| {
+        let helper = value
+            .get("helper")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if expected.as_deref().is_some_and(|target| target != helper) {
+            return None;
+        }
         value
             .get("exit_code")
             .and_then(Value::as_i64)
             .map(|code| code as i32)
     })
+}
+
+fn expected_helper(task: &TaskSpec) -> Option<String> {
+    let helpers: Vec<String> = task
+        .inputs
+        .keys()
+        .filter(|path| path.ends_with(".py") || path.ends_with(".mbtx"))
+        .filter_map(|path| {
+            Path::new(path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(str::to_owned)
+        })
+        .collect();
+    if helpers.len() == 1 {
+        helpers.into_iter().next()
+    } else {
+        None
+    }
 }
 
 fn argv_cwd_valid(task: &TaskSpec, trace: &TraceSummary, workspace: &Path) -> bool {
@@ -2268,6 +2322,13 @@ fn argv_cwd_valid(task: &TaskSpec, trace: &TraceSummary, workspace: &Path) -> bo
 fn trace_complete(task: &TaskSpec, trace: &TraceSummary) -> bool {
     let commands =
         !trace.command_starts.is_empty() && trace.command_starts.len() == trace.command_exits.len();
+    let expected = expected_helper(task);
+    let target_started = expected.as_deref().is_none_or(|target| {
+        trace
+            .command_starts
+            .iter()
+            .any(|record| record.get("helper").and_then(Value::as_str) == Some(target))
+    });
     let launcher = if task.cohort == "process" || task.cohort == "script" {
         // The caller checks the backend-specific launcher count separately;
         // command trace completion itself is independent of that boundary.
@@ -2275,7 +2336,7 @@ fn trace_complete(task: &TaskSpec, trace: &TraceSummary) -> bool {
     } else {
         true
     };
-    commands && launcher
+    commands && target_started && launcher
 }
 
 fn backend_compliant(task: &TaskSpec, events: &EventSummary, trace: &TraceSummary) -> bool {
@@ -2301,25 +2362,26 @@ fn backend_compliant(task: &TaskSpec, events: &EventSummary, trace: &TraceSummar
 fn approval_original_command(
     events: &EventSummary,
     config: &RunnerConfig,
-    workspace: &Path,
+    _workspace: &Path,
 ) -> bool {
     if events.commands.is_empty() {
         return false;
     }
     let launcher = config.trace_launcher.to_string_lossy();
     let mbtx = config.mbtx.to_string_lossy();
-    let workspace = workspace.to_string_lossy();
     events.commands.iter().all(|command| {
-        // The command exposed by Codex must remain the approved original. A
-        // path in the workspace is fine; trusted launcher paths are not.
-        !command.program.is_empty()
-            && !command.program.contains(launcher.as_ref())
-            && !command.program.contains(mbtx.as_ref())
-            && !command.program.contains("m5-trace-launcher")
-            && (command.program.contains(workspace.as_ref())
-                || command.program.contains("python3")
-                || command.program.contains("moon"))
+        approval_command_is_original(&command.program, launcher.as_ref(), mbtx.as_ref())
     })
+}
+
+fn approval_command_is_original(command: &str, launcher: &str, mbtx: &str) -> bool {
+    // The process trace independently validates argv and cwd. This boundary
+    // only checks that the model-visible command was not rewritten to expose
+    // the trusted transparent launcher.
+    !command.is_empty()
+        && !command.contains(launcher)
+        && !command.contains(mbtx)
+        && !command.contains("m5-trace-launcher")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2625,21 +2687,28 @@ mod tests {
     }
 
     #[test]
-    fn helper_streams_are_concatenated_and_checked_against_fixture_contract() {
+    fn helper_streams_ignore_ancillary_verification_commands() {
         let directory = unique_temp_dir("m5-runner-test").expect("temporary directory");
         let _cleanup = CleanupDir(directory.clone());
-        fs::write(directory.join("command-output-001.stdout"), "started\n")
-            .expect("stdout fixture");
-        fs::write(directory.join("command-output-001.stderr"), "").expect("stderr fixture");
-        fs::write(directory.join("command-output-002.stdout"), "complete\n")
-            .expect("stdout fixture");
-        fs::write(directory.join("command-output-002.stderr"), "").expect("stderr fixture");
-        let streams = read_helper_streams(&directory);
+        let first_stdout = directory.join("command-output-001.stdout");
+        let first_stderr = directory.join("command-output-001.stderr");
+        let noise_stdout = directory.join("command-output-002.stdout");
+        let noise_stderr = directory.join("command-output-002.stderr");
+        let last_stdout = directory.join("command-output-003.stdout");
+        let last_stderr = directory.join("command-output-003.stderr");
+        fs::write(&first_stdout, "started\n").expect("stdout fixture");
+        fs::write(&first_stderr, "").expect("stderr fixture");
+        fs::write(&noise_stdout, "verification details\n").expect("noise stdout");
+        fs::write(&noise_stderr, "").expect("noise stderr");
+        fs::write(&last_stdout, "complete\n").expect("stdout fixture");
+        fs::write(&last_stderr, "").expect("stderr fixture");
         let task = TaskSpec {
             id: "host_background".to_owned(),
             cohort: "process".to_owned(),
             prompt: String::new(),
-            inputs: BTreeMap::new(),
+            inputs: [("worker.py".to_owned(), String::new())]
+                .into_iter()
+                .collect(),
             expected: Value::Null,
             expected_stdout: "started\ncomplete\n".to_owned(),
             expected_stderr: String::new(),
@@ -2651,8 +2720,96 @@ mod tests {
             receipt_path: ".m5/receipt.json".to_owned(),
             oracle: String::new(),
         };
+        let trace = TraceSummary {
+            command_starts: vec![
+                json!({ "helper": "worker.py" }),
+                json!({ "helper": "python3" }),
+                json!({ "helper": "worker.py" }),
+            ],
+            command_exits: vec![
+                json!({
+                    "helper": "worker.py",
+                    "exit_code": 7,
+                    "stdout_path": first_stdout,
+                    "stderr_path": first_stderr,
+                }),
+                json!({
+                    "helper": "python3",
+                    "exit_code": 0,
+                    "stdout_path": noise_stdout,
+                    "stderr_path": noise_stderr,
+                }),
+                json!({
+                    "helper": "worker.py",
+                    "exit_code": 0,
+                    "stdout_path": last_stdout,
+                    "stderr_path": last_stderr,
+                }),
+            ],
+            ..TraceSummary::default()
+        };
+        let streams = read_helper_streams(&directory, &task, &trace);
         assert!(helper_streams_valid(&task, &streams, 0));
         assert!(!helper_streams_valid(&task, &streams, 1));
+        assert_eq!(final_helper_exit(&task, &trace), Some(0));
+        assert!(trace_complete(&task, &trace));
+        assert!(receipt_valid(
+            &task,
+            &json!({
+                "task": "host_background",
+                "nonce": "nonce",
+                "helper": "worker.py",
+                "status": "completed",
+            })
+        ));
+        assert!(!receipt_valid(
+            &task,
+            &json!({
+                "task": "host_background",
+                "nonce": "nonce",
+                "helper": "python3",
+                "status": "completed",
+            })
+        ));
+
+        let ancillary_only = TraceSummary {
+            command_starts: vec![json!({ "helper": "python3" })],
+            command_exits: vec![json!({ "helper": "python3", "exit_code": 0 })],
+            ..TraceSummary::default()
+        };
+        assert!(!trace_complete(&task, &ancillary_only));
+        assert!(
+            command_output_path(
+                &directory,
+                &json!({ "stdout_path": directory.join("command-output-001.stdout") }),
+                "stdout_path",
+                ".stdout"
+            )
+            .is_some()
+        );
+        assert!(
+            command_output_path(
+                &directory,
+                &json!({ "stdout_path": directory.join("nested/command-output-001.stdout") }),
+                "stdout_path",
+                ".stdout"
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn approval_accepts_original_verification_commands_but_rejects_launchers() {
+        assert!(approval_command_is_original(
+            "/usr/bin/bash -lc 'ls -l result.json'",
+            "/opt/m5-trace-launcher",
+            "/opt/mbtx"
+        ));
+        assert!(!approval_command_is_original(
+            "/opt/m5-trace-launcher /opt/mbtx exec -- python3 task.py",
+            "/opt/m5-trace-launcher",
+            "/opt/mbtx"
+        ));
     }
 
     #[test]

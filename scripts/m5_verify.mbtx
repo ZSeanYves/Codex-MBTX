@@ -299,5 +299,33 @@ async fn main {
   } else {
     fail("pilot without a runner must remain INCONCLUSIVE and CI-unavailable")
   }
+  let healthy_relay = isolated_state + "/healthy-relay.json"
+  @fs.write_file(
+    healthy_relay,
+    "{\"probes\":10,\"successful_probes\":10,\"provider_errors\":0,\"transport_errors\":0,\"max_consecutive_failures\":0,\"first_byte_p95_ms\":1200,\"arm_failure_rate_basis_points\":0,\"time_windows\":1}",
+  )
+  let failed_runner = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_eval.mbtx", "pilot"],
+    env={
+      "M5_DETERMINISTIC_MANIFEST": isolated_state + "/missing-manifest.json",
+      "M5_RELAY_HEALTH_FILE": healthy_relay,
+      "M5_RUNNER": "/usr/bin/false",
+      "M5_BLOCK_LIMIT": "1",
+    },
+  ).output(timeout_ms=120_000)
+  guard failed_runner.exit_code() != 0 else {
+    fail("M5 runner failure did not fail the evaluation process")
+  }
+  guard @json.parse(@fs.read_file("_build/m5-results/report.json").text()) is {
+    "schema_version": 5,
+    "blocks": [],
+    "runs": [],
+    "aggregates": { "runner_errors": 1, .. },
+    "decision": { "status": "INCONCLUSIVE", .. },
+    ..
+  } else {
+    fail("M5 runner failure did not preserve an auditable report")
+  }
   println("M5 offline verification passed: planner, health gate, classification, runtime, replay, faults and inconclusive online gate")
 }

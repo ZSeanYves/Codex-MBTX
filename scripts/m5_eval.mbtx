@@ -1336,4 +1336,7 @@ async fn main {
   put("_build/m5-results/report.json", encoded)
   put("_build/m5-results/report.md", markdown(report, health_ok, runner_configured))
   println(encoded)
+  if runner_errors > 0 {
+    fail("M5 runner failed before completing the next block boundary")
+  }
 }

@@ -39,6 +39,10 @@ fn write_receipt(path: &str, task: &str, nonce: &str, helper: &str, status: &str
     }
 }
 
+fn should_write_receipt(expected_helper: &str, helper: &str) -> bool {
+    expected_helper.is_empty() || expected_helper == helper
+}
+
 fn unix_ms() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -106,6 +110,7 @@ fn main() {
     let trace_path = std::env::var("M5_TRACE_FILE").unwrap_or_default();
     let output_prefix = std::env::var("M5_OUTPUT_PREFIX").unwrap_or_default();
     let receipt_path = std::env::var("M5_RECEIPT_PATH").unwrap_or_default();
+    let expected_helper = std::env::var("M5_EXPECTED_HELPER").unwrap_or_default();
     let task = std::env::var("M5_TASK").unwrap_or_default();
     let nonce = std::env::var("M5_TASK_NONCE").unwrap_or_default();
     let started = Instant::now();
@@ -164,11 +169,11 @@ fn main() {
     let stdout_thread = child
         .stdout
         .take()
-        .map(|pipe| stream(pipe, std::io::stdout(), stdout_path));
+        .map(|pipe| stream(pipe, std::io::stdout(), stdout_path.clone()));
     let stderr_thread = child
         .stderr
         .take()
-        .map(|pipe| stream(pipe, std::io::stderr(), stderr_path));
+        .map(|pipe| stream(pipe, std::io::stderr(), stderr_path.clone()));
     let status = child.wait();
     let stdout = stdout_thread
         .and_then(|thread| thread.join().ok())
@@ -186,6 +191,8 @@ fn main() {
                 "elapsed_ms": started.elapsed().as_millis(),
                 "stdout_bytes": stdout.len(),
                 "stderr_bytes": stderr.len(),
+                "stdout_path": stdout_path,
+                "stderr_path": stderr_path,
                 "helper": helper,
                 "finished_unix_ms": unix_ms(),
                 "finished_unix_ns": unix_ns(),
@@ -197,6 +204,20 @@ fn main() {
     } else {
         "completed"
     };
-    write_receipt(&receipt_path, &task, &nonce, &helper, receipt_status);
+    if should_write_receipt(&expected_helper, &helper) {
+        write_receipt(&receipt_path, &task, &nonce, &helper, receipt_status);
+    }
     std::process::exit(code);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ancillary_commands_do_not_replace_the_fixture_receipt() {
+        assert!(should_write_receipt("inspect_paths.py", "inspect_paths.py"));
+        assert!(!should_write_receipt("inspect_paths.py", "python3"));
+        assert!(should_write_receipt("", "generated.mbtx"));
+    }
 }

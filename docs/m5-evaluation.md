@@ -67,6 +67,8 @@ script-capability cohort 保留现有 6 个 MoonBit 任务，独立报告。
 
 runner 对完整 manifest 中的每个条目保留类型、权限和脱敏 digest；预期输出文件必须是普通文件，输入文件的权限/符号链接状态也必须保持不变。任何 manifest、权限或类型不一致都会进入 workspace/lifecycle 失败，而不会被成功率分析忽略。
 
+process cohort 的目标 helper 由 fixture 中唯一的 `.py` 或 `.mbtx` 输入文件确定。stdout、stderr、最终退出码和 receipt 只能取自 process trace 中 helper 名称与该目标完全匹配的记录；模型用于检查结果的 `ls`、`python3 -c` 等辅助命令仍保留在 trace 中，但不得覆盖目标 receipt 或污染任务流 oracle。trace 中引用的每个流文件还必须验证为当前 agent 证据目录的直接子文件，并符合受控文件名前后缀。script-capability cohort 没有预置目标 helper，继续作为独立能力实验，不把它的流选择规则用于 Transparent 默认替换结论。
+
 observability 有三态：complete、partial、unobserved。backend_observation 有 compliant、violation、unknown。unknown 永远不能转换成 violation；当 approval 证据也缺失时，failure category 为 `backend_observation_unknown`，而不是 backend violation。M5 的可选时间字段在 JSON 中缺失时省略该字段；这是当前 MoonBit FromJson 对可选原生数值字段的稳定 wire 形式。
 
 ## Relay 健康门禁
@@ -157,7 +159,7 @@ relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留�
 
 每个 relay attempt 记录脱敏 `request_group`、组内 `retry_index`、HTTP 状态、first-byte、completed、断流、provider error、token usage 和最终是否恢复。相同 request body 的尝试属于同一组，新的模型工具轮次从 retry index 0 重新开始；固定 Codex proxy dump 记录首字节和完成 wall timestamp，runner 将其转换成 run-local 时间，不能把正常的后续工具轮次计作 retry。
 
-runner 不得删除或覆盖已有 block artifact。未设置 M5_RUNNER 或 relay health 不达标时，入口仍保存 plan、health 和 INCONCLUSIVE report，不发起在线样本。
+runner 不得删除或覆盖已有 block artifact。未设置 M5_RUNNER 或 relay health 不达标时，入口仍保存 plan、health 和 INCONCLUSIVE report，不发起在线样本。runner 在下一个完整 block 边界前退出、返回非零或给出无法解析的 envelope 时，evaluator 必须先保存 `runner_errors` 和 INCONCLUSIVE report，再以非零状态结束，使 CI 明确失败；该不完整 block 不得进入样本，也不得由后续 block 填洞。
 
 Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d` 上只完成确定性阶段，未发起 relay probe 或在线 block。该 run 的 Darwin lifecycle 样本有 3/21600 次在固定 80 ms 等待结束时 child 尚未写出 start marker（Shell 2 次、bare proxy 1 次），跨平台 manifest 按零回归门槛拒绝了产物。后续版本改为 child 先写 start marker 和唯一 receipt，harness 观测 receipt 后才开始 stop/timeout/cancel 计时；离线验证注入 200 ms 启动延迟以防固定 sleep 回归。该无效 run 仅作为 fixture 缺陷诊断证据，不得并入 pilot 或 formal 统计。
 
@@ -168,6 +170,10 @@ Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d
 第四次诊断 run `34533540258` 在 implementation `40f6e2d` 的 Linux 确定性阶段通过，但 Darwin 的 `bare-proxy/stop` 热启动样本出现 1/21600 次 late output。审计显示原 harness 仅向 wrapper PID 发 `SIGTERM`，50ms 后杀掉 wrapper，恰好与真实 Codex 对独立进程组发信号的语义不同；Codex Direct executor 在 Unix 上建立 session/process group 并向整个组发 `SIGTERM`。后续版本把 B0/B2 lifecycle harness 对齐为 `setsid + exec`、group `SIGTERM`、固定 50ms、group `SIGKILL`，同时将 scope/grace 写进并强制校验 artifact。该 run 仍不进入任何正式统计；这项更改不放宽 50ms 门槛，而是消除了不等价的单 PID 注入方式。
 
 第五次诊断 run `34546904733` 在 implementation `7b055f4` 上完成了 Linux/Darwin 零回归确定性 artifact，并启动了真实 relay pilot。10-request probe 实际收到断流、502 和超慢首字节，健康门禁按预注册规则拒绝了这批在线样本；同时发现 collector 将 nullable primitive 直接放入对象时产生的 Option wire 形态无法被 probe decoder 稳定解析，导致健康摘要未能落盘。该问题属于评测器证据边界，不是 backend 结果；后续版本在 collector 使用显式 `number|null` 编码，在 parser 端兼容历史单元素 Option 数组并对缺失字段生成失效但可审计的 health artifact。该 run 的在线 block 仍为 0，不进入正式统计。
+
+第六组诊断 run 使用 implementation `8e89536`。Pilot run `34556256403` 生成了 Linux/Darwin 各 21600 条 runtime 样本和各 30 条 replay trajectory，确定性语义、trace 与子进程清理均为零回归；但 probe 只有 3/10 完成，包含 2 次 HTTP 502、5 次 transport disconnect，最长连续失败 7 次且 first-byte p95 为 53221 ms，故在线 block 为 0。Formal W1 首次尝试 `34560405930` 的 probe 只有 5/10 完成，包含 1 次 HTTP 502、4 次 disconnect，最长连续失败 3 次且 p95 为 30243 ms，同样没有在线 block。两次均由预注册 relay gate 正确拒绝，只作为 relay 稳定性证据，不进入 pilot 或 formal 对比统计。
+
+Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失败 1 次、first-byte p95 为 3419 ms，因而合法进入首个 block。两臂实际完成目标并生成正确结果、receipt、manifest 和 process trace，但 Linux 用户探测命令 `id -u` 的 stdout 泄漏到 runner envelope，使严格 JSON 解析失败；同时旧 oracle 把后续辅助校验命令的输出并入目标 helper 流，并以命令文本必须包含 workspace、`python3` 或 `moon` 的任意规则误拒绝合法 `ls -l`。最终 artifact 保存 `runner_errors=1`、0 个完整 block，却错误返回绿色 CI。该 run 暴露的是 runner/oracle 缺陷，不是 backend 失败，不进入 formal 统计。后续版本隔离用户探测输出，按 fixture helper 绑定流、退出码和 receipt，把 approval 检查限定为“不向模型可见命令注入可信 launcher”，并让任何 runner error 在报告落盘后使 CI 失败。
 
 ## Artifact
 
