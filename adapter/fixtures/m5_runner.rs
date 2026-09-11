@@ -19,6 +19,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt;
+
 const MAX_CAPTURE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_ARTIFACT_BYTES: usize = 2 * 1024 * 1024;
 const AGENT_TIMEOUT: Duration = Duration::from_secs(300);
@@ -115,6 +118,18 @@ struct CommandRecord {
     program: String,
 }
 
+#[derive(Clone, Debug)]
+struct ExecSessionRecord {
+    command: String,
+    session_id: i64,
+}
+
+#[derive(Clone, Debug)]
+struct WriteStdinRecord {
+    session_id: i64,
+    kind: &'static str,
+}
+
 #[derive(Clone, Debug, Default)]
 struct EventSummary {
     turn_completed: bool,
@@ -128,6 +143,17 @@ struct EventSummary {
     commands: Vec<CommandRecord>,
     tool_counts: BTreeMap<String, i64>,
     seen_ids: HashSet<String>,
+    request_seen_call_ids: HashSet<String>,
+    request_history_complete: bool,
+    exec_sessions: Vec<ExecSessionRecord>,
+    write_stdin_calls: Vec<WriteStdinRecord>,
+}
+
+#[derive(Clone, Debug)]
+struct LifecycleEvidence {
+    observed: bool,
+    compliant: bool,
+    value: Value,
 }
 
 #[derive(Clone, Debug)]
@@ -546,6 +572,7 @@ fn execute_arm_inner(
     )?;
     let process_cleanup = observe_and_cleanup_agent_processes(config);
     let child_processes_clean = process_cleanup.child_processes_clean();
+    restore_runner_access(config, &root, &[&workspace, &home, &agent_dir])?;
     stop_proxy(&mut proxy);
     let trace = read_trace(&trace_file, &launcher_trace);
     let (process_launch_ms, process_exit_ms) = target_helper_timing(task, &trace, wall_start);
@@ -555,6 +582,8 @@ fn execute_arm_inner(
     write_bounded(&events_path, agent.stdout.as_bytes());
     write_bounded(&stderr_path, agent.stderr.as_bytes());
     let mut event_summary = parse_events(&agent.stdout);
+    inspect_request_tool_history(&proxy.dumps, &mut event_summary);
+    let lifecycle = lifecycle_evidence(task, &event_summary);
     let attempts = parse_attempts(&proxy.dumps, wall_start, mono_start, agent.elapsed_ms);
     // Some Codex versions expose a completed turn without emitting a raw
     // Responses `response.completed` event.  A captured attempt is still
@@ -570,7 +599,16 @@ fn execute_arm_inner(
     let mut receipt = read_json(&receipt_file).unwrap_or_else(|| json!({}));
     let result_exists = result_path.is_file();
     let mut exit_code = final_helper_exit(task, &trace).unwrap_or(-1);
-    if task.id == "host_cancel_timeout" && !result_exists {
+    let cancellation_trace_complete = cancellation_trace_complete(task, &trace);
+    let cancellation_proven = task.id == "host_cancel_timeout"
+        && lifecycle.compliant
+        && cancellation_trace_complete
+        && event_summary.turn_completed
+        && agent.exit_code == 0
+        && !agent.timed_out
+        && !result_exists
+        && child_processes_clean;
+    if cancellation_proven {
         exit_code = -1;
         // The runner owns the cancellation cleanup. Bind the receipt to the
         // stopped state even when the model's stop command killed the helper
@@ -582,7 +620,7 @@ fn execute_arm_inner(
                 "helper": expected_helper(task).unwrap_or_else(|| "cancelled-child".to_owned()),
                 "status": "stopped",
             });
-            write_json_atomic(&receipt_file, &receipt);
+            write_json_atomic(&receipt_file, &receipt)?;
         }
     }
     let actual_manifest = workspace_manifest(&workspace);
@@ -592,27 +630,36 @@ fn execute_arm_inner(
         && workspace_entries_safe(&workspace, &actual_manifest)
         && workspace_diff_flags_clean(&diff);
     let result_correct = if task.id == "host_cancel_timeout" {
-        !result_exists && child_processes_clean
+        cancellation_proven
     } else {
         correct_result(task, &result_value)
     };
     let streams_correct = helper_streams_valid(task, &helper_streams, exit_code);
-    let exit_correct = task.id == "host_cancel_timeout" || exit_code == task.expected_exit_code;
+    let exit_correct = if task.id == "host_cancel_timeout" {
+        cancellation_proven && exit_code == task.expected_exit_code
+    } else {
+        exit_code == task.expected_exit_code
+    };
     let correct_output = result_correct && streams_correct && exit_correct;
     let argv_cwd_valid = argv_cwd_valid(task, &trace, &workspace);
     let receipt_ok = receipt_valid(task, &receipt);
-    let trace_complete = trace_complete(task, &trace);
+    let trace_complete = trace_complete(task, &trace, lifecycle.compliant);
     let command_observed = !trace.command_starts.is_empty() && !event_summary.commands.is_empty();
+    let launcher_complete = trace.launcher_starts == trace.launcher_exits
+        || (task.id == "host_cancel_timeout"
+            && lifecycle.compliant
+            && trace.launcher_starts == trace.launcher_exits + 1);
     let backend_observed = if backend == "transparent" {
         // A start-only trace is not proof that the transparent launcher
         // completed the final handoff. Require a balanced launcher pair.
-        command_observed
-            && trace.launcher_starts > 0
-            && trace.launcher_starts == trace.launcher_exits
+        command_observed && lifecycle.observed && trace.launcher_starts > 0 && launcher_complete
     } else {
-        command_observed && trace.launcher_starts == 0 && trace.launcher_exits == 0
+        command_observed
+            && lifecycle.observed
+            && trace.launcher_starts == 0
+            && trace.launcher_exits == 0
     };
-    let backend_compliant = backend_compliant(task, &event_summary, &trace);
+    let backend_compliant = backend_compliant(&event_summary, &trace, lifecycle.compliant);
     let approval_original_command = approval_original_command(&event_summary, config, &workspace);
     let stream_complete = event_summary.response_completed && !event_summary.parse_errors;
     let observability = if event_summary.response_count == 0 && attempts.is_empty() {
@@ -713,6 +760,7 @@ fn execute_arm_inner(
         ),
     );
     insert(&mut run, "tool_counts", json!(event_summary.tool_counts));
+    insert(&mut run, "session_lifecycle", lifecycle.value);
     insert(
         &mut run,
         "input_tokens",
@@ -813,6 +861,7 @@ fn execute_arm_inner(
 
 fn base_run(block: &BlockSpec, backend: &str, fixture_nonce: &str) -> Map<String, Value> {
     let mut run = Map::new();
+    let lifecycle_required = block.task == "host_background" || block.task == "host_cancel_timeout";
     run.insert(
         "run_id".to_owned(),
         Value::String(format!("{}-{backend}", block.block_id)),
@@ -830,6 +879,22 @@ fn base_run(block: &BlockSpec, backend: &str, fixture_nonce: &str) -> Map<String
     run.insert("workspace_manifest".to_owned(), json!([]));
     run.insert("attempts".to_owned(), json!([]));
     run.insert("tool_counts".to_owned(), json!({}));
+    run.insert(
+        "session_lifecycle".to_owned(),
+        json!({
+            "required": lifecycle_required,
+            "request_history_complete": false,
+            "target_session_count": 0,
+            "target_session_ids": [],
+            "write_stdin_count": 0,
+            "write_stdin": [],
+            "poll_count": 0,
+            "interrupt_count": 0,
+            "other_write_count": 0,
+            "same_session": false,
+            "compliant": false,
+        }),
+    );
     run.insert("input_tokens".to_owned(), json!(0));
     run.insert("cached_input_tokens".to_owned(), json!(0));
     run.insert("output_tokens".to_owned(), json!(0));
@@ -1024,6 +1089,41 @@ fn prepare_agent_access(
         Ok(())
     } else {
         Err("could not grant the dedicated evaluator user access".to_owned())
+    }
+}
+
+fn restore_runner_access(
+    config: &RunnerConfig,
+    owner_root: &Path,
+    paths: &[&Path],
+) -> Result<(), String> {
+    if config.allow_unprivileged {
+        return Ok(());
+    }
+    #[cfg(unix)]
+    {
+        let metadata = fs::metadata(owner_root).map_err(io_error)?;
+        let owner = format!("{}:{}", metadata.uid(), metadata.gid());
+        let mut command = Command::new("sudo");
+        command.args(["-n", "chown", "-hR", &owner]);
+        for path in paths {
+            command.arg(path);
+        }
+        let status = command
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map_err(io_error)?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("could not restore runner ownership for evidence collection".to_owned())
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (owner_root, paths);
+        Err("the dedicated evaluator runner requires a Unix host".to_owned())
     }
 }
 
@@ -1687,6 +1787,151 @@ fn parse_events(text: &str) -> EventSummary {
     summary
 }
 
+fn inspect_request_tool_history(dumps: &Path, summary: &mut EventSummary) {
+    let mut request_paths: Vec<PathBuf> = fs::read_dir(dumps)
+        .ok()
+        .into_iter()
+        .flat_map(|entries| entries.filter_map(Result::ok))
+        .map(|entry| entry.path())
+        .filter(|path| path.to_string_lossy().ends_with("-request.json"))
+        .collect();
+    request_paths.sort();
+    let mut complete = !request_paths.is_empty();
+    let mut tool_counts = BTreeMap::new();
+    for path in request_paths {
+        let Some(body) = read_json(&path).and_then(|dump| dump.get("body").cloned()) else {
+            complete = false;
+            continue;
+        };
+        let Some(items) = body.get("input").and_then(Value::as_array) else {
+            complete = false;
+            continue;
+        };
+        let outputs: BTreeMap<&str, &Value> = items
+            .iter()
+            .filter_map(|item| {
+                let kind = item.get("type").and_then(Value::as_str)?;
+                if kind != "function_call_output" && kind != "custom_tool_call_output" {
+                    return None;
+                }
+                Some((item.get("call_id").and_then(Value::as_str)?, item))
+            })
+            .collect();
+        for item in items {
+            let kind = item.get("type").and_then(Value::as_str).unwrap_or_default();
+            if kind != "function_call" && kind != "custom_tool_call" {
+                continue;
+            }
+            let Some(call_id) = item.get("call_id").and_then(Value::as_str) else {
+                complete = false;
+                continue;
+            };
+            let Some(output) = outputs.get(call_id) else {
+                complete = false;
+                continue;
+            };
+            if !summary.request_seen_call_ids.insert(call_id.to_owned()) {
+                continue;
+            }
+            let Some(name) = item.get("name").and_then(Value::as_str) else {
+                complete = false;
+                continue;
+            };
+            *tool_counts.entry(name.to_owned()).or_default() += 1;
+            if kind != "function_call" {
+                continue;
+            }
+            let Some(arguments) = function_call_arguments(item) else {
+                complete = false;
+                continue;
+            };
+            if name == "exec_command" {
+                if let (Some(command), Some(session_id)) = (
+                    arguments.get("cmd").and_then(Value::as_str),
+                    unified_exec_session_id(output),
+                ) {
+                    summary.exec_sessions.push(ExecSessionRecord {
+                        command: command.trim().to_owned(),
+                        session_id,
+                    });
+                }
+            } else if name == "write_stdin" {
+                let Some(session_id) = arguments.get("session_id").and_then(Value::as_i64) else {
+                    complete = false;
+                    continue;
+                };
+                let chars = arguments
+                    .get("chars")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                let kind = if chars.is_empty() {
+                    "poll"
+                } else if chars == "\u{3}" {
+                    "interrupt"
+                } else {
+                    "input"
+                };
+                summary
+                    .write_stdin_calls
+                    .push(WriteStdinRecord { session_id, kind });
+            }
+        }
+    }
+    if !tool_counts.is_empty() {
+        summary.tool_counts = tool_counts;
+    }
+    let exec_count = summary
+        .tool_counts
+        .get("exec_command")
+        .copied()
+        .unwrap_or_default();
+    summary.request_history_complete = complete
+        && exec_count > 0
+        && usize::try_from(exec_count).ok() == Some(summary.commands.len());
+}
+
+fn function_call_arguments(item: &Value) -> Option<Value> {
+    match item.get("arguments")? {
+        Value::String(text) => serde_json::from_str(text).ok(),
+        value @ Value::Object(_) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn unified_exec_session_id(output: &Value) -> Option<i64> {
+    let text = tool_output_text(output)?;
+    if let Ok(value) = serde_json::from_str::<Value>(&text)
+        && let Some(session_id) = value.get("session_id").and_then(Value::as_i64)
+    {
+        return Some(session_id);
+    }
+    text.lines().find_map(|line| {
+        line.trim()
+            .strip_prefix("Process running with session ID ")?
+            .trim()
+            .parse()
+            .ok()
+    })
+}
+
+fn tool_output_text(output: &Value) -> Option<String> {
+    let value = output.get("output")?;
+    match value {
+        Value::String(text) => Some(text.clone()),
+        Value::Object(fields) => fields
+            .get("content")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        Value::Array(items) => items.iter().find_map(|item| {
+            item.get("text")
+                .or_else(|| item.get("content"))
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        }),
+        _ => None,
+    }
+}
+
 fn inspect_event(value: &Value, summary: &mut EventSummary) {
     let Some(object) = value.as_object() else {
         return;
@@ -2288,13 +2533,14 @@ fn read_json(path: &Path) -> Option<Value> {
     serde_json::from_str(&text).ok()
 }
 
-fn write_json_atomic(path: &Path, value: &Value) {
-    let temporary = path.with_extension(format!("tmp-{}", std::process::id()));
-    if let Ok(bytes) = serde_json::to_vec(value)
-        && fs::write(&temporary, bytes).is_ok()
-    {
-        let _ = fs::rename(temporary, path);
+fn write_json_atomic(path: &Path, value: &Value) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(io_error)?;
     }
+    let temporary = path.with_extension(format!("tmp-{}", std::process::id()));
+    let bytes = serde_json::to_vec(value).map_err(|error| error.to_string())?;
+    fs::write(&temporary, bytes).map_err(io_error)?;
+    fs::rename(&temporary, path).map_err(io_error)
 }
 
 fn write_bounded(path: &Path, bytes: &[u8]) {
@@ -2477,7 +2723,35 @@ fn target_helper_argv_valid(task: &TaskSpec, trace: &TraceSummary) -> bool {
             })
 }
 
-fn trace_complete(task: &TaskSpec, trace: &TraceSummary) -> bool {
+fn cancellation_trace_complete(task: &TaskSpec, trace: &TraceSummary) -> bool {
+    if task.id != "host_cancel_timeout" {
+        return false;
+    }
+    let Some(target) = expected_helper(task) else {
+        return false;
+    };
+    let target_starts = trace
+        .command_starts
+        .iter()
+        .filter(|record| record.get("helper").and_then(Value::as_str) == Some(target.as_str()))
+        .count();
+    let target_exits = trace
+        .command_exits
+        .iter()
+        .filter(|record| record.get("helper").and_then(Value::as_str) == Some(target.as_str()))
+        .count();
+    let other_starts = trace.command_starts.len().saturating_sub(target_starts);
+    let other_exits = trace.command_exits.len().saturating_sub(target_exits);
+    target_starts == 1
+        && target_exits <= 1
+        && other_starts == other_exits
+        && trace.command_starts.len() == trace.command_exits.len() + (1 - target_exits)
+}
+
+fn trace_complete(task: &TaskSpec, trace: &TraceSummary, lifecycle_compliant: bool) -> bool {
+    if task.id == "host_cancel_timeout" {
+        return lifecycle_compliant && cancellation_trace_complete(task, trace);
+    }
     let commands =
         !trace.command_starts.is_empty() && trace.command_starts.len() == trace.command_exits.len();
     let expected = expected_helper(task);
@@ -2497,9 +2771,91 @@ fn trace_complete(task: &TaskSpec, trace: &TraceSummary) -> bool {
     commands && target_started && launcher
 }
 
-fn backend_compliant(task: &TaskSpec, events: &EventSummary, trace: &TraceSummary) -> bool {
+fn lifecycle_evidence(task: &TaskSpec, events: &EventSummary) -> LifecycleEvidence {
+    let required = task.background;
+    let target_command = expected_session_command(task);
+    let target_sessions: Vec<i64> = target_command
+        .map(|expected| {
+            events
+                .exec_sessions
+                .iter()
+                .filter(|record| record.command == expected)
+                .map(|record| record.session_id)
+                .collect()
+        })
+        .unwrap_or_default();
+    let poll_count = events
+        .write_stdin_calls
+        .iter()
+        .filter(|record| record.kind == "poll")
+        .count();
+    let interrupt_count = events
+        .write_stdin_calls
+        .iter()
+        .filter(|record| record.kind == "interrupt")
+        .count();
+    let other_write_count = events
+        .write_stdin_calls
+        .iter()
+        .filter(|record| record.kind == "input")
+        .count();
+    let same_session = target_sessions.len() == 1
+        && !events.write_stdin_calls.is_empty()
+        && events
+            .write_stdin_calls
+            .iter()
+            .all(|record| record.session_id == target_sessions[0]);
+    let pattern_valid = if task.id == "host_background" {
+        poll_count >= 1 && interrupt_count == 0 && other_write_count == 0
+    } else if task.id == "host_cancel_timeout" {
+        poll_count >= 1 && interrupt_count == 1 && other_write_count == 0
+    } else {
+        true
+    };
+    let compliant = events.request_history_complete
+        && (!required
+            || (target_sessions.len() == 1
+                && events.exec_sessions.len() == 1
+                && same_session
+                && pattern_valid));
+    let write_stdin: Vec<Value> = events
+        .write_stdin_calls
+        .iter()
+        .map(|record| json!({"session_id": record.session_id, "kind": record.kind}))
+        .collect();
+    LifecycleEvidence {
+        observed: events.request_history_complete,
+        compliant,
+        value: json!({
+            "required": required,
+            "request_history_complete": events.request_history_complete,
+            "target_session_count": target_sessions.len(),
+            "target_session_ids": target_sessions,
+            "write_stdin_count": events.write_stdin_calls.len(),
+            "write_stdin": write_stdin,
+            "poll_count": poll_count,
+            "interrupt_count": interrupt_count,
+            "other_write_count": other_write_count,
+            "same_session": same_session,
+            "compliant": compliant,
+        }),
+    }
+}
+
+fn expected_session_command(task: &TaskSpec) -> Option<&'static str> {
+    match task.id.as_str() {
+        "host_background" => Some("python3 worker.py"),
+        "host_cancel_timeout" => Some("python3 sleeper.py"),
+        _ => None,
+    }
+}
+
+fn backend_compliant(
+    events: &EventSummary,
+    trace: &TraceSummary,
+    lifecycle_compliant: bool,
+) -> bool {
     let exec = events.tool_counts.get("exec_command").copied().unwrap_or(0);
-    let write_stdin = events.tool_counts.get("write_stdin").copied().unwrap_or(0);
     let forbidden = [
         "mbtx",
         "spawn_agent",
@@ -2510,7 +2866,7 @@ fn backend_compliant(task: &TaskSpec, events: &EventSummary, trace: &TraceSummar
         "shell_command",
     ];
     exec > 0
-        && (!task.background || write_stdin > 0)
+        && lifecycle_compliant
         && forbidden
             .iter()
             .all(|name| events.tool_counts.get(*name).copied().unwrap_or(0) == 0)
@@ -2902,6 +3258,151 @@ mod tests {
     }
 
     #[test]
+    fn request_history_recovers_poll_and_interrupt_for_one_session() {
+        let directory = unique_temp_dir("m5-runner-request-history").expect("temporary directory");
+        let _cleanup = CleanupDir(directory.clone());
+        let request = json!({
+            "body": {
+                "input": [
+                    {
+                        "type": "function_call",
+                        "call_id": "start",
+                        "name": "exec_command",
+                        "arguments": "{\"cmd\":\"python3 sleeper.py\",\"yield_time_ms\":250,\"tty\":false}"
+                    },
+                    {
+                        "type": "function_call_output",
+                        "call_id": "start",
+                        "output": "Wall time: 0.25 seconds\nProcess running with session ID 1000\nOutput:\n"
+                    },
+                    {
+                        "type": "function_call",
+                        "call_id": "poll",
+                        "name": "write_stdin",
+                        "arguments": "{\"session_id\":1000,\"chars\":\"\"}"
+                    },
+                    {
+                        "type": "function_call_output",
+                        "call_id": "poll",
+                        "output": "Wall time: 5 seconds\nProcess running with session ID 1000\nOutput:\n"
+                    },
+                    {
+                        "type": "function_call",
+                        "call_id": "interrupt",
+                        "name": "write_stdin",
+                        "arguments": "{\"session_id\":1000,\"chars\":\"\\u0003\"}"
+                    },
+                    {
+                        "type": "function_call_output",
+                        "call_id": "interrupt",
+                        "output": "Wall time: 0.1 seconds\nProcess exited with code 130\nOutput:\n"
+                    }
+                ]
+            }
+        });
+        fs::write(
+            directory.join("000001-1-request.json"),
+            serde_json::to_vec(&request).expect("serialize request"),
+        )
+        .expect("write request");
+        let mut events = EventSummary {
+            commands: vec![CommandRecord {
+                program: "python3 sleeper.py".to_owned(),
+            }],
+            ..EventSummary::default()
+        };
+        inspect_request_tool_history(&directory, &mut events);
+        assert!(events.request_history_complete);
+        assert_eq!(events.tool_counts.get("exec_command"), Some(&1));
+        assert_eq!(events.tool_counts.get("write_stdin"), Some(&2));
+        assert_eq!(events.exec_sessions.len(), 1);
+        assert_eq!(events.write_stdin_calls.len(), 2);
+
+        let task = TaskSpec {
+            id: "host_cancel_timeout".to_owned(),
+            cohort: "process".to_owned(),
+            prompt: String::new(),
+            inputs: [("sleeper.py".to_owned(), String::new())]
+                .into_iter()
+                .collect(),
+            expected: Value::Null,
+            expected_stdout: String::new(),
+            expected_stderr: String::new(),
+            expected_exit_code: -1,
+            expected_manifest: Vec::new(),
+            editable: None,
+            background: true,
+            fixture_nonce: "nonce".to_owned(),
+            receipt_path: ".m5/receipt.json".to_owned(),
+            oracle: "lifecycle_stop+workspace_manifest+process_trace".to_owned(),
+        };
+        let lifecycle = lifecycle_evidence(&task, &events);
+        assert!(lifecycle.observed);
+        assert!(lifecycle.compliant);
+        events.write_stdin_calls[1].session_id = 1001;
+        assert!(!lifecycle_evidence(&task, &events).compliant);
+    }
+
+    #[test]
+    fn cancellation_trace_allows_only_the_interrupted_target_to_lack_exit() {
+        let task = TaskSpec {
+            id: "host_cancel_timeout".to_owned(),
+            cohort: "process".to_owned(),
+            prompt: String::new(),
+            inputs: [("sleeper.py".to_owned(), String::new())]
+                .into_iter()
+                .collect(),
+            expected: Value::Null,
+            expected_stdout: String::new(),
+            expected_stderr: String::new(),
+            expected_exit_code: -1,
+            expected_manifest: Vec::new(),
+            editable: None,
+            background: true,
+            fixture_nonce: "nonce".to_owned(),
+            receipt_path: ".m5/receipt.json".to_owned(),
+            oracle: "lifecycle_stop+workspace_manifest+process_trace".to_owned(),
+        };
+        let trace = TraceSummary {
+            command_starts: vec![json!({"helper":"sleeper.py"})],
+            command_exits: Vec::new(),
+            ..TraceSummary::default()
+        };
+        assert!(cancellation_trace_complete(&task, &trace));
+        assert!(trace_complete(&task, &trace, true));
+        assert!(!trace_complete(&task, &trace, false));
+
+        let unrelated_leak = TraceSummary {
+            command_starts: vec![json!({"helper":"sleeper.py"}), json!({"helper":"python3"})],
+            command_exits: Vec::new(),
+            ..TraceSummary::default()
+        };
+        assert!(!cancellation_trace_complete(&task, &unrelated_leak));
+    }
+
+    #[test]
+    fn atomic_json_writer_creates_parent_directory() {
+        let directory = unique_temp_dir("m5-runner-atomic-json").expect("temporary directory");
+        let _cleanup = CleanupDir(directory.clone());
+        let path = directory.join("nested/receipt.json");
+        write_json_atomic(&path, &json!({"status":"stopped"})).expect("write receipt");
+        assert_eq!(read_json(&path), Some(json!({"status":"stopped"})));
+    }
+
+    #[test]
+    fn unavailable_lifecycle_run_preserves_required_evidence_shape() {
+        let block = BlockSpec {
+            block_id: "block".to_owned(),
+            task: "host_background".to_owned(),
+            order: vec!["shell".to_owned(), "transparent".to_owned()],
+        };
+        let run = unavailable_run(&block, "shell", "relay unavailable", "transport_error", "n");
+        assert_eq!(run["session_lifecycle"]["required"], json!(true));
+        assert_eq!(run["backend_observation"], json!("unknown"));
+        assert_eq!(run["failure_category"], json!("infrastructure_unavailable"));
+    }
+
+    #[test]
     fn classification_keeps_unknown_observation_separate() {
         assert_eq!(
             local_classify(
@@ -2984,7 +3485,7 @@ mod tests {
         assert!(helper_streams_valid(&task, &streams, 0));
         assert!(!helper_streams_valid(&task, &streams, 1));
         assert_eq!(final_helper_exit(&task, &trace), Some(0));
-        assert!(trace_complete(&task, &trace));
+        assert!(trace_complete(&task, &trace, true));
         assert!(receipt_valid(
             &task,
             &json!({
@@ -3009,7 +3510,7 @@ mod tests {
             command_exits: vec![json!({ "helper": "python3", "exit_code": 0 })],
             ..TraceSummary::default()
         };
-        assert!(!trace_complete(&task, &ancillary_only));
+        assert!(!trace_complete(&task, &ancillary_only, true));
         assert!(
             command_output_path(
                 &directory,

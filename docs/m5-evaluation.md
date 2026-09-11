@@ -69,6 +69,8 @@ runner 对完整 manifest 中的每个条目保留类型、权限和脱敏 diges
 
 process cohort 的目标 helper 由 fixture 中唯一的 `.py` 或 `.mbtx` 输入文件确定。stdout、stderr、最终退出码和 receipt 只能取自 process trace 中 helper 名称与该目标完全匹配的记录；模型用于检查结果的 `ls`、`python3 -c` 等辅助命令仍保留在 trace 中，但不得覆盖目标 receipt 或污染任务流 oracle。trace 中引用的每个流文件还必须验证为当前 agent 证据目录的直接子文件，并符合受控文件名前后缀。script-capability cohort 没有预置目标 helper，继续作为独立能力实验，不把它的流选择规则用于 Transparent 默认替换结论。
 
+`host_background` 与 `host_cancel_timeout` 固定使用 Codex unified-exec session，而不是 shell `&`、nohup、重定向、wrapper shell 或 PID kill。模型必须用精确目标命令和 250ms yield 获得 session ID；background 至少以空 `write_stdin` 轮询同一 session，cancel 使用 120 秒目标进程，先空轮询同一 session，再以唯一一次单字节 Ctrl-C 中断同一 session。runner 从私有 relay request history 的成对 function-call/function-call-output 结构重建脱敏 `session_lifecycle`，保存 target session 数、poll/interrupt/其他写入数和 same-session 判定；`codex exec --json` 的合并 command event 不能单独充当 write_stdin 证据。cancel 只有在该调用链、唯一目标 argv/cwd、一个允许因中断而缺少 exit 的目标 trace、完成的 Codex turn、result 缺失和预清理零残留同时成立时，才可由 runner 生成 stopped receipt。Transparent 同样只允许与该目标中断对应的一个未闭合 launcher trace；其他未闭合命令或 launcher 一律失败。
+
 在线 runner 必须在 Codex 进程退出后先等待固定 100 ms 观测宽限，再查询专用 `mbtx-eval` 用户是否仍有任何进程；只有观测成功且没有残留时 `child_processes_clean` 才能为 true。为隔离下一运行臂，runner 随后可以杀掉残留，但必须分别记录 `residual_before_cleanup`、`harness_cleanup_succeeded` 和宽限时间；harness 兜底清理成功不能覆盖或修复 backend lifecycle failure。
 
 observability 有三态：complete、partial、unobserved。backend_observation 有 compliant、violation、unknown。unknown 永远不能转换成 violation；当 approval 证据也缺失时，failure category 为 `backend_observation_unknown`，而不是 backend violation。M5 的可选时间字段在 JSON 中缺失时省略该字段；这是当前 MoonBit FromJson 对可选原生数值字段的稳定 wire 形式。
@@ -157,7 +159,7 @@ relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留�
 
     {"runs": [/* shell run */, /* transparent run */]}
 
-每个 run 必须包含 `attempts`、工具计数、input/cached/output token、`monotonic_start_ms`/`monotonic_end_ms` 起止字段、兼容性的 `started_ms`/`ended_ms`、实际 `stdout`/`stderr`/`exit_code`、`workspace_manifest`、`workspace_diff`、`receipt`、`process_trace`、三态 observability、backend observation 和 failure category。起止字段是 run-local 的单调时钟坐标；端到端时延优先取 `started_ms` 到已观测的 `turn_completed_ms`，缺少完成事件时只能回退到 `monotonic_start_ms` 到 `monotonic_end_ms`。`process_launch_ms` 与 `process_exit_ms` 则由独立 trace 中目标 helper 的 wall timestamp 转换为 run-local 坐标，分别表示最早目标调用开始和最晚目标调用结束；它们只描述目标进程区间，不能作为 agent 端到端时延的回退。Codex 子进程自身的边界只以 `codex_launch_ms`/`codex_exit_ms` 保存在私有 meta。没有发生的可选事件时间点只能按统一 wire 规则省略，不能用 `0` 冒充观测值。runner 不能用缺失字段代替 `unknown`，也不能把 provider/transport error 改写成 backend failure。
+每个 run 必须包含 `attempts`、工具计数、`session_lifecycle`、input/cached/output token、`monotonic_start_ms`/`monotonic_end_ms` 起止字段、兼容性的 `started_ms`/`ended_ms`、实际 `stdout`/`stderr`/`exit_code`、`workspace_manifest`、`workspace_diff`、`receipt`、`process_trace`、三态 observability、backend observation 和 failure category。起止字段是 run-local 的单调时钟坐标；端到端时延优先取 `started_ms` 到已观测的 `turn_completed_ms`，缺少完成事件时只能回退到 `monotonic_start_ms` 到 `monotonic_end_ms`。`process_launch_ms` 与 `process_exit_ms` 则由独立 trace 中目标 helper 的 wall timestamp 转换为 run-local 坐标，分别表示最早目标调用开始和最晚目标调用结束；它们只描述目标进程区间，不能作为 agent 端到端时延的回退。Codex 子进程自身的边界只以 `codex_launch_ms`/`codex_exit_ms` 保存在私有 meta。没有发生的可选事件时间点只能按统一 wire 规则省略，不能用 `0` 冒充观测值。runner 不能用缺失字段代替 `unknown`，也不能把 provider/transport error 改写成 backend failure。
 
 每个 relay attempt 记录脱敏 `request_group`、组内 `retry_index`、HTTP 状态、first-byte、completed、断流、provider error、token usage 和最终是否恢复。相同 request body 的尝试属于同一组，新的模型工具轮次从 retry index 0 重新开始；固定 Codex proxy dump 记录首字节和完成 wall timestamp，runner 将其转换成 run-local 时间，不能把正常的后续工具轮次计作 retry。
 
@@ -189,6 +191,8 @@ Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失�
 
 第十一次诊断 run `34587555743` 在 implementation `694334a` 上完成 Linux/Darwin deterministic job，但跨平台 validator 在 relay probe 前拒绝 Darwin runtime：21600 条样本中，`stop/shell/cold` 有 1 条在高负载下等待独立 signal helper 调度时让 0.5 秒目标自然结束，记录为 exit 0、late output 和 cleanup failure。Linux 与 Darwin 的其余 runtime/replay 样本均零回归；该 run 没有 probe 或在线 block。后续版本保持 receipt 后 80ms 取消和 50ms TERM grace 不变，只把被测目标寿命扩展到 2 秒，并以 stop/timeout/cancel 成对压力样本验证，避免把 runner 调度延迟误判为 backend 生命周期回归。该 run 不进入任何性能、pilot 或 formal 统计。
 
+第十二次诊断 run `34594654731` 在 implementation `0374ceb` 上完成 Linux/Darwin deterministic job，且 10-request relay probe 步骤通过预注册 gate。正式 block 执行期间，对第十次 run 保存的逐臂 evidence 做独立复核后发现：旧 background/cancel prompt 允许模型用 shell 后台语法代替 unified-exec session，而 `codex exec --json` 会把真实 `write_stdin` 合并进原 command event，旧 runner 因而无法可靠区分“未调用”与“调用但不可见”；cancel shim 被进程组中断后，runner 又因 workspace 已归专用用户所有而无法原子写入 synthesized receipt。当前 run 因已知测量缺陷主动中止，不生成可用 pilot 或 formal 样本；已完成的双平台确定性结果只作为诊断记录，不跨 implementation SHA 复用。后续版本改为从私有 request history 重建工具/session 事实、冻结精确 lifecycle prompt、在无残留后恢复 runner ownership，并使用多源交叉条件生成取消 receipt。
+
 ## Artifact
 
 每次运行保存：
@@ -199,6 +203,7 @@ Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失�
 - relay-health.json；
 - probe-health.json（当前窗口）及 `probe-attempts-window-N.json`、`probe-health-window-N.json`（由保存的 probe attempts 重建）；
 - 每个 block 的 `runner-<block>.json` 原始 stdout/stderr/exit code；重复或崩溃尝试使用 `-retry-N`，不覆盖旧 artifact；
+- 每条 run 的脱敏 `session_lifecycle`，包括 request history 完整性、目标 session 数、poll/interrupt/其他写入计数与 same-session 结论；
 - plan.json；
 - runtime/replay/fault 原始汇总；replay 每条 Transparent 记录必须保留 launcher trace，Shell 记录必须证明没有 launcher；
 - deterministic-platforms.json：只接受由实际 artifact platform 字段证明的 Linux 与 Darwin 配对，并校验二者的 implementation SHA 与完整 MoonBit toolchain 文本等于在线 runner 的 checkout；环境变量声明不能替代它；

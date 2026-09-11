@@ -98,6 +98,7 @@ pub(all) struct M5RunObservation {
   workspace_manifest : Array[String]
   attempts : Array[M5Attempt]
   tool_counts : Map[String, Int]
+  session_lifecycle : Json
   input_tokens : Int
   cached_input_tokens : Int
   output_tokens : Int
@@ -296,7 +297,9 @@ fn m5_task_from_case(
       "script-capability"
     },
     difficulty,
-    prompt: if case.workload == "script" {
+    prompt: if case.id == "host_background" {
+      "Use exec_command to invoke exactly `python3 worker.py` with `yield_time_ms` 250 and `tty` false. It must return a running session ID. Poll that same session with write_stdin using empty `chars` until the command exits and result.json exists. Do not use shell `&`, nohup, redirection, a wrapper shell, another python3 command, or any temporary file. Do not modify worker.py or manually write result.json."
+    } else if case.workload == "script" {
       "MoonBit script capability task. " + case.prompt
     } else {
       case.prompt
@@ -329,7 +332,12 @@ pub fn m5_process_suite() -> Array[M5Task] {
       } else {
         "semantics"
       }
-      tasks.push(m5_task_from_case(case, difficulty, "m5-\{case.id}-v1"))
+      let nonce = if case.id == "host_background" {
+        "m5-host_background-v2"
+      } else {
+        "m5-\{case.id}-v1"
+      }
+      tasks.push(m5_task_from_case(case, difficulty, nonce))
     }
   }
   tasks.push({
@@ -355,9 +363,9 @@ pub fn m5_process_suite() -> Array[M5Task] {
     id: "host_cancel_timeout",
     cohort: "process",
     difficulty: "lifecycle",
-    prompt: "Start sleeper.py with python3 as a background process, poll it, and stop it before it writes result.json. Verify that the process is stopped and that result.json was not created. Do not modify sleeper.py.",
+    prompt: "Use exec_command to invoke exactly `python3 sleeper.py` with `yield_time_ms` 250 and `tty` false. It must return a running session ID. First poll that same session once with write_stdin using empty `chars`; then stop that same session with exactly one write_stdin call whose `chars` is the single Ctrl-C byte `\\u0003`. Confirm the interrupt call reports that the session exited and result.json does not exist. Do not use shell `&`, nohup, redirection, kill, a wrapper shell, another python3 command, or any temporary file. Do not modify sleeper.py or create result.json.",
     inputs: {
-      "sleeper.py": "import json,time\ntime.sleep(30)\nwith open('result.json','w',encoding='utf-8') as f: json.dump({'unexpected':'completed'},f)\n",
+      "sleeper.py": "import json,time\ntime.sleep(120)\nwith open('result.json','w',encoding='utf-8') as f: json.dump({'unexpected':'completed'},f)\n",
     },
     expected: { "stopped": true, "result_exists": false },
     expected_stdout: "",
@@ -367,7 +375,7 @@ pub fn m5_process_suite() -> Array[M5Task] {
     expected_manifest: [".m5/receipt.json", "sleeper.py"],
     editable: None,
     background: true,
-    fixture_nonce: "m5-host_cancel_timeout-v1",
+    fixture_nonce: "m5-host_cancel_timeout-v2",
     receipt_path: ".m5/receipt.json",
     oracle: "lifecycle_stop+workspace_manifest+process_trace",
   })

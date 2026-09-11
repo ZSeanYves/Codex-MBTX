@@ -49,6 +49,7 @@ async fn main {
         // A paired online model error must affect success statistics without
         // being mislabeled as a deterministic backend regression.
         let correct_output = index != 0
+        let lifecycle = task == "host_background" || task == "host_cancel_timeout"
         runs.push({
           "run_id": block_id + "-" + backend,
           "block_id": block_id,
@@ -62,6 +63,42 @@ async fn main {
           "turn_completed_ms": elapsed,
           "attempts": [],
           "tool_counts": {},
+          "session_lifecycle": if lifecycle {
+            {
+              "required": true,
+              "request_history_complete": true,
+              "target_session_count": 1,
+              "target_session_ids": [1000],
+              "write_stdin_count": if task == "host_cancel_timeout" { 2 } else { 1 },
+              "write_stdin": if task == "host_cancel_timeout" {
+                [
+                  { "session_id": 1000, "kind": "poll" },
+                  { "session_id": 1000, "kind": "interrupt" },
+                ]
+              } else {
+                [{ "session_id": 1000, "kind": "poll" }]
+              },
+              "poll_count": 1,
+              "interrupt_count": if task == "host_cancel_timeout" { 1 } else { 0 },
+              "other_write_count": 0,
+              "same_session": true,
+              "compliant": true,
+            }
+          } else {
+            {
+              "required": false,
+              "request_history_complete": true,
+              "target_session_count": 0,
+              "target_session_ids": [],
+              "write_stdin_count": 0,
+              "write_stdin": [],
+              "poll_count": 0,
+              "interrupt_count": 0,
+              "other_write_count": 0,
+              "same_session": false,
+              "compliant": true,
+            }
+          },
           "stdout": "",
           "stderr": "",
           "exit_code": 0,

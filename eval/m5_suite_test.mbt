@@ -42,8 +42,15 @@ test "M5 fixtures expose stream, exit and exact manifest contracts" {
   )
   let cancelled = tasks.filter(t => t.id == "host_cancel_timeout")[0]
   assert_eq(cancelled.expected_exit_code, -1)
+  assert_eq(cancelled.fixture_nonce, "m5-host_cancel_timeout-v2")
+  assert_true(cancelled.prompt.contains("exactly `python3 sleeper.py`"))
+  assert_true(cancelled.prompt.contains("write_stdin"))
+  assert_true(cancelled.prompt.contains("`\\u0003`"))
   assert_true(@eval.m5_streams_valid(cancelled, "", "", -1))
   let background = tasks.filter(t => t.id == "host_background")[0]
+  assert_eq(background.fixture_nonce, "m5-host_background-v2")
+  assert_true(background.prompt.contains("exactly `python3 worker.py`"))
+  assert_true(background.prompt.contains("write_stdin"))
   assert_true(@eval.m5_streams_valid(background, "started\ncomplete\n", "", 0))
   let recovery = tasks.filter(t => t.id == "host_exit_recovery")[0]
   assert_true(

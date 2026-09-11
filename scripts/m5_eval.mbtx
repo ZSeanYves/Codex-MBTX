@@ -825,6 +825,98 @@ fn tool_counts_valid(run : Json) -> Bool {
   }
 }
 
+fn session_lifecycle_evidence_valid(run : Json) -> Bool {
+  let lifecycle_task = string_field(run, "task") == "host_background" ||
+    string_field(run, "task") == "host_cancel_timeout"
+  match field(run, "session_lifecycle") {
+    Some(Object(fields)) => {
+      let required = fields.get("required") is Some(True)
+      let history_complete = fields.get("request_history_complete") is Some(True)
+      let same_session = fields.get("same_session") is Some(True)
+      let compliant = fields.get("compliant") is Some(True)
+      let bool_shape = (fields.get("required") is Some(True) ||
+        fields.get("required") is Some(False)) &&
+        (fields.get("request_history_complete") is Some(True) ||
+          fields.get("request_history_complete") is Some(False)) &&
+        (fields.get("same_session") is Some(True) ||
+          fields.get("same_session") is Some(False)) &&
+        (fields.get("compliant") is Some(True) ||
+          fields.get("compliant") is Some(False))
+      let numbers = [
+        "target_session_count", "write_stdin_count", "poll_count",
+        "interrupt_count", "other_write_count",
+      ]
+      let mut number_shape = true
+      for key in numbers {
+        number_shape = number_shape && fields.get(key) is Some(Number(_, ..))
+      }
+      let target_ids = match fields.get("target_session_ids") {
+        Some(Array(values)) => values
+        _ => []
+      }
+      let writes = match fields.get("write_stdin") {
+        Some(Array(values)) => values
+        _ => []
+      }
+      let mut write_shape = true
+      let mut actual_polls = 0
+      let mut actual_interrupts = 0
+      let mut actual_other_writes = 0
+      for write in writes {
+        match write {
+          Object(write_fields) => {
+            write_shape = write_shape && write_fields.get("session_id") is
+              Some(Number(_, ..))
+            match write_fields.get("kind") {
+              Some(String("poll")) => actual_polls += 1
+              Some(String("interrupt")) => actual_interrupts += 1
+              Some(String("input")) => actual_other_writes += 1
+              _ => write_shape = false
+            }
+          }
+          _ => write_shape = false
+        }
+      }
+      let derived_same_session = target_ids.length() == 1 && !writes.is_empty() &&
+        writes.all(write => match (write, target_ids[0]) {
+          (Object(write_fields), target_id) =>
+            write_fields.get("session_id") == Some(target_id)
+          _ => false
+        })
+      let trace_shape = target_ids.all(id => id is Number(_, ..)) && write_shape &&
+        (fields.get("target_session_count") is Some(Number(count, ..)) &&
+          count == target_ids.length().to_double()) &&
+        (fields.get("write_stdin_count") is Some(Number(count, ..)) &&
+          count == writes.length().to_double()) &&
+        (fields.get("poll_count") is Some(Number(count, ..)) &&
+          count == actual_polls.to_double()) &&
+        (fields.get("interrupt_count") is Some(Number(count, ..)) &&
+          count == actual_interrupts.to_double()) &&
+        (fields.get("other_write_count") is Some(Number(count, ..)) &&
+          count == actual_other_writes.to_double()) &&
+        same_session == derived_same_session
+      let required_evidence = if !lifecycle_task {
+        !required
+      } else if !compliant {
+        required
+      } else {
+        required && history_complete && same_session &&
+        fields.get("target_session_count") is Some(Number(1.0, ..)) &&
+        (fields.get("write_stdin_count") is Some(Number(count, ..)) && count >= 1.0) &&
+        (fields.get("poll_count") is Some(Number(count, ..)) && count >= 1.0) &&
+        fields.get("other_write_count") is Some(Number(0.0, ..)) &&
+        (if string_field(run, "task") == "host_cancel_timeout" {
+          fields.get("interrupt_count") is Some(Number(1.0, ..))
+        } else {
+          fields.get("interrupt_count") is Some(Number(0.0, ..))
+        })
+      }
+      bool_shape && number_shape && trace_shape && required_evidence
+    }
+    _ => false
+  }
+}
+
 fn workspace_diff_valid(run : Json) -> Bool {
   match field(run, "workspace_diff") {
     Some(Object(fields)) =>
@@ -899,6 +991,7 @@ fn required_run_fields_present(run : Json) -> Bool {
     number_field(run, "exit_code") &&
     string_array_field(run, "workspace_manifest") && attempts_valid(run) &&
     tool_counts_valid(run) &&
+    session_lifecycle_evidence_valid(run) &&
     workspace_diff_valid(run) && object_field(run, "receipt") &&
     string_array_field(run, "process_trace") &&
     process_cleanup_evidence_valid(run) && fixture_receipt_evidence_valid(run)
