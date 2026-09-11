@@ -52,7 +52,7 @@ script-capability cohort 保留现有 6 个 MoonBit 任务，独立报告。
 
 正式在线样本为每个 process 任务 20--30 个成对 block，至少分布在三个独立时间窗口；pilot 为每个任务 5 个成对 block，只用于发现协议或基础设施缺陷，不宣布默认替换。script cohort 每任务 10--20 对样本。
 
-本地确定性 runtime 默认执行 argv、stdin/EOF/UTF-8、cwd/env、大输出、非零退出以及 background/poll、stop、timeout、cancel 共 9 个场景，每个场景 200 次冷启动和 1000 次热启动；同一 scenario/phase/index 的 Shell 与 bare proxy 构成相邻配对，按 index 奇偶执行 AB/BA 交替顺序，并在每条样本保存 `pair_order` 和 `pair_position`，避免整臂串行时机器负载漂移压过几毫秒 wrapper 差异。artifact 同时保存每个 scenario/phase 的 `bare-proxy - shell` 配对延迟 p50/p95/p99、AB/BA 子组中位数和 win/tie/loss，validator 会从原始样本核对配对顺序与摘要规模。冷启动和热启动都保留独立 child launch，热启动只复用已构建的 MBTX binary 与 harness，不伪装成持久 daemon，因而报告会把这一测量边界写明。可通过 M5_COLD_RUNS、M5_WARM_RUNS 和 M5_SCENARIOS 做短 smoke。child 输出内部开始/结束标记，外部 harness 以单调时钟测量 wrapper 和回收开销；主动取消场景允许没有 child end marker，但必须有 start marker、reap 顺序和无 late output。由于 Codex 的 Unix Direct 路径为 launcher 建立独立 session/process group，runtime 的 lifecycle 样本也先以 `setsid + exec` 建立独立组，再向整个组发送 `SIGTERM`、等待预注册的 50ms、最后发送 `SIGKILL`；每条样本必须记录 `cancellation_scope=process-group` 和 `cancellation_grace_ms=50`。这避免把只对 wrapper PID 发信号的人工父子竞态误判为真实 Codex 后端回归。
+本地确定性 runtime 默认执行 argv、stdin/EOF/UTF-8、cwd/env、大输出、非零退出以及 background/poll、stop、timeout、cancel 共 9 个场景，每个场景 200 次冷启动和 1000 次热启动；同一 scenario/phase/index 的 Shell 与 bare proxy 构成相邻配对，按 index 奇偶执行 AB/BA 交替顺序，并在每条样本保存 `pair_order` 和 `pair_position`，避免整臂串行时机器负载漂移压过几毫秒 wrapper 差异。artifact 同时保存每个 scenario/phase 的 `bare-proxy - shell` 配对延迟 p50/p95/p99、AB/BA 子组中位数和 win/tie/loss，validator 会从原始样本核对配对顺序与摘要规模。冷启动和热启动都保留独立 child launch，热启动只复用已构建的 MBTX binary 与 harness，不伪装成持久 daemon，因而报告会把这一测量边界写明。可通过 M5_COLD_RUNS、M5_WARM_RUNS 和 M5_SCENARIOS 做短 smoke。child 输出内部开始/结束标记，外部 harness 以单调时钟测量 wrapper 和回收开销；主动取消场景使用 2 秒目标进程，在 receipt 后 80ms 发起取消，允许没有 child end marker，但必须有 start marker、reap 顺序和无 late output。由于 Codex 的 Unix Direct 路径为 launcher 建立独立 session/process group，runtime 的 lifecycle 样本也先以 `setsid + exec` 建立独立组，再向整个组发送 `SIGTERM`、等待预注册的 50ms、最后发送 `SIGKILL`；每条样本必须记录 `cancellation_scope=process-group` 和 `cancellation_grace_ms=50`。这避免把只对 wrapper PID 发信号的人工父子竞态误判为真实 Codex 后端回归。
 
 ## Oracle 和可观测性
 
@@ -184,6 +184,10 @@ Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失�
 第九次诊断 run `34567805251` 在 implementation `f194ab5` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。最终只读协议审计发现 suite 中的 `fixture_nonce` 仍是任务版本常量，重复 block 无法用 nonce 证明 receipt 属于本次运行。后续版本在 runner 中为每个 block 生成新的运行时 nonce，让成对两臂使用相同值，并要求 run 与有效 receipt 的 task/nonce 一致。该取消 run 的 deterministic artifact 不复用，也不进入任何性能、pilot 或 formal 统计。
 
 同一次协议冻结审计还发现旧 `argv_cwd_valid` 会因为正确的 literal argv 包含 `SHOULD_NOT_EXIST` 字样而拒绝 `host_literal_argv`，同时没有逐任务验证目标 helper 的参数序列。正式采集前将该规则改为按 helper basename 筛选目标调用，并严格验证每个 process fixture 的 argv；`host_exit_recovery` 必须依次出现无参数调用和 `--confirm` 调用。未授权文件是否出现继续由完整 workspace manifest 独立判断，不能用参数字串替代文件系统证据。
+
+第十次诊断 run `34574556966` 在 implementation `4eb7b78` 上完成 Linux/Darwin 零回归确定性证据，在线 probe 10/10 完成、provider/transport error 为 0、first-byte p95 为 7104ms。在线阶段保存了 5 个完整 block 和第 6 个 block 的部分 runner evidence，但 Codex 达到 300 秒 agent timeout 后，runner 无界等待仍被后代进程持有的 stdout/stderr pipe reader，最终 evaluator 自身触发 `TimeoutError` 且没有生成 report。后续 implementation `694334a` 对超时后的 pipe reader join 设置 1 秒上限，并要求 evaluator 捕获 runner timeout、保存 `runner_errors` 与 INCONCLUSIVE report 后失败退出。该 run 没有完整 pilot 报告，所有在线 block 均视为诊断数据，不进入 pilot 或 formal 统计。
+
+第十一次诊断 run `34587555743` 在 implementation `694334a` 上完成 Linux/Darwin deterministic job，但跨平台 validator 在 relay probe 前拒绝 Darwin runtime：21600 条样本中，`stop/shell/cold` 有 1 条在高负载下等待独立 signal helper 调度时让 0.5 秒目标自然结束，记录为 exit 0、late output 和 cleanup failure。Linux 与 Darwin 的其余 runtime/replay 样本均零回归；该 run 没有 probe 或在线 block。后续版本保持 receipt 后 80ms 取消和 50ms TERM grace 不变，只把被测目标寿命扩展到 2 秒，并以 stop/timeout/cancel 成对压力样本验证，避免把 runner 调度延迟误判为 backend 生命周期回归。该 run 不进入任何性能、pilot 或 formal 统计。
 
 ## Artifact
 

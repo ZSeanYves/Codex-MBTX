@@ -275,7 +275,12 @@ async fn run_lifecycle_once(
   let body = if scenario == "background" {
     "print('started',flush=True);time.sleep(0.04);print('complete',flush=True)"
   } else {
-    "print('started',flush=True);time.sleep(0.5);print('late',flush=True)"
+    // Keep the target alive well beyond the receipt-to-signal interval. A
+    // heavily loaded macOS runner can take hundreds of milliseconds to spawn
+    // the separate signal helper even though cancellation was requested at
+    // 80 ms; a short-lived target would turn scheduler delay into a false
+    // lifecycle regression.
+    "print('started',flush=True);time.sleep(2);print('late',flush=True)"
   }
   let receipt_path =
     "_build/m5-runtime-receipts/" + backend + "-" + phase + "-" + scenario +
