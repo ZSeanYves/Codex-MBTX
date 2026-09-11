@@ -1929,12 +1929,28 @@ fn inspect_request_tool_history(dumps: &Path, summary: &mut EventSummary) {
 }
 
 fn request_tool_catalog(body: &Value) -> Option<Vec<String>> {
-    let tools = body.get("tools")?.as_array()?;
-    if tools.is_empty() {
+    // Responses Lite carries the model-visible tool definitions in an
+    // `additional_tools` input item instead of the top-level `tools` field.
+    // Accept both wire forms, but continue to require a non-empty, named
+    // catalog so the caller can compare it exactly with the frozen catalog.
+    let mut tool_values = Vec::new();
+    if let Some(tools) = body.get("tools").and_then(Value::as_array) {
+        tool_values.extend(tools.iter());
+    }
+    if let Some(input) = body.get("input").and_then(Value::as_array) {
+        for item in input {
+            if item.get("type").and_then(Value::as_str) != Some("additional_tools") {
+                continue;
+            }
+            let tools = item.get("tools")?.as_array()?;
+            tool_values.extend(tools.iter());
+        }
+    }
+    if tool_values.is_empty() {
         return None;
     }
-    let mut names = Vec::with_capacity(tools.len());
-    for tool in tools {
+    let mut names = Vec::with_capacity(tool_values.len());
+    for tool in tool_values {
         let name = tool
             .get("name")
             .and_then(Value::as_str)
@@ -3432,6 +3448,30 @@ mod tests {
         inspect_request_tool_history(&directory, &mut inconsistent);
         assert!(!inconsistent.tool_catalog_consistent);
         assert!(!inconsistent.request_history_complete);
+
+        let responses_lite = json!({
+            "body": {
+                "input": [{
+                    "type": "additional_tools",
+                    "role": "developer",
+                    "tools": [
+                        {"type": "function", "name": "write_stdin"},
+                        {"type": "custom", "name": "apply_patch"},
+                        {"type": "function", "name": "exec_command"},
+                        {"type": "function", "name": "view_image"}
+                    ]
+                }]
+            }
+        });
+        assert_eq!(
+            request_tool_catalog(&responses_lite["body"]),
+            Some(vec![
+                "apply_patch".to_owned(),
+                "exec_command".to_owned(),
+                "view_image".to_owned(),
+                "write_stdin".to_owned(),
+            ])
+        );
     }
 
     #[test]
