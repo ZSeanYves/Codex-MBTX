@@ -69,6 +69,8 @@ runner 对完整 manifest 中的每个条目保留类型、权限和脱敏 diges
 
 process cohort 的目标 helper 由 fixture 中唯一的 `.py` 或 `.mbtx` 输入文件确定。stdout、stderr、最终退出码和 receipt 只能取自 process trace 中 helper 名称与该目标完全匹配的记录；模型用于检查结果的 `ls`、`python3 -c` 等辅助命令仍保留在 trace 中，但不得覆盖目标 receipt 或污染任务流 oracle。trace 中引用的每个流文件还必须验证为当前 agent 证据目录的直接子文件，并符合受控文件名前后缀。script-capability cohort 没有预置目标 helper，继续作为独立能力实验，不把它的流选择规则用于 Transparent 默认替换结论。
 
+在线 runner 必须在 Codex 进程退出后先等待固定 100 ms 观测宽限，再查询专用 `mbtx-eval` 用户是否仍有任何进程；只有观测成功且没有残留时 `child_processes_clean` 才能为 true。为隔离下一运行臂，runner 随后可以杀掉残留，但必须分别记录 `residual_before_cleanup`、`harness_cleanup_succeeded` 和宽限时间；harness 兜底清理成功不能覆盖或修复 backend lifecycle failure。
+
 observability 有三态：complete、partial、unobserved。backend_observation 有 compliant、violation、unknown。unknown 永远不能转换成 violation；当 approval 证据也缺失时，failure category 为 `backend_observation_unknown`，而不是 backend violation。M5 的可选时间字段在 JSON 中缺失时省略该字段；这是当前 MoonBit FromJson 对可选原生数值字段的稳定 wire 形式。
 
 ## Relay 健康门禁
@@ -176,6 +178,8 @@ Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d
 Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失败 1 次；旧 percentile 实现报告 first-byte p95 为 3419 ms，并据此允许进入首个 block。两臂实际完成目标并生成正确结果、receipt、manifest 和 process trace，但 Linux 用户探测命令 `id -u` 的 stdout 泄漏到 runner envelope，使严格 JSON 解析失败；同时旧 oracle 把后续辅助校验命令的输出并入目标 helper 流，并以命令文本必须包含 workspace、`python3` 或 `moon` 的任意规则误拒绝合法 `ls -l`。最终 artifact 保存 `runner_errors=1`、0 个完整 block，却错误返回绿色 CI。该 run 暴露的是 runner/oracle 缺陷，不是 backend 失败，不进入 formal 统计。后续版本隔离用户探测输出，按 fixture helper 绑定流、退出码和 receipt，把 approval 检查限定为“不向模型可见命令注入可信 launcher”，并让任何 runner error 在报告落盘后使 CI 失败；按现行 nearest-rank 规则，该 run 的 15019 ms 最慢观测也会使 probe gate 直接失败。
 
 第七次诊断 run `34564607726` 在 implementation `5d42840` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。静态复核发现 probe 的旧 p95 使用 `(n-1)*p` 下取整：当一次 probe 无 first-byte、只剩 9 个值时会选择第 8 大秩，run `34562806033` 因而把一个 15019 ms 观测排除并报告 3419 ms。该方法在 9--10 个小样本上不够保守；后续版本固定为 nearest-rank，并增加 9 个可观测值中最慢值为 15001 ms 时健康门禁必须失败的回归测试。该取消 run 没有完成 artifact，不进入任何性能、pilot 或 formal 统计。
+
+第八次诊断 run `34565719119` 在 implementation `eb12f85` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。runner 的旧 teardown 在检查前先对专用评测用户执行 `pkill -KILL`，所以 `child_processes_clean=true` 只能证明 harness 最终清理成功，不能排除 backend 曾遗留子进程。后续版本改为固定宽限后先观测该 UID 的所有进程，再单独记录并执行兜底清理；任何预清理残留都保持 lifecycle failure。该取消 run 没有完成 artifact，不进入任何性能、pilot 或 formal 统计。
 
 ## Artifact
 

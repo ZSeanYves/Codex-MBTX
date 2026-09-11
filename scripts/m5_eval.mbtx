@@ -810,6 +810,15 @@ fn workspace_diff_valid(run : Json) -> Bool {
   }
 }
 
+fn process_cleanup_evidence_valid(run : Json) -> Bool {
+  let grace_valid = field(run, "process_cleanup_observation_grace_ms") is
+    Some(Number(100.0, ..))
+  grace_valid && bool_field(run, "child_processes_clean") ==
+  (bool_field(run, "process_cleanup_observation_complete") &&
+    !bool_field(run, "residual_before_cleanup") &&
+    bool_field(run, "harness_cleanup_succeeded"))
+}
+
 fn required_run_fields_present(run : Json) -> Bool {
   let required_strings = [
     "run_id", "block_id", "task", "backend", "relay_status", "observability",
@@ -819,10 +828,13 @@ fn required_run_fields_present(run : Json) -> Bool {
     "completed", "usage_complete", "correct_output", "inputs_preserved",
     "workspace_clean", "child_processes_clean", "receipt_valid", "trace_complete",
     "argv_cwd_valid", "approval_original_command",
+    "process_cleanup_observation_complete", "residual_before_cleanup",
+    "harness_cleanup_succeeded",
   ]
   let required_numbers = [
     "input_tokens", "cached_input_tokens", "output_tokens", "ended_ms",
     "monotonic_start_ms", "monotonic_end_ms",
+    "process_cleanup_observation_grace_ms",
   ]
   let mut ok = number_field(run, "started_ms")
   for key in required_strings {
@@ -838,7 +850,8 @@ fn required_run_fields_present(run : Json) -> Bool {
     string_array_field(run, "workspace_manifest") && attempts_valid(run) &&
     tool_counts_valid(run) &&
     workspace_diff_valid(run) && object_field(run, "receipt") &&
-    string_array_field(run, "process_trace")
+    string_array_field(run, "process_trace") &&
+    process_cleanup_evidence_valid(run)
 }
 
 fn timing_fields_valid(run : Json) -> Bool {

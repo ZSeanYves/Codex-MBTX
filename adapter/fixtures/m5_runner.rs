@@ -22,6 +22,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 const MAX_CAPTURE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_ARTIFACT_BYTES: usize = 2 * 1024 * 1024;
 const AGENT_TIMEOUT: Duration = Duration::from_secs(300);
+const PROCESS_CLEANUP_OBSERVATION_GRACE_MS: u64 = 100;
 
 #[derive(Clone, Debug)]
 struct TaskSpec {
@@ -152,6 +153,19 @@ struct TraceSummary {
 struct HelperStreams {
     stdout: String,
     stderr: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ProcessCleanupObservation {
+    observation_complete: bool,
+    residual_before_cleanup: bool,
+    harness_cleanup_succeeded: bool,
+}
+
+impl ProcessCleanupObservation {
+    fn child_processes_clean(self) -> bool {
+        self.observation_complete && !self.residual_before_cleanup && self.harness_cleanup_succeeded
+    }
 }
 
 struct AgentInvocation<'a> {
@@ -499,7 +513,8 @@ fn execute_arm_inner(
             prompt: &prompt,
         },
     )?;
-    let child_processes_clean = cleanup_agent_processes(config);
+    let process_cleanup = observe_and_cleanup_agent_processes(config);
+    let child_processes_clean = process_cleanup.child_processes_clean();
     stop_proxy(&mut proxy);
     let trace = read_trace(&trace_file, &launcher_trace);
     let helper_streams = read_helper_streams(&agent_dir, task, &trace);
@@ -710,6 +725,26 @@ fn execute_arm_inner(
         "child_processes_clean",
         json!(child_processes_clean),
     );
+    insert(
+        &mut run,
+        "process_cleanup_observation_complete",
+        json!(process_cleanup.observation_complete),
+    );
+    insert(
+        &mut run,
+        "residual_before_cleanup",
+        json!(process_cleanup.residual_before_cleanup),
+    );
+    insert(
+        &mut run,
+        "harness_cleanup_succeeded",
+        json!(process_cleanup.harness_cleanup_succeeded),
+    );
+    insert(
+        &mut run,
+        "process_cleanup_observation_grace_ms",
+        json!(PROCESS_CLEANUP_OBSERVATION_GRACE_MS),
+    );
     insert(&mut run, "receipt_valid", json!(receipt_ok));
     insert(&mut run, "trace_complete", json!(trace_complete));
     insert(&mut run, "argv_cwd_valid", json!(argv_cwd_valid));
@@ -797,6 +832,8 @@ fn base_run(block: &BlockSpec, task: &TaskSpec, backend: &str) -> Map<String, Va
         "inputs_preserved",
         "workspace_clean",
         "child_processes_clean",
+        "process_cleanup_observation_complete",
+        "harness_cleanup_succeeded",
         "receipt_valid",
         "trace_complete",
         "argv_cwd_valid",
@@ -804,6 +841,11 @@ fn base_run(block: &BlockSpec, task: &TaskSpec, backend: &str) -> Map<String, Va
     ] {
         run.insert(key.to_owned(), Value::Bool(false));
     }
+    run.insert("residual_before_cleanup".to_owned(), Value::Bool(true));
+    run.insert(
+        "process_cleanup_observation_grace_ms".to_owned(),
+        json!(PROCESS_CLEANUP_OBSERVATION_GRACE_MS),
+    );
     run.insert(
         "workspace_diff".to_owned(),
         json!({
@@ -1383,39 +1425,64 @@ fn join_capture(handle: JoinHandle<Vec<u8>>) -> Vec<u8> {
     handle.join().unwrap_or_default()
 }
 
-fn cleanup_agent_processes(config: &RunnerConfig) -> bool {
+fn observe_and_cleanup_agent_processes(config: &RunnerConfig) -> ProcessCleanupObservation {
     if config.allow_unprivileged {
-        return true;
+        return ProcessCleanupObservation {
+            observation_complete: false,
+            residual_before_cleanup: true,
+            harness_cleanup_succeeded: true,
+        };
     }
     if config.agent_user != "mbtx-eval" {
-        return false;
+        return ProcessCleanupObservation {
+            observation_complete: false,
+            residual_before_cleanup: true,
+            harness_cleanup_succeeded: false,
+        };
     }
-    let _ = Command::new("sudo")
-        .env_clear()
-        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-        .args(["-n", "pkill", "-KILL", "-u", &config.agent_user])
-        .status();
-    for _ in 0..20 {
-        let output = Command::new("pgrep")
+    // Observe before teardown. Killing a leaked process is still necessary to
+    // isolate the next arm, but it must not turn the backend result into a
+    // lifecycle success.
+    thread::sleep(Duration::from_millis(PROCESS_CLEANUP_OBSERVATION_GRACE_MS));
+    let initial = evaluator_processes_present(&config.agent_user);
+    let observation_complete = initial.is_some();
+    let residual_before_cleanup = initial.unwrap_or(true);
+    if residual_before_cleanup {
+        let _ = Command::new("sudo")
             .env_clear()
             .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-            .args([
-                "-u",
-                &config.agent_user,
-                "-f",
-                "(python3|mbtx|codex|m5-command-trace|m5-trace-launcher)",
-            ])
-            .output();
-        if output
-            .as_ref()
-            .map(|value| !value.status.success())
-            .unwrap_or(true)
-        {
-            return true;
+            .args(["-n", "pkill", "-KILL", "-u", &config.agent_user])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    let mut harness_cleanup_succeeded = false;
+    for _ in 0..20 {
+        if evaluator_processes_present(&config.agent_user) == Some(false) {
+            harness_cleanup_succeeded = true;
+            break;
         }
         thread::sleep(Duration::from_millis(100));
     }
-    false
+    ProcessCleanupObservation {
+        observation_complete,
+        residual_before_cleanup,
+        harness_cleanup_succeeded,
+    }
+}
+
+fn evaluator_processes_present(user: &str) -> Option<bool> {
+    let output = Command::new("pgrep")
+        .env_clear()
+        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+        .args(["-u", user])
+        .output()
+        .ok()?;
+    match output.status.code() {
+        Some(0) => Some(true),
+        Some(1) => Some(false),
+        _ => None,
+    }
 }
 
 fn read_trace(command_path: &Path, launcher_path: &Path) -> TraceSummary {
@@ -2810,6 +2877,34 @@ mod tests {
             "/opt/m5-trace-launcher",
             "/opt/mbtx"
         ));
+    }
+
+    #[test]
+    fn harness_cleanup_cannot_hide_a_backend_process_leak() {
+        assert!(
+            ProcessCleanupObservation {
+                observation_complete: true,
+                residual_before_cleanup: false,
+                harness_cleanup_succeeded: true,
+            }
+            .child_processes_clean()
+        );
+        assert!(
+            !ProcessCleanupObservation {
+                observation_complete: true,
+                residual_before_cleanup: true,
+                harness_cleanup_succeeded: true,
+            }
+            .child_processes_clean()
+        );
+        assert!(
+            !ProcessCleanupObservation {
+                observation_complete: false,
+                residual_before_cleanup: false,
+                harness_cleanup_succeeded: true,
+            }
+            .child_processes_clean()
+        );
     }
 
     #[test]
