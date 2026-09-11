@@ -358,6 +358,7 @@ fn validity_bool(value : Json, key : String) -> Bool {
 
 fn block_runs_match_report(report : Report) -> Bool {
   let seen_blocks : Array[String] = []
+  let seen_nonces : Array[String] = []
   for block in report.blocks {
     match block {
       Object(fields) => {
@@ -405,13 +406,28 @@ fn block_runs_match_report(report : Report) -> Bool {
             top_level.filter(run => text_field(run, "backend") == order[1]).length() != 1) {
           return false
         }
+        if top_level.length() == 2 {
+          let nonce = text_field(top_level[0], "fixture_nonce")
+          if nonce.is_empty() || nonce != text_field(top_level[1], "fixture_nonce") ||
+            seen_nonces.contains(nonce) {
+            return false
+          }
+          seen_nonces.push(nonce)
+        }
+        if embedded.length() == 2 &&
+          (text_field(embedded[0], "backend") != order[0] ||
+            text_field(embedded[1], "backend") != order[1]) {
+          return false
+        }
         let embedded_ids : Array[String] = []
         for item in embedded {
           match item {
             Object(item_fields) => match item_fields.get("run_id") {
               Some(String(run_id)) => {
+                let matching = top_level.filter(run =>
+                  text_field(run, "run_id") == run_id)
                 if run_id.is_empty() || embedded_ids.contains(run_id) ||
-                  !top_level.any(run => text_field(run, "run_id") == run_id) {
+                  matching.length() != 1 || matching[0] != item {
                   return false
                 }
                 embedded_ids.push(run_id)
@@ -589,7 +605,8 @@ fn percentile(values : Array[Int], p : Int) -> Int {
   if values.is_empty() { return 0 }
   let sorted = values.copy()
   sorted.sort()
-  sorted[(sorted.length() - 1) * p / 100]
+  let rank = (sorted.length() * p + 99) / 100
+  sorted[if rank == 0 { 0 } else { rank - 1 }]
 }
 
 fn mean(values : Array[Int]) -> Int {

@@ -56,7 +56,7 @@ script-capability cohort 保留现有 6 个 MoonBit 任务，独立报告。
 
 ## Oracle 和可观测性
 
-每个 fixture 的机器可读 contract 包含 `fixture_nonce` 模板、`receipt_path`、`expected_stdout`、`expected_stderr`、`expected_exit_code` 和排序后的 `expected_manifest`；在线 runner 在每个 block 开始时生成新的运行时 nonce，同一 block 的 Shell 与 Transparent 两臂共享该 nonce，且每条 run 和 helper receipt 必须保存相同值。evaluator 与 analyzer 会拒绝空 nonce，以及任何声称 `receipt_valid=true` 却无法与 run 的 task/nonce 对应的证据。运行时还必须生成 helper receipt 与独立 process trace。`workspace_diff` 至少包含 `entries`、`permissions_unchanged` 和 `symlinks_unchanged`，entries 中保存路径、类型、权限和脱敏 digest/target，不能只报一个成功布尔值。`host_cancel_timeout` 使用 `expected_exit_code=-1` 表示主动取消，不把平台相关 signal 编码混入语义结果。重试任务的每次中间退出仍放在 `attempts` 中，不能被终态字段覆盖。通过条件必须同时满足：
+每个 fixture 的机器可读 contract 包含 `fixture_nonce` 模板、`receipt_path`、`expected_stdout`、`expected_stderr`、`expected_exit_code` 和排序后的 `expected_manifest`；在线 runner 在每个 block 开始时生成新的运行时 nonce，同一 block 的 Shell 与 Transparent 两臂共享该 nonce，不同 block 不得复用，且每条 run 和 helper receipt 必须保存相同值。evaluator 与 analyzer 会拒绝空 nonce、成对或跨 block nonce 不一致，以及任何声称 `receipt_valid=true` 却无法与 run 的 task/nonce 对应的证据。运行时还必须生成 helper receipt 与独立 process trace。`workspace_diff` 至少包含 `entries`、`permissions_unchanged` 和 `symlinks_unchanged`，entries 中保存路径、类型、权限和脱敏 digest/target，不能只报一个成功布尔值。`host_cancel_timeout` 使用 `expected_exit_code=-1` 表示主动取消，不把平台相关 signal 编码混入语义结果。重试任务的每次中间退出仍放在 `attempts` 中，不能被终态字段覆盖。通过条件必须同时满足：
 
 - 任务目标或 result.json 正确；
 - helper 确实执行；
@@ -96,7 +96,7 @@ backend observation 为 `unknown` 的 run 仍保留在 ITT 分母和单独计数
 relay-clean conditional 只使用 provider/transport 完整、observability 为 complete 的成对样本，报告：
 
 - 配对成功率；
-- p50/p95/p99 端到端延迟；
+- p50/p95/p99 端到端延迟；所有 M5 runtime、probe 与在线分析统一使用 nearest-rank 定义，缺失样本不能通过较低秩静默压低尾延迟；
 - token 和工具调用；
 - win/tie/loss；
 - 确定性 bootstrap 95% 单侧决策界（固定 seed；成功率使用第 5 百分位下界，p95 延迟使用第 95 百分位上界，同时保存另一侧端点供审计）；

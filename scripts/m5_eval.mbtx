@@ -911,7 +911,28 @@ fn valid_runner_runs(runs : Array[Json], block : M5Block) -> Bool {
     runs.filter(r => string_field(r, "backend") == "shell").length() == 1 &&
     runs.filter(r => string_field(r, "backend") == "transparent").length() == 1 &&
     string_field(runs[0], "backend") == block.order[0] &&
-    string_field(runs[1], "backend") == block.order[1]
+    string_field(runs[1], "backend") == block.order[1] &&
+    string_field(runs[0], "fixture_nonce") ==
+    string_field(runs[1], "fixture_nonce")
+}
+
+fn block_nonces_valid(runs : Array[Json]) -> Bool {
+  let block_nonces : Map[String, String] = Map([])
+  let seen_nonces : Array[String] = []
+  for run in runs {
+    let block_id = string_field(run, "block_id")
+    let nonce = string_field(run, "fixture_nonce")
+    if block_id.is_empty() || nonce.is_empty() { return false }
+    match block_nonces.get(block_id) {
+      Some(existing) => if existing != nonce { return false }
+      None => {
+        if seen_nonces.contains(nonce) { return false }
+        block_nonces[block_id] = nonce
+        seen_nonces.push(nonce)
+      }
+    }
+  }
+  true
 }
 
 fn infrastructure_run(run : Json) -> Bool {
@@ -1267,7 +1288,7 @@ async fn main {
   let evidence_complete = health_ok && runner_configured &&
     runner_errors == 0 && all_runs.length() == merged_blocks.length() * 2 &&
     planned_windows_ok && block_health_ok && observed_batch_ok &&
-    all_runs.all(run_evidence_complete)
+    block_nonces_valid(all_runs) && all_runs.all(run_evidence_complete)
   let backend_observable = !all_runs.is_empty() &&
     all_runs.filter(r => !infrastructure_run(r)).length() > 0 &&
     all_runs.filter(r => !infrastructure_run(r)).all(clean_observed_run)

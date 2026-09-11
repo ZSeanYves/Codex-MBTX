@@ -167,6 +167,8 @@ test "M5 paired summary reports robust quantiles and wins" {
   assert_eq(summary.transparent_wins, 1)
   assert_eq(summary.ties, 1)
   assert_eq(@eval.m5_percentile([40, 10, 20, 30], 100), 40)
+  assert_eq(@eval.m5_percentile([9, 1, 2, 3, 4, 5, 6, 7, 8], 95), 9)
+  assert_eq(@eval.m5_percentile([9, 1, 2], 0), 1)
 }
 
 ///|

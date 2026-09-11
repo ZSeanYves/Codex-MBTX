@@ -682,8 +682,8 @@ pub fn m5_percentile(values : Array[Int], percentile : Int) -> Int raise {
   }
   let sorted = values.copy()
   sorted.sort()
-  let index = (sorted.length() - 1) * percentile / 100
-  sorted[index]
+  let rank = (sorted.length() * percentile + 99) / 100
+  sorted[if rank == 0 { 0 } else { rank - 1 }]
 }
 
 ///|

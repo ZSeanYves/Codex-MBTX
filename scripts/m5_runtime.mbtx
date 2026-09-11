@@ -118,7 +118,8 @@ fn env_nonnegative_int(name : String, fallback : Int) -> Int {
 fn percentile(values : Array[Int], p : Int) -> Int {
   let sorted = values.copy()
   sorted.sort()
-  sorted[(sorted.length() - 1) * p / 100]
+  let rank = (sorted.length() * p + 99) / 100
+  sorted[if rank == 0 { 0 } else { rank - 1 }]
 }
 
 fn percentile_or_zero(values : Array[Int], p : Int) -> Int {
