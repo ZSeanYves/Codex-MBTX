@@ -86,8 +86,8 @@ struct AgentResult {
     exit_code: i32,
     timed_out: bool,
     elapsed_ms: i64,
-    process_launch_ms: i64,
-    process_exit_ms: i64,
+    codex_launch_ms: i64,
+    codex_exit_ms: i64,
     first_stdout_ms: Option<i64>,
     first_stderr_ms: Option<i64>,
     first_response_ms: Option<i64>,
@@ -548,6 +548,7 @@ fn execute_arm_inner(
     let child_processes_clean = process_cleanup.child_processes_clean();
     stop_proxy(&mut proxy);
     let trace = read_trace(&trace_file, &launcher_trace);
+    let (process_launch_ms, process_exit_ms) = target_helper_timing(task, &trace, wall_start);
     let helper_streams = read_helper_streams(&agent_dir, task, &trace);
     let events_path = agent_dir.join("events.jsonl");
     let stderr_path = agent_dir.join("agent-stderr.txt");
@@ -687,24 +688,8 @@ fn execute_arm_inner(
             None
         },
     );
-    insert_opt(
-        &mut run,
-        "process_launch_ms",
-        if trace.command_starts.is_empty() {
-            None
-        } else {
-            Some(agent.process_launch_ms)
-        },
-    );
-    insert_opt(
-        &mut run,
-        "process_exit_ms",
-        if trace.command_exits.is_empty() {
-            None
-        } else {
-            Some(agent.process_exit_ms)
-        },
-    );
+    insert_opt(&mut run, "process_launch_ms", process_launch_ms);
+    insert_opt(&mut run, "process_exit_ms", process_exit_ms);
     insert(
         &mut run,
         "stdout",
@@ -1316,7 +1301,7 @@ fn run_agent(
     let mut child = command
         .spawn()
         .map_err(|error| format!("starting Codex: {error}"))?;
-    let process_launch_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
+    let codex_launch_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
     let stdout_reader = child
         .stdout
         .take()
@@ -1344,7 +1329,7 @@ fn run_agent(
     };
     let stdout = join_capture(stdout_thread);
     let stderr = join_capture(stderr_thread);
-    let process_exit_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
+    let codex_exit_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
     let elapsed_ms = start.elapsed().as_millis().min(i64::MAX as u128) as i64;
     let metadata = capture_meta
         .lock()
@@ -1356,8 +1341,8 @@ fn run_agent(
         exit_code: status.code().unwrap_or(-1),
         timed_out,
         elapsed_ms,
-        process_launch_ms,
-        process_exit_ms,
+        codex_launch_ms,
+        codex_exit_ms,
         first_stdout_ms: metadata.first_stdout_ms,
         first_stderr_ms: metadata.first_stderr_ms,
         first_response_ms: metadata.first_response_ms,
@@ -1570,6 +1555,29 @@ fn trace_timestamp(record: &Value) -> u64 {
         .or_else(|| record.get("finished_unix_ns"))
         .and_then(Value::as_u64)
         .unwrap_or(u64::MAX)
+}
+
+fn target_helper_timing(
+    task: &TaskSpec,
+    trace: &TraceSummary,
+    wall_start: SystemTime,
+) -> (Option<i64>, Option<i64>) {
+    let Some(expected) = expected_helper(task) else {
+        return (None, None);
+    };
+    let process_launch_ms = trace
+        .command_starts
+        .iter()
+        .filter(|record| record.get("helper").and_then(Value::as_str) == Some(expected.as_str()))
+        .filter_map(|record| dump_timestamp_elapsed(record, "started_unix_ms", wall_start))
+        .min();
+    let process_exit_ms = trace
+        .command_exits
+        .iter()
+        .filter(|record| record.get("helper").and_then(Value::as_str) == Some(expected.as_str()))
+        .filter_map(|record| dump_timestamp_elapsed(record, "finished_unix_ms", wall_start))
+        .max();
+    (process_launch_ms, process_exit_ms)
 }
 
 fn read_json_lines(path: &Path) -> Vec<Value> {
@@ -2692,8 +2700,8 @@ fn persist_evidence(config: &RunnerConfig, evidence: EvidenceArtifact<'_>) {
         "agent_exit_code": agent.exit_code,
         "timed_out": agent.timed_out,
         "elapsed_ms": agent.elapsed_ms,
-        "process_launch_ms": agent.process_launch_ms,
-        "process_exit_ms": agent.process_exit_ms,
+        "codex_launch_ms": agent.codex_launch_ms,
+        "codex_exit_ms": agent.codex_exit_ms,
         "first_stdout_ms": agent.first_stdout_ms,
         "first_stderr_ms": agent.first_stderr_ms,
     });
@@ -2992,6 +3000,47 @@ mod tests {
                 ".stdout"
             )
             .is_none()
+        );
+    }
+
+    #[test]
+    fn helper_process_timing_uses_only_the_target_trace_span() {
+        let task = TaskSpec {
+            id: "host_exit_recovery".to_owned(),
+            cohort: "process".to_owned(),
+            prompt: String::new(),
+            inputs: [("retry.py".to_owned(), String::new())]
+                .into_iter()
+                .collect(),
+            expected: Value::Null,
+            expected_stdout: String::new(),
+            expected_stderr: String::new(),
+            expected_exit_code: 0,
+            expected_manifest: Vec::new(),
+            editable: None,
+            background: false,
+            fixture_nonce: "nonce".to_owned(),
+            receipt_path: ".m5/receipt.json".to_owned(),
+            oracle: String::new(),
+        };
+        let trace = TraceSummary {
+            command_starts: vec![
+                json!({ "helper": "python3", "started_unix_ms": 1_001_u64 }),
+                json!({ "helper": "retry.py", "started_unix_ms": 1_005_u64 }),
+                json!({ "helper": "retry.py", "started_unix_ms": 1_020_u64 }),
+            ],
+            command_exits: vec![
+                json!({ "helper": "retry.py", "finished_unix_ms": 1_010_u64 }),
+                json!({ "helper": "retry.py", "finished_unix_ms": 1_030_u64 }),
+                json!({ "helper": "python3", "finished_unix_ms": 1_040_u64 }),
+            ],
+            ..TraceSummary::default()
+        };
+        let wall_start = UNIX_EPOCH + Duration::from_millis(1_000);
+
+        assert_eq!(
+            target_helper_timing(&task, &trace, wall_start),
+            (Some(5), Some(30))
         );
     }
 

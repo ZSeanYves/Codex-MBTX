@@ -594,7 +594,7 @@ fn int_field(run : Json, key : String) -> Int? {
 fn elapsed(run : Json) -> Int? {
   match (int_field(run, "started_ms"), int_field(run, "turn_completed_ms")) {
     (Some(start), Some(end)) if end >= start => Some(end - start)
-    _ => match (int_field(run, "process_launch_ms"), int_field(run, "process_exit_ms")) {
+    _ => match (int_field(run, "monotonic_start_ms"), int_field(run, "monotonic_end_ms")) {
       (Some(start), Some(end)) if end >= start => Some(end - start)
       _ => None
     }

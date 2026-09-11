@@ -157,7 +157,7 @@ relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留�
 
     {"runs": [/* shell run */, /* transparent run */]}
 
-每个 run 必须包含 `attempts`、工具计数、input/cached/output token、`monotonic_start_ms`/`monotonic_end_ms` 起止字段、兼容性的 `started_ms`/`ended_ms`、实际 `stdout`/`stderr`/`exit_code`、`workspace_manifest`、`workspace_diff`、`receipt`、`process_trace`、三态 observability、backend observation 和 failure category。起止字段是 run-local 的单调时钟坐标；没有发生的可选事件时间点只能按统一 wire 规则省略，不能用 `0` 冒充观测值。runner 不能用缺失字段代替 `unknown`，也不能把 provider/transport error 改写成 backend failure。
+每个 run 必须包含 `attempts`、工具计数、input/cached/output token、`monotonic_start_ms`/`monotonic_end_ms` 起止字段、兼容性的 `started_ms`/`ended_ms`、实际 `stdout`/`stderr`/`exit_code`、`workspace_manifest`、`workspace_diff`、`receipt`、`process_trace`、三态 observability、backend observation 和 failure category。起止字段是 run-local 的单调时钟坐标；端到端时延优先取 `started_ms` 到已观测的 `turn_completed_ms`，缺少完成事件时只能回退到 `monotonic_start_ms` 到 `monotonic_end_ms`。`process_launch_ms` 与 `process_exit_ms` 则由独立 trace 中目标 helper 的 wall timestamp 转换为 run-local 坐标，分别表示最早目标调用开始和最晚目标调用结束；它们只描述目标进程区间，不能作为 agent 端到端时延的回退。Codex 子进程自身的边界只以 `codex_launch_ms`/`codex_exit_ms` 保存在私有 meta。没有发生的可选事件时间点只能按统一 wire 规则省略，不能用 `0` 冒充观测值。runner 不能用缺失字段代替 `unknown`，也不能把 provider/transport error 改写成 backend failure。
 
 每个 relay attempt 记录脱敏 `request_group`、组内 `retry_index`、HTTP 状态、first-byte、completed、断流、provider error、token usage 和最终是否恢复。相同 request body 的尝试属于同一组，新的模型工具轮次从 retry index 0 重新开始；固定 Codex proxy dump 记录首字节和完成 wall timestamp，runner 将其转换成 run-local 时间，不能把正常的后续工具轮次计作 retry。
 
