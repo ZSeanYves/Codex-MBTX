@@ -264,7 +264,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: m5-deterministic-*
-          path: _build/m5-results/platform-downloads
+          path: _build/m5-deterministic-downloads
           merge-multiple: true
       - name: Restore frozen deterministic artifacts
         if: inputs.deterministic_run_id != ''
@@ -274,16 +274,16 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DETERMINISTIC_RUN" --jq .head_sha)" = "$GITHUB_SHA"
-          mkdir -p _build/m5-results/platform-downloads
-          gh run download "$DETERMINISTIC_RUN" --pattern 'm5-deterministic-*' --dir _build/m5-results/platform-downloads
+          mkdir -p _build/m5-deterministic-downloads
+          gh run download "$DETERMINISTIC_RUN" --pattern 'm5-deterministic-*' --dir _build/m5-deterministic-downloads
       - name: Validate deterministic platform manifest
         run: |
           set -euo pipefail
           mkdir -p _build/m5-results/platforms/linux _build/m5-results/platforms/darwin
-          LINUX_RUNTIME=$(find _build/m5-results/platform-downloads -path '*/linux/runtime.json' -type f | head -n 1)
-          LINUX_REPLAY=$(find _build/m5-results/platform-downloads -path '*/linux/replay.json' -type f | head -n 1)
-          DARWIN_RUNTIME=$(find _build/m5-results/platform-downloads -path '*/darwin/runtime.json' -type f | head -n 1)
-          DARWIN_REPLAY=$(find _build/m5-results/platform-downloads -path '*/darwin/replay.json' -type f | head -n 1)
+          LINUX_RUNTIME=$(find _build/m5-deterministic-downloads -path '*/linux/runtime.json' -type f | head -n 1)
+          LINUX_REPLAY=$(find _build/m5-deterministic-downloads -path '*/linux/replay.json' -type f | head -n 1)
+          DARWIN_RUNTIME=$(find _build/m5-deterministic-downloads -path '*/darwin/runtime.json' -type f | head -n 1)
+          DARWIN_REPLAY=$(find _build/m5-deterministic-downloads -path '*/darwin/replay.json' -type f | head -n 1)
           test -n "$LINUX_RUNTIME" -a -n "$LINUX_REPLAY" -a -n "$DARWIN_RUNTIME" -a -n "$DARWIN_REPLAY"
           cp "$LINUX_RUNTIME" _build/m5-results/platforms/linux/runtime.json
           cp "$LINUX_REPLAY" _build/m5-results/platforms/linux/replay.json
