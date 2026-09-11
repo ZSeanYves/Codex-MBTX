@@ -147,6 +147,35 @@ async fn main {
   guard @json.parse(probe.stdout()) is { "schema_version": 5, "health_valid": true, .. } else {
     fail("recorded relay probes were not aggregated into a valid health artifact")
   }
+  let slow_probe_records = probe_records.copy()
+  slow_probe_records[9] = {
+    "attempt_id": "probe-9",
+    "retry_index": 0,
+    "arm": "transparent",
+    "time_window": 1,
+    "http_status": 200,
+    "first_byte_ms": 15_001,
+    "completed_ms": 15_100,
+    "stream_disconnected": false,
+    "provider_error": false,
+    "transport_error": false,
+    "usage_complete": true,
+    "error_class": Json::null(),
+    "malformed": false,
+  }
+  let slow_probe = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_probe.mbtx"],
+    stdin=@shell.Stdin::Text(slow_probe_records.to_json().stringify()),
+  ).output(timeout_ms=120_000)
+  slow_probe.check()
+  guard @json.parse(slow_probe.stdout()) is {
+    "health": { "first_byte_p95_ms": 15001, .. },
+    "health_valid": false,
+    ..
+  } else {
+    fail("small-sample probe p95 did not use the conservative nearest rank")
+  }
   // Legacy collector records used MoonBit's one-element Option arrays.  Keep
   // them readable while the canonical live wire format remains number|null.
   let legacy_probe = @shell.Cmd(

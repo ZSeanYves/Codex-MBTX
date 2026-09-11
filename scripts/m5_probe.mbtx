@@ -110,7 +110,11 @@ fn percentile(values : Array[Int], p : Int) -> Int {
   if values.is_empty() { return 30_000 }
   let sorted = values.copy()
   sorted.sort()
-  sorted[(sorted.length() - 1) * p / 100]
+  // Use the conservative nearest-rank definition. With the preregistered
+  // 9/10 success floor, p95 is therefore the slowest observed first byte,
+  // rather than silently discarding one of only nine measurements.
+  let rank = (sorted.length() * p + 99) / 100
+  sorted[rank - 1]
 }
 
 fn is_provider_failure(probe : Probe) -> Bool {

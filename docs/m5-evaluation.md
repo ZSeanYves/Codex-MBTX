@@ -77,7 +77,7 @@ observability 有三态：complete、partial、unobserved。backend_observation 
 
 - 至少 9 次成功；
 - 不得出现连续两次 provider/transport error；
-- first-byte p95 不超过 15 秒；
+- first-byte p95 不超过 15 秒；10-request 小样本使用 nearest-rank 定义，只剩 9 个可观测 first-byte 时 p95 等于其中最大值，不静默丢弃最慢观测；
 - probe 记录的 arm/window 必须完整且合法；每个正式窗口分别执行自己的 10 次 probe，单次 probe artifact 只标记当前真实窗口。
 - 正式样本的 block `time_window` 必须完整覆盖 1、2、3；每个 block 的窗口编号、batch id、seed 和 health artifact 必须可追溯，analyzer 会拒绝缺失或不足三个窗口的 formal batch。
 
@@ -173,7 +173,9 @@ Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d
 
 第六组诊断 run 使用 implementation `8e89536`。Pilot run `34556256403` 生成了 Linux/Darwin 各 21600 条 runtime 样本和各 30 条 replay trajectory，确定性语义、trace 与子进程清理均为零回归；但 probe 只有 3/10 完成，包含 2 次 HTTP 502、5 次 transport disconnect，最长连续失败 7 次且 first-byte p95 为 53221 ms，故在线 block 为 0。Formal W1 首次尝试 `34560405930` 的 probe 只有 5/10 完成，包含 1 次 HTTP 502、4 次 disconnect，最长连续失败 3 次且 p95 为 30243 ms，同样没有在线 block。两次均由预注册 relay gate 正确拒绝，只作为 relay 稳定性证据，不进入 pilot 或 formal 对比统计。
 
-Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失败 1 次、first-byte p95 为 3419 ms，因而合法进入首个 block。两臂实际完成目标并生成正确结果、receipt、manifest 和 process trace，但 Linux 用户探测命令 `id -u` 的 stdout 泄漏到 runner envelope，使严格 JSON 解析失败；同时旧 oracle 把后续辅助校验命令的输出并入目标 helper 流，并以命令文本必须包含 workspace、`python3` 或 `moon` 的任意规则误拒绝合法 `ls -l`。最终 artifact 保存 `runner_errors=1`、0 个完整 block，却错误返回绿色 CI。该 run 暴露的是 runner/oracle 缺陷，不是 backend 失败，不进入 formal 统计。后续版本隔离用户探测输出，按 fixture helper 绑定流、退出码和 receipt，把 approval 检查限定为“不向模型可见命令注入可信 launcher”，并让任何 runner error 在报告落盘后使 CI 失败。
+Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失败 1 次；旧 percentile 实现报告 first-byte p95 为 3419 ms，并据此允许进入首个 block。两臂实际完成目标并生成正确结果、receipt、manifest 和 process trace，但 Linux 用户探测命令 `id -u` 的 stdout 泄漏到 runner envelope，使严格 JSON 解析失败；同时旧 oracle 把后续辅助校验命令的输出并入目标 helper 流，并以命令文本必须包含 workspace、`python3` 或 `moon` 的任意规则误拒绝合法 `ls -l`。最终 artifact 保存 `runner_errors=1`、0 个完整 block，却错误返回绿色 CI。该 run 暴露的是 runner/oracle 缺陷，不是 backend 失败，不进入 formal 统计。后续版本隔离用户探测输出，按 fixture helper 绑定流、退出码和 receipt，把 approval 检查限定为“不向模型可见命令注入可信 launcher”，并让任何 runner error 在报告落盘后使 CI 失败；按现行 nearest-rank 规则，该 run 的 15019 ms 最慢观测也会使 probe gate 直接失败。
+
+第七次诊断 run `34564607726` 在 implementation `5d42840` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。静态复核发现 probe 的旧 p95 使用 `(n-1)*p` 下取整：当一次 probe 无 first-byte、只剩 9 个值时会选择第 8 大秩，run `34562806033` 因而把一个 15019 ms 观测排除并报告 3419 ms。该方法在 9--10 个小样本上不够保守；后续版本固定为 nearest-rank，并增加 9 个可观测值中最慢值为 15001 ms 时健康门禁必须失败的回归测试。该取消 run 没有完成 artifact，不进入任何性能、pilot 或 formal 统计。
 
 ## Artifact
 
