@@ -125,13 +125,16 @@ async fn main {
       "retry_index": 0,
       "arm": if i % 2 == 0 { "shell" } else { "transparent" },
       "time_window": (i % 3) + 1,
-      "http_status": if i == 0 { 502 } else { 200 },
-      "first_byte_ms": 1_200 + i,
-      "completed_ms": 1_300 + i,
+      // Exercise the actual nullable wire representation used by the live
+      // collector: None must be JSON null, not a one-element Option array.
+      "http_status": if i == 0 { Json::null() } else { 200 },
+      "first_byte_ms": if i == 0 { Json::null() } else { 1_200 + i },
+      "completed_ms": if i == 0 { Json::null() } else { 1_300 + i },
       "stream_disconnected": false,
       "provider_error": i == 0,
       "transport_error": false,
-      "usage_complete": true,
+      "usage_complete": i != 0,
+      "error_class": Json::null(),
     })
   }
   let probe = @shell.Cmd(
@@ -142,6 +145,17 @@ async fn main {
   probe.check()
   guard @json.parse(probe.stdout()) is { "schema_version": 5, "health_valid": true, .. } else {
     fail("recorded relay probes were not aggregated into a valid health artifact")
+  }
+  // Legacy collector records used MoonBit's one-element Option arrays.  Keep
+  // them readable while the canonical live wire format remains number|null.
+  let legacy_probe = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_probe.mbtx"],
+    stdin=@shell.Stdin::Text("[{\"attempt_id\":\"legacy\",\"retry_index\":0,\"arm\":\"shell\",\"time_window\":1,\"http_status\":[200],\"first_byte_ms\":[10],\"completed_ms\":[20],\"stream_disconnected\":false,\"provider_error\":false,\"transport_error\":false,\"usage_complete\":true,\"error_class\":null}]"),
+  ).output(timeout_ms=120_000)
+  legacy_probe.check()
+  guard @json.parse(legacy_probe.stdout()) is { "schema_version": 5, .. } else {
+    fail("legacy Option-array probe records are not parseable")
   }
   let classified = @shell.Cmd(
     evidence,

@@ -14,15 +14,56 @@ struct Probe {
   retry_index : Int
   arm : String
   time_window : Int
-  http_status : Int?
-  first_byte_ms : Int?
-  completed_ms : Int?
+  // Keep nullable wire fields as Json at this boundary.  MoonBit's derived
+  // struct decoder treats nullable primitive fields differently from the
+  // top-level Option decoder; accepting Json lets us audit both canonical
+  // `number|null` records and legacy one-element Option arrays without
+  // dropping a probe or turning it into an unexplained parser failure.
+  http_status : Json
+  first_byte_ms : Json
+  completed_ms : Json
   stream_disconnected : Bool
   provider_error : Bool
   transport_error : Bool
   usage_complete : Bool
-  error_class : String?
+  error_class : Json
 } derive(FromJson, ToJson)
+
+fn optional_int(value : Json) -> Int? {
+  match value {
+    Null => None
+    Number(number, ..) => Some(number.to_int())
+    Array([inner]) => optional_int(inner)
+    _ => None
+  }
+}
+
+fn normalize_probe(value : Json) -> Json {
+  match value {
+    Object(fields) => {
+      // A truncated curl diagnostic is still evidence.  Fill only omitted
+      // fields with schema-safe sentinels so the aggregate can report an
+      // invalid/unsuccessful probe instead of crashing before writing its
+      // health artifact.
+      if fields.get("attempt_id") is None { fields["attempt_id"] = "" }
+      if fields.get("retry_index") is None { fields["retry_index"] = 0 }
+      if fields.get("arm") is None { fields["arm"] = "" }
+      if fields.get("time_window") is None { fields["time_window"] = 0 }
+      if fields.get("http_status") is None { fields["http_status"] = Json::null() }
+      if fields.get("first_byte_ms") is None { fields["first_byte_ms"] = Json::null() }
+      if fields.get("completed_ms") is None { fields["completed_ms"] = Json::null() }
+      if fields.get("stream_disconnected") is None {
+        fields["stream_disconnected"] = false
+      }
+      if fields.get("provider_error") is None { fields["provider_error"] = false }
+      if fields.get("transport_error") is None { fields["transport_error"] = false }
+      if fields.get("usage_complete") is None { fields["usage_complete"] = false }
+      if fields.get("error_class") is None { fields["error_class"] = Json::null() }
+      Json::object(fields)
+    }
+    _ => value
+  }
+}
 
 fn percentile(values : Array[Int], p : Int) -> Int {
   if values.is_empty() { return 30_000 }
@@ -32,7 +73,7 @@ fn percentile(values : Array[Int], p : Int) -> Int {
 }
 
 fn is_provider_failure(probe : Probe) -> Bool {
-  probe.provider_error || (match probe.http_status {
+  probe.provider_error || (match optional_int(probe.http_status) {
     Some(status) => status >= 400
     None => false
   })
@@ -45,11 +86,11 @@ fn is_transport_failure(probe : Probe) -> Bool {
 fn is_success(probe : Probe) -> Bool {
   let arm_ok = probe.arm == "shell" || probe.arm == "transparent"
   let window_ok = probe.time_window > 0
-  let status_ok = match probe.http_status {
+  let status_ok = match optional_int(probe.http_status) {
     Some(status) => status >= 200 && status < 300
     None => false
   }
-  let completed_ok = probe.completed_ms is Some(_)
+  let completed_ok = optional_int(probe.completed_ms) is Some(_)
   arm_ok && window_ok && !is_provider_failure(probe) &&
     !is_transport_failure(probe) && status_ok &&
     completed_ok && probe.usage_complete
@@ -76,7 +117,7 @@ fn health(probes : Array[Probe]) -> Json {
     if !windows.contains(probe.time_window) { windows.push(probe.time_window) }
     if probe.arm == "shell" { shell_total += 1 }
     if probe.arm == "transparent" { transparent_total += 1 }
-    match probe.first_byte_ms {
+    match optional_int(probe.first_byte_ms) {
       Some(value) => first_bytes.push(value)
       None => ()
     }
@@ -138,7 +179,12 @@ async fn main {
   } else {
     @stdio.stdin.read_all().text()
   }
-  let probes : Array[Probe] = @json.from_json(@json.parse(text))
+  let parsed = @json.parse(text)
+  let normalized = match parsed {
+    Array(values) => Json::array(values.map(normalize_probe))
+    _ => parsed
+  }
+  let probes : Array[Probe] = @json.from_json(normalized)
   let output = health(probes)
   if !@fs.exists("_build/m5-results") {
     @fs.mkdir("_build/m5-results", recursive=true)

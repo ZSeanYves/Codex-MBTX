@@ -15,6 +15,17 @@ fn env_or(name : String, fallback : String) -> String {
   @env.get_env_var(name).unwrap_or(fallback)
 }
 
+/// MoonBit's JSON representation of an Option is a one-element array for
+/// `Some` and `null` for `None`.  The live probe is a wire-format boundary,
+/// so keep that representation explicit instead of relying on structural
+/// inference when a nullable value is placed in an object literal.
+fn[T : ToJson] nullable(value : T?) -> Json {
+  match value {
+    Some(value) => value.to_json()
+    None => Json::null()
+  }
+}
+
 async fn ensure_results_directory() -> Unit {
   if !@fs.exists("_build/m5-results") {
     @fs.mkdir("_build/m5-results", recursive=true)
@@ -137,14 +148,14 @@ async fn probe_one(
     "retry_index": 0,
     "arm": arm,
     "time_window": window,
-    "http_status": status,
-    "first_byte_ms": first_byte_ms,
-    "completed_ms": completed_value,
+    "http_status": nullable(status),
+    "first_byte_ms": nullable(first_byte_ms),
+    "completed_ms": nullable(completed_value),
     "stream_disconnected": transport_error,
     "provider_error": provider_error,
     "transport_error": transport_error,
     "usage_complete": completed && usage_complete(body),
-    "error_class": error,
+    "error_class": nullable(error),
   }
 }
 

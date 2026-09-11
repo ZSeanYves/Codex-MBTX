@@ -167,6 +167,8 @@ Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d
 
 第四次诊断 run `34533540258` 在 implementation `40f6e2d` 的 Linux 确定性阶段通过，但 Darwin 的 `bare-proxy/stop` 热启动样本出现 1/21600 次 late output。审计显示原 harness 仅向 wrapper PID 发 `SIGTERM`，50ms 后杀掉 wrapper，恰好与真实 Codex 对独立进程组发信号的语义不同；Codex Direct executor 在 Unix 上建立 session/process group 并向整个组发 `SIGTERM`。后续版本把 B0/B2 lifecycle harness 对齐为 `setsid + exec`、group `SIGTERM`、固定 50ms、group `SIGKILL`，同时将 scope/grace 写进并强制校验 artifact。该 run 仍不进入任何正式统计；这项更改不放宽 50ms 门槛，而是消除了不等价的单 PID 注入方式。
 
+第五次诊断 run `34546904733` 在 implementation `7b055f4` 上完成了 Linux/Darwin 零回归确定性 artifact，并启动了真实 relay pilot。10-request probe 实际收到断流、502 和超慢首字节，健康门禁按预注册规则拒绝了这批在线样本；同时发现 collector 将 nullable primitive 直接放入对象时产生的 Option wire 形态无法被 probe decoder 稳定解析，导致健康摘要未能落盘。该问题属于评测器证据边界，不是 backend 结果；后续版本在 collector 使用显式 `number|null` 编码，在 parser 端兼容历史单元素 Option 数组并对缺失字段生成失效但可审计的 health artifact。该 run 的在线 block 仍为 0，不进入正式统计。
+
 ## Artifact
 
 每次运行保存：
