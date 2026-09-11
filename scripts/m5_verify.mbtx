@@ -214,7 +214,18 @@ async fn main {
     ..
   } && runtime_samples.length() == 72 && pair_summaries.length() == 18 &&
   runtime_samples.all(sample => match sample {
-    { "content_ok": true, "child_start_marker": true, .. } => true
+    {
+      "content_ok": true,
+      "child_start_marker": true,
+      "cancellation_scope": String(scope),
+      "cancellation_grace_ms": Number(grace, ..),
+      "lifecycle_status": String(lifecycle),
+      ..
+    } => if lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" {
+      scope == "process-group" && grace == 50.0
+    } else {
+      scope == "none" && grace == 0.0
+    }
     _ => false
   }) && runtime_pair_schedule_valid(runtime_samples) else {
     fail("M5 runtime artifact is not versioned")

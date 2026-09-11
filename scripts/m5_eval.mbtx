@@ -174,6 +174,7 @@ async fn runtime_artifact_valid(path : String) -> Bool {
             lifecycle != "completed")) &&
         (lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" ||
           bool_field(sample, "child_end_marker")) &&
+        lifecycle_scope_valid(sample) &&
         array_field(sample, "event_order")
     }) &&
     summaries.all(summary => match field(summary, "marker_failures") {
@@ -400,7 +401,8 @@ fn platform_runtime_quality(value : Json) -> Bool {
           field(sample, "exit_code") is Some(Number(_, ..)) &&
           array_field(sample, "event_order") &&
           (lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" ||
-            bool_field(sample, "child_end_marker"))
+            bool_field(sample, "child_end_marker")) &&
+          lifecycle_scope_valid(sample)
       })
       let summaries_ok = !summaries.is_empty() && summaries.all(summary =>
         match field(summary, "marker_failures") {
@@ -728,6 +730,20 @@ fn array_field(run : Json, key : String) -> Bool {
   match field(run, key) {
     Some(Array(_)) => true
     _ => false
+  }
+}
+
+fn lifecycle_scope_valid(sample : Json) -> Bool {
+  let lifecycle = string_field(sample, "lifecycle_status")
+  let scope = string_field(sample, "cancellation_scope")
+  let grace = match field(sample, "cancellation_grace_ms") {
+    Some(Number(value, ..)) => value
+    _ => -1
+  }
+  if lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" {
+    scope == "process-group" && grace == 50.0
+  } else {
+    scope == "none" && grace == 0.0
   }
 }
 

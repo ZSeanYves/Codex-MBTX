@@ -31,6 +31,8 @@ struct Sample {
   poll_observed : Bool
   child_processes_clean : Bool
   lifecycle_status : String
+  cancellation_scope : String
+  cancellation_grace_ms : Int
   stdout : String
   stderr : String
 } derive(ToJson)
@@ -78,6 +80,8 @@ struct RuntimeReport {
   platform : String
   cold_target : Int
   warm_target : Int
+  lifecycle_cancellation_scope : String
+  lifecycle_cancellation_grace_ms : Int
   samples : Array[Sample]
   summaries : Array[ScenarioSummary]
   pair_summaries : Array[PairSummary]
@@ -145,6 +149,45 @@ async fn wait_for_receipt(path : String, expected : String) -> Bool {
     @async.sleep(5)
   }
   false
+}
+
+/// Codex creates a separate session/process group for a direct Unix exec and
+/// terminates that group on cancellation. Keep the B0/B2 lifecycle harness on
+/// the same boundary: a PID-only signal would test an extra wrapper race that
+/// the real Codex executor does not have.
+async fn spawn_process_group(
+  command : String,
+  args : Array[String],
+  stdout : &@process.ProcessOutput,
+  stderr : &@process.ProcessOutput,
+) -> Int {
+  let bootstrap =
+    "import os,sys\n" +
+    "os.setsid()\n" +
+    "os.execvp(sys.argv[1],sys.argv[1:])\n"
+  @process.spawn_orphan(
+    "python3",
+    ["-c", bootstrap, command] + args,
+    stdout~,
+    stderr~,
+  )
+}
+
+/// Deliver a signal to the isolated command group. ProcessLookupError is
+/// expected when SIGTERM already reaped the final member before escalation.
+async fn signal_process_group(pid : Int, signal_name : String) -> Unit {
+  let signal =
+    "import os,signal,sys\n" +
+    "try:\n" +
+    " os.killpg(int(sys.argv[1]), getattr(signal, sys.argv[2]))\n" +
+    "except ProcessLookupError:\n" +
+    " pass\n"
+  // A group may have exited during the 50ms grace window; the shell helper's
+  // nonzero status is therefore an expected race, not a runtime failure.
+  let _ = @shell.Cmd(
+    "python3",
+    ["-c", signal, pid.to_string(), signal_name],
+  ).output()
 }
 
 fn runtime_scenarios() -> Array[String] {
@@ -264,13 +307,13 @@ async fn run_lifecycle_once(
     } else {
       ["exec", "--", "python3"] + command_args
     }
-    // Use an explicit PID so cancellation does not cancel the harness task
-    // that is responsible for collecting the final exit status.
-    let pid = @process.spawn_orphan(
+    // Preserve the process-group termination contract used by Codex's Direct
+    // shell path while retaining an explicit PID for independent reaping.
+    let pid = spawn_process_group(
       command,
       args,
-      stdout=stdout_writer,
-      stderr=stderr_writer,
+      stdout_writer,
+      stderr_writer,
     )
     let stdout_task = group.spawn(() => stdout_reader.read_all().text())
     let stderr_task = group.spawn(() => stderr_reader.read_all().text())
@@ -288,7 +331,9 @@ async fn run_lifecycle_once(
     } else {
       @async.sleep(80)
       events.push(if scenario == "timeout" { "timeout" } else { "stop" })
-      @process.graceful_cancel(timeout=50)(pid)
+      signal_process_group(pid, "SIGTERM")
+      @async.sleep(50)
+      signal_process_group(pid, "SIGKILL")
       let code = @process.wait_pid(pid)
       code
     }
@@ -342,6 +387,8 @@ async fn run_lifecycle_once(
     poll_observed,
     child_processes_clean,
     lifecycle_status: if completed { "completed" } else { scenario },
+    cancellation_scope: if completed { "none" } else { "process-group" },
+    cancellation_grace_ms: if completed { 0 } else { 50 },
     stdout,
     stderr,
   }
@@ -444,6 +491,8 @@ async fn run_once(
     poll_observed: false,
     child_processes_clean: true,
     lifecycle_status: "none",
+    cancellation_scope: "none",
+    cancellation_grace_ms: 0,
     stdout: if redacted_stdout.length() > 4096 {
       redacted_stdout[:4096].to_owned()
     } else {
@@ -602,6 +651,8 @@ async fn main {
     platform: platform(),
     cold_target,
     warm_target,
+    lifecycle_cancellation_scope: "process-group",
+    lifecycle_cancellation_grace_ms: 50,
     samples: all,
     summaries,
     pair_summaries,

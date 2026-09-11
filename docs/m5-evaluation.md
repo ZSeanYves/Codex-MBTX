@@ -52,7 +52,7 @@ script-capability cohort 保留现有 6 个 MoonBit 任务，独立报告。
 
 正式在线样本为每个 process 任务 20--30 个成对 block，至少分布在三个独立时间窗口；pilot 为每个任务 5 个成对 block，只用于发现协议或基础设施缺陷，不宣布默认替换。script cohort 每任务 10--20 对样本。
 
-本地确定性 runtime 默认执行 argv、stdin/EOF/UTF-8、cwd/env、大输出、非零退出以及 background/poll、stop、timeout、cancel 共 9 个场景，每个场景 200 次冷启动和 1000 次热启动；同一 scenario/phase/index 的 Shell 与 bare proxy 构成相邻配对，按 index 奇偶执行 AB/BA 交替顺序，并在每条样本保存 `pair_order` 和 `pair_position`，避免整臂串行时机器负载漂移压过几毫秒 wrapper 差异。artifact 同时保存每个 scenario/phase 的 `bare-proxy - shell` 配对延迟 p50/p95/p99、AB/BA 子组中位数和 win/tie/loss，validator 会从原始样本核对配对顺序与摘要规模。冷启动和热启动都保留独立 child launch，热启动只复用已构建的 MBTX binary 与 harness，不伪装成持久 daemon，因而报告会把这一测量边界写明。可通过 M5_COLD_RUNS、M5_WARM_RUNS 和 M5_SCENARIOS 做短 smoke。child 输出内部开始/结束标记，外部 harness 以单调时钟测量 wrapper 和回收开销；主动取消场景允许没有 child end marker，但必须有 start marker、reap 顺序和无 late output。
+本地确定性 runtime 默认执行 argv、stdin/EOF/UTF-8、cwd/env、大输出、非零退出以及 background/poll、stop、timeout、cancel 共 9 个场景，每个场景 200 次冷启动和 1000 次热启动；同一 scenario/phase/index 的 Shell 与 bare proxy 构成相邻配对，按 index 奇偶执行 AB/BA 交替顺序，并在每条样本保存 `pair_order` 和 `pair_position`，避免整臂串行时机器负载漂移压过几毫秒 wrapper 差异。artifact 同时保存每个 scenario/phase 的 `bare-proxy - shell` 配对延迟 p50/p95/p99、AB/BA 子组中位数和 win/tie/loss，validator 会从原始样本核对配对顺序与摘要规模。冷启动和热启动都保留独立 child launch，热启动只复用已构建的 MBTX binary 与 harness，不伪装成持久 daemon，因而报告会把这一测量边界写明。可通过 M5_COLD_RUNS、M5_WARM_RUNS 和 M5_SCENARIOS 做短 smoke。child 输出内部开始/结束标记，外部 harness 以单调时钟测量 wrapper 和回收开销；主动取消场景允许没有 child end marker，但必须有 start marker、reap 顺序和无 late output。由于 Codex 的 Unix Direct 路径为 launcher 建立独立 session/process group，runtime 的 lifecycle 样本也先以 `setsid + exec` 建立独立组，再向整个组发送 `SIGTERM`、等待预注册的 50ms、最后发送 `SIGKILL`；每条样本必须记录 `cancellation_scope=process-group` 和 `cancellation_grace_ms=50`。这避免把只对 wrapper PID 发信号的人工父子竞态误判为真实 Codex 后端回归。
 
 ## Oracle 和可观测性
 
@@ -164,6 +164,8 @@ Pilot 协议修正记录：Actions run `34513877160` 在 implementation `cf1ca4d
 第二次诊断 run `34519793691` 在 implementation `474e463` 上完成了 Linux/Darwin 零回归确定性证据，但 runtime 仍按整臂顺序先执行全部 Shell、再执行全部 bare proxy；Darwin 简短任务的时延方向反转表明时段负载漂移可能压过 wrapper 差异。该 run 在 relay probe 前取消，未产生在线 block；后续版本把 runtime 改为相邻配对且 AB/BA 交替，并由 artifact validator 验证实际顺序。该 run 只证明 receipt 修复与语义零回归，不进入最终性能或在线结论。
 
 第三次诊断 run `34526824314` 在 implementation `ba2eaf1` 上完成了最终规模的 Linux/Darwin 相邻配对确定性证据，但 live probe 在写任何 attempt 前因重复创建已存在的 `_build/m5-results` 目录而退出。该 run 的在线 artifact 明确记录 0 probe、0 block、0 run；后续版本把结果目录准备改为幂等操作，并在离线验证中连续两次覆盖预先存在目录的路径。该 run 不进入 pilot 或 formal 在线统计，双平台确定性 artifact 也不作为后续冻结证据复用，避免跨 implementation SHA 混用。
+
+第四次诊断 run `34533540258` 在 implementation `40f6e2d` 的 Linux 确定性阶段通过，但 Darwin 的 `bare-proxy/stop` 热启动样本出现 1/21600 次 late output。审计显示原 harness 仅向 wrapper PID 发 `SIGTERM`，50ms 后杀掉 wrapper，恰好与真实 Codex 对独立进程组发信号的语义不同；Codex Direct executor 在 Unix 上建立 session/process group 并向整个组发 `SIGTERM`。后续版本把 B0/B2 lifecycle harness 对齐为 `setsid + exec`、group `SIGTERM`、固定 50ms、group `SIGKILL`，同时将 scope/grace 写进并强制校验 artifact。该 run 仍不进入任何正式统计；这项更改不放宽 50ms 门槛，而是消除了不等价的单 PID 注入方式。
 
 ## Artifact
 

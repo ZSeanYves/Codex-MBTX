@@ -59,6 +59,17 @@ fn string_array_field(value : Json, key : String) -> Bool {
   }
 }
 
+fn lifecycle_scope_valid(sample : Json) -> Bool {
+  let lifecycle = string_field(sample, "lifecycle_status")
+  let scope = string_field(sample, "cancellation_scope")
+  let grace = number_field(sample, "cancellation_grace_ms")
+  if lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" {
+    scope == "process-group" && grace == 50
+  } else {
+    scope == "none" && grace == 0
+  }
+}
+
 fn runtime_sample_count(
   samples : Array[Json],
   scenario : String,
@@ -148,7 +159,8 @@ fn runtime_quality(value : Json) -> Bool {
           field(sample, "exit_code") is Some(Number(_, ..)) &&
           string_array_field(sample, "event_order") &&
           (lifecycle == "stop" || lifecycle == "timeout" || lifecycle == "cancel" ||
-            bool_field(sample, "child_end_marker"))
+            bool_field(sample, "child_end_marker")) &&
+          lifecycle_scope_valid(sample)
       })
       let summaries_shape_ok = !summaries.is_empty() && summaries.all(summary =>
         number_field(summary, "marker_failures") == 0)
