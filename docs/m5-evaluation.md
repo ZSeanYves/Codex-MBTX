@@ -24,7 +24,7 @@ B0/B1 的主比较回答后端问题，B2 用来分离 wrapper 自身开销。B2
 - macOS 只用于本地运行时、语义和回放对照。
 - 本协议不对 Windows 作结论。
 - 正式 CI 固定 MoonBit compiler `0.10.12+1634b282e`、当前最新依赖 `moonbitlang/async@0.21.3` 和仓库 `rust-toolchain.toml`；不得在 W1--W3 之间升级。Linux 在线 runner 固定为 `ubuntu-24.04`；macOS 确定性 runner 使用 async 官方矩阵已验证的 `macos-latest`，但只在 pilot 采集一次并冻结，实际 OS、架构和工具链以该 run 的 artifact 与 Actions 元数据为准。三个窗口必须使用同一 implementation SHA、runner/evaluator hash、model、reasoning effort、prompt/fixture hash 和 tool catalog。
-- 每个 block 固定 task、model、reasoning effort、tool catalog、prompt hash、fixture hash、seed、workspace 初始化方式和 timeout。
+- 每个 block 固定 task、model、reasoning effort、tool catalog、prompt hash、fixture hash、seed、workspace 初始化方式和 timeout。process cohort 的模型可见 tool catalog 固定为排序后的 `apply_patch,exec_command,view_image,write_stdin`；与任务无关且在 Default 模式不可用的 `request_user_input`、未启用的 update-plan、web、MCP、code-mode 和 collaboration 工具在 runner 配置中显式关闭。runner 必须从每次真实 Responses 请求的 `tools` 数组重建排序后的 `observed_tool_catalog`，并证明同一 run 内每次请求一致；任何非基础设施 run 的实测目录缺失、不一致或与顶层冻结值不同都会停止当前 block，并使批次保持 INCONCLUSIVE。
 - block 内两个 backend 串行执行，顺序由带 seed 的 planner 决定；同一 block 的两次运行共享任务定义但使用独立 workspace/home。formal 的 20 次重复连续划分为 7/7/6 三个窗口，每个窗口由独立 CI workflow run 收集，W2/W3 只能接续前一窗口的完整前缀 artifact。
 - block artifact 必须保存 `relay_health`、`time_window` 和该 block 的 `runs`；报告顶层另保存完整 health、`mode`、`planned_blocks` 和 `start_block`，使单个脱敏 block 可以重建判断。
 - continuation 只能从完整 block 边界开始，不能重排、覆盖或按失败类型筛选旧样本。
@@ -159,7 +159,7 @@ relay-clean 但任务结果错误的在线 run 记为 `success=false`，保留�
 
     {"runs": [/* shell run */, /* transparent run */]}
 
-每个 run 必须包含 `attempts`、工具计数、`session_lifecycle`、input/cached/output token、`monotonic_start_ms`/`monotonic_end_ms` 起止字段、兼容性的 `started_ms`/`ended_ms`、实际 `stdout`/`stderr`/`exit_code`、`workspace_manifest`、`workspace_diff`、`receipt`、`process_trace`、三态 observability、backend observation 和 failure category。起止字段是 run-local 的单调时钟坐标；端到端时延优先取 `started_ms` 到已观测的 `turn_completed_ms`，缺少完成事件时只能回退到 `monotonic_start_ms` 到 `monotonic_end_ms`。`process_launch_ms` 与 `process_exit_ms` 则由独立 trace 中目标 helper 的 wall timestamp 转换为 run-local 坐标，分别表示最早目标调用开始和最晚目标调用结束；它们只描述目标进程区间，不能作为 agent 端到端时延的回退。Codex 子进程自身的边界只以 `codex_launch_ms`/`codex_exit_ms` 保存在私有 meta。没有发生的可选事件时间点只能按统一 wire 规则省略，不能用 `0` 冒充观测值。runner 不能用缺失字段代替 `unknown`，也不能把 provider/transport error 改写成 backend failure。
+每个 run 必须包含 `attempts`、工具计数、`observed_tool_catalog`、`tool_catalog_consistent`、`session_lifecycle`、input/cached/output token、`monotonic_start_ms`/`monotonic_end_ms` 起止字段、兼容性的 `started_ms`/`ended_ms`、实际 `stdout`/`stderr`/`exit_code`、`workspace_manifest`、`workspace_diff`、`receipt`、`process_trace`、三态 observability、backend observation 和 failure category。起止字段是 run-local 的单调时钟坐标；端到端时延优先取 `started_ms` 到已观测的 `turn_completed_ms`，缺少完成事件时只能回退到 `monotonic_start_ms` 到 `monotonic_end_ms`。`process_launch_ms` 与 `process_exit_ms` 则由独立 trace 中目标 helper 的 wall timestamp 转换为 run-local 坐标，分别表示最早目标调用开始和最晚目标调用结束；它们只描述目标进程区间，不能作为 agent 端到端时延的回退。Codex 子进程自身的边界只以 `codex_launch_ms`/`codex_exit_ms` 保存在私有 meta。没有发生的可选事件时间点只能按统一 wire 规则省略，不能用 `0` 冒充观测值。runner 不能用缺失字段代替 `unknown`，也不能把 provider/transport error 改写成 backend failure。
 
 每个 relay attempt 记录脱敏 `request_group`、组内 `retry_index`、HTTP 状态、first-byte、completed、断流、provider error、token usage 和最终是否恢复。相同 request body 的尝试属于同一组，新的模型工具轮次从 retry index 0 重新开始；固定 Codex proxy dump 记录首字节和完成 wall timestamp，runner 将其转换成 run-local 时间，不能把正常的后续工具轮次计作 retry。
 

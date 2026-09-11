@@ -360,6 +360,7 @@ jobs:
           M5_MODEL: ${{ inputs.model }}
           M5_EFFORT: ${{ inputs.reasoning_effort }}
           M5_SEED: "20260910"
+          M5_TOOL_CATALOG: "apply_patch,exec_command,view_image,write_stdin"
           M5_DETERMINISTIC_MANIFEST: _build/m5-results/deterministic-platforms.json
           M5_RELAY_HEALTH_FILE: _build/m5-results/relay-health.json
           M5_TIME_WINDOW: ${{ inputs.time_window == '0' && '1' || inputs.time_window }}

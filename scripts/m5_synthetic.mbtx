@@ -63,6 +63,8 @@ async fn main {
           "turn_completed_ms": elapsed,
           "attempts": [],
           "tool_counts": {},
+          "observed_tool_catalog": "apply_patch,exec_command,view_image,write_stdin",
+          "tool_catalog_consistent": true,
           "session_lifecycle": if lifecycle {
             {
               "required": true,
@@ -169,7 +171,7 @@ async fn main {
     "seed": 17,
     "planned_blocks": 160,
     "start_block": 0,
-    "tool_catalog": "exec_command,write_stdin",
+    "tool_catalog": "apply_patch,exec_command,view_image,write_stdin",
     "relay_health": {
       "probes": 10,
       "successful_probes": 10,
@@ -226,6 +228,38 @@ async fn main {
     fail("synthetic decision gate changed")
   }
   let valid_report = @fs.read_file("_build/m5-results/report.json").text()
+  let catalog_tampered_report = match @json.parse(valid_report) {
+    Object(report_fields) => {
+      guard report_fields.get("runs") is Some(Array(run_values)) &&
+        !run_values.is_empty() else {
+        fail("synthetic report has no runs to tamper")
+      }
+      guard run_values[0] is Object(run_fields) else {
+        fail("synthetic report has no run object to tamper")
+      }
+      run_fields["observed_tool_catalog"] = "exec_command,write_stdin".to_json()
+      run_values[0] = Json::object(run_fields)
+      report_fields["runs"] = Json::array(run_values)
+      Json::object(report_fields)
+    }
+    _ => fail("synthetic report is not an object")
+  }
+  @fs.write_file(
+    "_build/m5-results/report.json",
+    catalog_tampered_report.stringify(),
+  )
+  let reject_catalog_tamper = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_analyze.mbtx"],
+  ).output(timeout_ms=120_000)
+  reject_catalog_tamper.check()
+  guard @json.parse(@fs.read_file("_build/m5-results/report.json").text()) is {
+    "validity": { "tool_catalog_valid": false, .. },
+    "decision": { "status": "INCONCLUSIVE", .. },
+    ..
+  } else {
+    fail("tampered model-visible tool catalog was accepted")
+  }
   let tampered_report = match @json.parse(valid_report) {
     Object(report_fields) => {
       guard report_fields.get("runs") is Some(Array(run_values)) &&

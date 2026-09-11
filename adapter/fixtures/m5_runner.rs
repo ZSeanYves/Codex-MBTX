@@ -145,6 +145,8 @@ struct EventSummary {
     seen_ids: HashSet<String>,
     request_seen_call_ids: HashSet<String>,
     request_history_complete: bool,
+    observed_tool_catalog: Vec<String>,
+    tool_catalog_consistent: bool,
     exec_sessions: Vec<ExecSessionRecord>,
     write_stdin_calls: Vec<WriteStdinRecord>,
 }
@@ -760,6 +762,16 @@ fn execute_arm_inner(
         ),
     );
     insert(&mut run, "tool_counts", json!(event_summary.tool_counts));
+    insert(
+        &mut run,
+        "observed_tool_catalog",
+        json!(event_summary.observed_tool_catalog.join(",")),
+    );
+    insert(
+        &mut run,
+        "tool_catalog_consistent",
+        json!(event_summary.tool_catalog_consistent),
+    );
     insert(&mut run, "session_lifecycle", lifecycle.value);
     insert(
         &mut run,
@@ -879,6 +891,11 @@ fn base_run(block: &BlockSpec, backend: &str, fixture_nonce: &str) -> Map<String
     run.insert("workspace_manifest".to_owned(), json!([]));
     run.insert("attempts".to_owned(), json!([]));
     run.insert("tool_counts".to_owned(), json!({}));
+    run.insert(
+        "observed_tool_catalog".to_owned(),
+        Value::String(String::new()),
+    );
+    run.insert("tool_catalog_consistent".to_owned(), json!(false));
     run.insert(
         "session_lifecycle".to_owned(),
         json!({
@@ -1164,6 +1181,10 @@ fn write_codex_config(
         "approval_policy = \"never\"".to_owned(),
         "sandbox_mode = \"workspace-write\"".to_owned(),
         "web_search = \"disabled\"".to_owned(),
+        "[tools.experimental_request_user_input]".to_owned(),
+        "enabled = false".to_owned(),
+        "[tools.update_plan]".to_owned(),
+        "enabled = false".to_owned(),
         "[agents]".to_owned(),
         "enabled = false".to_owned(),
         "[features]".to_owned(),
@@ -1798,6 +1819,8 @@ fn inspect_request_tool_history(dumps: &Path, summary: &mut EventSummary) {
     request_paths.sort();
     let mut complete = !request_paths.is_empty();
     let mut tool_counts = BTreeMap::new();
+    let mut observed_catalog: Option<Vec<String>> = None;
+    let mut catalog_consistent = true;
     for path in request_paths {
         let Some(body) = read_json(&path).and_then(|dump| dump.get("body").cloned()) else {
             complete = false;
@@ -1807,6 +1830,17 @@ fn inspect_request_tool_history(dumps: &Path, summary: &mut EventSummary) {
             complete = false;
             continue;
         };
+        match request_tool_catalog(&body) {
+            Some(catalog) => match &observed_catalog {
+                Some(expected) if expected != &catalog => catalog_consistent = false,
+                Some(_) => {}
+                None => observed_catalog = Some(catalog),
+            },
+            None => {
+                complete = false;
+                catalog_consistent = false;
+            }
+        }
         let outputs: BTreeMap<&str, &Value> = items
             .iter()
             .filter_map(|item| {
@@ -1880,14 +1914,39 @@ fn inspect_request_tool_history(dumps: &Path, summary: &mut EventSummary) {
     if !tool_counts.is_empty() {
         summary.tool_counts = tool_counts;
     }
+    summary.observed_tool_catalog = observed_catalog.unwrap_or_default();
+    summary.tool_catalog_consistent =
+        catalog_consistent && !summary.observed_tool_catalog.is_empty();
     let exec_count = summary
         .tool_counts
         .get("exec_command")
         .copied()
         .unwrap_or_default();
     summary.request_history_complete = complete
+        && summary.tool_catalog_consistent
         && exec_count > 0
         && usize::try_from(exec_count).ok() == Some(summary.commands.len());
+}
+
+fn request_tool_catalog(body: &Value) -> Option<Vec<String>> {
+    let tools = body.get("tools")?.as_array()?;
+    if tools.is_empty() {
+        return None;
+    }
+    let mut names = Vec::with_capacity(tools.len());
+    for tool in tools {
+        let name = tool
+            .get("name")
+            .and_then(Value::as_str)
+            .or_else(|| tool.get("type").and_then(Value::as_str))?;
+        if name.is_empty() {
+            return None;
+        }
+        names.push(name.to_owned());
+    }
+    names.sort();
+    names.dedup();
+    Some(names)
 }
 
 fn function_call_arguments(item: &Value) -> Option<Value> {
@@ -3263,6 +3322,12 @@ mod tests {
         let _cleanup = CleanupDir(directory.clone());
         let request = json!({
             "body": {
+                "tools": [
+                    {"type": "function", "name": "write_stdin"},
+                    {"type": "custom", "name": "apply_patch"},
+                    {"type": "function", "name": "exec_command"},
+                    {"type": "function", "name": "view_image"}
+                ],
                 "input": [
                     {
                         "type": "function_call",
@@ -3315,6 +3380,11 @@ mod tests {
         assert!(events.request_history_complete);
         assert_eq!(events.tool_counts.get("exec_command"), Some(&1));
         assert_eq!(events.tool_counts.get("write_stdin"), Some(&2));
+        assert_eq!(
+            events.observed_tool_catalog,
+            vec!["apply_patch", "exec_command", "view_image", "write_stdin"]
+        );
+        assert!(events.tool_catalog_consistent);
         assert_eq!(events.exec_sessions.len(), 1);
         assert_eq!(events.write_stdin_calls.len(), 2);
 
@@ -3341,6 +3411,27 @@ mod tests {
         assert!(lifecycle.compliant);
         events.write_stdin_calls[1].session_id = 1001;
         assert!(!lifecycle_evidence(&task, &events).compliant);
+
+        let mut changed = request;
+        changed["body"]["tools"] = json!([
+            {"type": "custom", "name": "apply_patch"},
+            {"type": "function", "name": "exec_command"},
+            {"type": "function", "name": "write_stdin"}
+        ]);
+        fs::write(
+            directory.join("000002-1-request.json"),
+            serde_json::to_vec(&changed).expect("serialize changed request"),
+        )
+        .expect("write changed request");
+        let mut inconsistent = EventSummary {
+            commands: vec![CommandRecord {
+                program: "python3 sleeper.py".to_owned(),
+            }],
+            ..EventSummary::default()
+        };
+        inspect_request_tool_history(&directory, &mut inconsistent);
+        assert!(!inconsistent.tool_catalog_consistent);
+        assert!(!inconsistent.request_history_complete);
     }
 
     #[test]

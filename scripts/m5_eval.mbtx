@@ -625,6 +625,7 @@ fn same_block_contract(left : M5Block, right : M5Block) -> Bool {
 async fn run_runner(
   runner : String,
   block : M5Block,
+  tool_catalog : String,
 ) -> Array[Json] ? {
   let block_json = ToJson::to_json(block).stringify()
   let output = try {
@@ -670,7 +671,7 @@ async fn run_runner(
   if output.exit_code() != 0 { return None }
   try {
     let envelope : RunnerEnvelope = @json.from_json(@json.parse(output.stdout()))
-    guard valid_runner_runs(envelope.runs, block) else { return None }
+    guard valid_runner_runs(envelope.runs, block, tool_catalog) else { return None }
     Some(envelope.runs)
   } catch {
     _ => None
@@ -965,13 +966,14 @@ fn required_run_fields_present(run : Json) -> Bool {
   let required_strings = [
     "run_id", "block_id", "task", "backend", "relay_status", "observability",
     "backend_observation", "failure_category", "fixture_nonce",
+    "observed_tool_catalog",
   ]
   let required_bools = [
     "completed", "usage_complete", "correct_output", "inputs_preserved",
     "workspace_clean", "child_processes_clean", "receipt_valid", "trace_complete",
     "argv_cwd_valid", "approval_original_command",
     "process_cleanup_observation_complete", "residual_before_cleanup",
-    "harness_cleanup_succeeded",
+    "harness_cleanup_succeeded", "tool_catalog_consistent",
   ]
   let required_numbers = [
     "input_tokens", "cached_input_tokens", "output_tokens", "ended_ms",
@@ -1006,8 +1008,20 @@ fn timing_fields_valid(run : Json) -> Bool {
   }
 }
 
-fn run_valid_for_block(run : Json, block : M5Block) -> Bool {
+fn tool_catalog_evidence_valid(run : Json, expected : String) -> Bool {
+  let observed = string_field(run, "observed_tool_catalog")
+  let exact = bool_field(run, "tool_catalog_consistent") &&
+    !expected.is_empty() && observed == expected
+  if infrastructure_run(run) { observed.is_empty() || exact } else { exact }
+}
+
+fn run_valid_for_block(
+  run : Json,
+  block : M5Block,
+  tool_catalog : String,
+) -> Bool {
   required_run_fields_present(run) &&
+    tool_catalog_evidence_valid(run, tool_catalog) &&
     string_field(run, "block_id") == block.block_id &&
     string_field(run, "task") == block.task &&
     (string_field(run, "backend") == "shell" ||
@@ -1023,8 +1037,13 @@ fn run_valid_for_block(run : Json, block : M5Block) -> Bool {
       string_field(run, "backend_observation") == "unknown")
 }
 
-fn valid_runner_runs(runs : Array[Json], block : M5Block) -> Bool {
-  runs.length() == 2 && runs.all(r => run_valid_for_block(r, block)) &&
+fn valid_runner_runs(
+  runs : Array[Json],
+  block : M5Block,
+  tool_catalog : String,
+) -> Bool {
+  runs.length() == 2 &&
+    runs.all(r => run_valid_for_block(r, block, tool_catalog)) &&
     string_field(runs[0], "run_id") != "" &&
     string_field(runs[1], "run_id") != "" &&
     string_field(runs[0], "run_id") != string_field(runs[1], "run_id") &&
@@ -1066,7 +1085,7 @@ fn clean_observed_run(run : Json) -> Bool {
     string_field(run, "backend_observation") != "unknown"
 }
 
-fn run_evidence_complete(run : Json) -> Bool {
+fn run_evidence_complete(run : Json, tool_catalog : String) -> Bool {
   if !required_run_fields_present(run) {
     false
   } else if infrastructure_run(run) {
@@ -1074,7 +1093,8 @@ fn run_evidence_complete(run : Json) -> Bool {
     // backend observation because no backend turn was attributable.
     true
   } else {
-    clean_observed_run(run) && bool_field(run, "usage_complete")
+    clean_observed_run(run) && bool_field(run, "usage_complete") &&
+      tool_catalog_evidence_valid(run, tool_catalog)
   }
 }
 
@@ -1273,7 +1293,7 @@ async fn main {
   let model = @env.get_env_var("M5_MODEL").unwrap_or("unspecified")
   let reasoning_effort = @env.get_env_var("M5_EFFORT").unwrap_or("unspecified")
   let tool_catalog = @env.get_env_var("M5_TOOL_CATALOG").unwrap_or(
-    "exec_command,write_stdin",
+    "apply_patch,exec_command,view_image,write_stdin",
   )
   let prompt_hash = hash_file("eval/MOONBIT.md") + ":" + hash_file("eval/m5.mbt")
   let fixture_hash = hash_file("eval/suite.mbt") + ":" + hash_file("eval/m5.mbt")
@@ -1371,7 +1391,7 @@ async fn main {
   let mut runner_errors = 0
   if health_ok && runner is Some(runner) {
     for block in blocks {
-      match run_runner(runner, block) {
+      match run_runner(runner, block, tool_catalog) {
         Some(block_runs) => {
           runs.append(block_runs)
           completed_blocks.push(block)
@@ -1405,10 +1425,14 @@ async fn main {
   let block_health_ok = all_block_health_valid(merged_blocks)
   let reliability_json = reliability(all_runs, full_plan.planned_blocks * 2)
   let observed_batch_ok = observed_batch_valid(all_runs)
+  let attributable_runs = all_runs.filter(run => !infrastructure_run(run))
+  let tool_catalog_valid = !attributable_runs.is_empty() &&
+    attributable_runs.all(run => tool_catalog_evidence_valid(run, tool_catalog))
   let evidence_complete = health_ok && runner_configured &&
     runner_errors == 0 && all_runs.length() == merged_blocks.length() * 2 &&
     planned_windows_ok && block_health_ok && observed_batch_ok &&
-    block_nonces_valid(all_runs) && all_runs.all(run_evidence_complete)
+    tool_catalog_valid && block_nonces_valid(all_runs) &&
+    all_runs.all(run => run_evidence_complete(run, tool_catalog))
   let backend_observable = !all_runs.is_empty() &&
     all_runs.filter(r => !infrastructure_run(r)).length() > 0 &&
     all_runs.filter(r => !infrastructure_run(r)).all(clean_observed_run)
@@ -1435,6 +1459,9 @@ async fn main {
   if runner_errors > 0 { decision_reasons.push("one or more runner blocks failed") }
   if !observed_batch_ok && !all_runs.is_empty() {
     decision_reasons.push("observed batch infrastructure failure rate exceeded 5% or arm difference exceeded 2pp")
+  }
+  if !tool_catalog_valid {
+    decision_reasons.push("model-visible tool catalog is missing, inconsistent or not frozen")
   }
   if !evidence_complete { decision_reasons.push("paired evidence is incomplete") }
   if !backend_observable { decision_reasons.push("backend observation is incomplete or unknown") }
@@ -1463,6 +1490,7 @@ async fn main {
     "planned_time_windows_valid": planned_windows_ok.to_json(),
     "block_health_valid": block_health_ok.to_json(),
     "observed_batch_valid": observed_batch_ok.to_json(),
+    "tool_catalog_valid": tool_catalog_valid.to_json(),
     "runner_configured": runner_configured.to_json(),
     "runner_errors": runner_errors.to_json(),
     "evidence_complete": evidence_complete.to_json(),

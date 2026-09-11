@@ -98,6 +98,8 @@ pub(all) struct M5RunObservation {
   workspace_manifest : Array[String]
   attempts : Array[M5Attempt]
   tool_counts : Map[String, Int]
+  observed_tool_catalog : String
+  tool_catalog_consistent : Bool
   session_lifecycle : Json
   input_tokens : Int
   cached_input_tokens : Int

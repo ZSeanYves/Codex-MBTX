@@ -342,13 +342,14 @@ fn run_shape_valid(run : Json) -> Bool {
   let strings = [
     "run_id", "block_id", "task", "backend", "relay_status", "observability",
     "backend_observation", "failure_category", "fixture_nonce",
+    "observed_tool_catalog",
   ]
   let bools = [
     "completed", "usage_complete", "correct_output", "inputs_preserved",
     "workspace_clean", "child_processes_clean", "receipt_valid", "trace_complete",
     "argv_cwd_valid", "approval_original_command",
     "process_cleanup_observation_complete", "residual_before_cleanup",
-    "harness_cleanup_succeeded",
+    "harness_cleanup_succeeded", "tool_catalog_consistent",
   ]
   let numbers = [
     "input_tokens", "cached_input_tokens", "output_tokens", "ended_ms",
@@ -395,6 +396,19 @@ fn timing_fields_valid(run : Json) -> Bool {
 fn infrastructure_run(run : Json) -> Bool {
   text_field(run, "relay_status") == "provider_error" ||
     text_field(run, "relay_status") == "transport_error"
+}
+
+fn tool_catalog_evidence_valid(run : Json, expected : String) -> Bool {
+  let observed = text_field(run, "observed_tool_catalog")
+  let exact = bool_field(run, "tool_catalog_consistent") &&
+    !expected.is_empty() && observed == expected
+  if infrastructure_run(run) { observed.is_empty() || exact } else { exact }
+}
+
+fn tool_catalog_batch_valid(runs : Array[Json], expected : String) -> Bool {
+  let attributable = runs.filter(run => !infrastructure_run(run))
+  !attributable.is_empty() &&
+    attributable.all(run => tool_catalog_evidence_valid(run, expected))
 }
 
 fn token_metrics_available(runs : Array[Json], pair_count : Int) -> Bool {
@@ -771,7 +785,7 @@ fn bootstrap_p95(pairs : Array[Pair], seed : Int) -> Interval {
   { estimate, lower: bootstrap[99], upper: bootstrap[1899] }
 }
 
-fn make_pairs(runs : Array[Json]) -> Array[Pair] {
+fn make_pairs(runs : Array[Json], tool_catalog : String) -> Array[Pair] {
   let shell_ms : Map[String, Int] = Map([])
   let transparent_ms : Map[String, Int] = Map([])
   let shell_counts : Map[String, Int] = Map([])
@@ -786,7 +800,8 @@ fn make_pairs(runs : Array[Json]) -> Array[Pair] {
     let observability = text_field(run, "observability")
     let usage = bool_field(run, "usage_complete")
     if block_id.is_empty() || relay != "clean" || observability != "complete" ||
-      !usage || text_field(run, "backend_observation") == "unknown" {
+      !usage || text_field(run, "backend_observation") == "unknown" ||
+      !tool_catalog_evidence_valid(run, tool_catalog) {
       continue
     }
     guard elapsed(run) is Some(duration) else { continue }
@@ -827,7 +842,7 @@ fn make_pairs(runs : Array[Json]) -> Array[Pair] {
   pairs
 }
 
-fn run_success(run : Json) -> Bool {
+fn run_success(run : Json, tool_catalog : String) -> Bool {
   (text_field(run, "failure_category") == "none" &&
     // Unknown backend use is retained in the ITT denominator but cannot
     // contribute to its success numerator.
@@ -841,11 +856,18 @@ fn run_success(run : Json) -> Bool {
     bool_field(run, "receipt_valid") &&
     bool_field(run, "trace_complete") &&
     bool_field(run, "argv_cwd_valid") &&
-    bool_field(run, "approval_original_command"))
+    bool_field(run, "approval_original_command") &&
+    tool_catalog_evidence_valid(run, tool_catalog))
 }
 
-fn itt_successes(runs : Array[Json], backend : String) -> Int {
-  runs.filter(run => text_field(run, "backend") == backend && run_success(run)).length()
+fn itt_successes(
+  runs : Array[Json],
+  backend : String,
+  tool_catalog : String,
+) -> Int {
+  runs.filter(run =>
+    text_field(run, "backend") == backend &&
+      run_success(run, tool_catalog)).length()
 }
 
 fn csv(pairs : Array[Pair]) -> String {
@@ -865,6 +887,7 @@ fn augmented_validity(
   pair_count : Int,
   token_metrics_available : Bool,
   block_health_valid : Bool,
+  tool_catalog_valid : Bool,
 ) -> Json {
   let has_pairs = pair_count > 0
   match prior {
@@ -875,6 +898,7 @@ fn augmented_validity(
       fields["relay_clean_conditional"] = has_pairs.to_json()
       fields["token_metrics_available"] = token_metrics_available.to_json()
       fields["block_health_valid"] = block_health_valid.to_json()
+      fields["tool_catalog_valid"] = tool_catalog_valid.to_json()
       Json::object(fields)
     }
     _ => {
@@ -885,6 +909,7 @@ fn augmented_validity(
       "relay_clean_conditional": has_pairs.to_json(),
       "token_metrics_available": token_metrics_available.to_json(),
       "block_health_valid": block_health_valid.to_json(),
+      "tool_catalog_valid": tool_catalog_valid.to_json(),
     }
   }
 }
@@ -926,6 +951,10 @@ fn decision(
   )
   let deterministic_failure = (runtime_present && !runtime_valid) ||
     (replay_present && !replay_valid)
+  let tool_catalog_valid = tool_catalog_batch_valid(
+    report.runs,
+    report.tool_catalog,
+  )
   let mut evidence_complete = relay_batch_valid &&
     windows_valid &&
     health_snapshots_valid &&
@@ -939,6 +968,9 @@ fn decision(
     if !run_shape_valid(run) {
       evidence_complete = false
       shape_invalid += 1
+    }
+    if !tool_catalog_evidence_valid(run, report.tool_catalog) {
+      evidence_complete = false
     }
     if infrastructure_run(run) {
       // Provider and transport failures stay in the ITT denominator. They do
@@ -975,6 +1007,9 @@ fn decision(
   if clean_runs == 0 { reasons.push("no clean observed runs") }
   if shape_invalid > 0 {
     reasons.push("run schema invalid: " + shape_invalid.to_string())
+  }
+  if !tool_catalog_valid {
+    reasons.push("model-visible tool catalog is missing, inconsistent or not frozen")
   }
   if report.mode != "formal" {
     reasons.push("pilot or script cohort cannot produce a default-backend decision")
@@ -1125,7 +1160,7 @@ async fn main {
     @json.parse(@fs.read_file("_build/m5-results/report.json").text()),
   )
   guard report.schema_version == 5 else { fail("expected M5 schema version 5") }
-  let pairs = make_pairs(report.runs)
+  let pairs = make_pairs(report.runs, report.tool_catalog)
   let shell_times = pairs.map(p => p.shell_ms)
   let transparent_times = pairs.map(p => p.transparent_ms)
   let shell_successes = pairs.filter(p => p.shell_success).length()
@@ -1166,23 +1201,30 @@ async fn main {
     token_metrics_available: token_metrics_available(report.runs, pairs.length()),
     itt_planned_arms: report.planned_blocks * 2,
     itt_recorded_arms: report.runs.length(),
-    itt_shell_successes: itt_successes(report.runs, "shell"),
-    itt_transparent_successes: itt_successes(report.runs, "transparent"),
+    itt_shell_successes: itt_successes(report.runs, "shell", report.tool_catalog),
+    itt_transparent_successes: itt_successes(
+      report.runs,
+      "transparent",
+      report.tool_catalog,
+    ),
     itt_shell_success_rate_basis_points: if report.planned_blocks <= 0 {
       0
     } else {
-      itt_successes(report.runs, "shell") * 10_000 / report.planned_blocks
+      itt_successes(report.runs, "shell", report.tool_catalog) * 10_000 /
+        report.planned_blocks
     },
     itt_transparent_success_rate_basis_points: if report.planned_blocks <= 0 {
       0
     } else {
-      itt_successes(report.runs, "transparent") * 10_000 / report.planned_blocks
+      itt_successes(report.runs, "transparent", report.tool_catalog) * 10_000 /
+        report.planned_blocks
     },
     itt_success_difference_basis_points: if report.planned_blocks <= 0 {
       0
     } else {
-      (itt_successes(report.runs, "transparent") -
-        itt_successes(report.runs, "shell")) * 10_000 / report.planned_blocks
+      (itt_successes(report.runs, "transparent", report.tool_catalog) -
+        itt_successes(report.runs, "shell", report.tool_catalog)) * 10_000 /
+        report.planned_blocks
     },
     pair_count: pairs.length(),
     shell_successes,
@@ -1257,6 +1299,7 @@ async fn main {
       pairs.length(),
       token_metrics_available(report.runs, pairs.length()),
       block_health_valid(report),
+      tool_catalog_batch_valid(report.runs, report.tool_catalog),
     ),
     decision: decision(report, pairs, success_ci, p95_ci),
   }
