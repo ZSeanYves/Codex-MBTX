@@ -135,6 +135,7 @@ async fn main {
       "transport_error": false,
       "usage_complete": i != 0,
       "error_class": Json::null(),
+      "malformed": false,
     })
   }
   let probe = @shell.Cmd(

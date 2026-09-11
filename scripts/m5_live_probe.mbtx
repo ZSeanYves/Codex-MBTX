@@ -216,6 +216,7 @@ async fn probe_one(
     "transport_error": transport_error,
     "usage_complete": completed && usage_complete(body),
     "error_class": nullable(error),
+    "malformed": false,
   }
 }
 

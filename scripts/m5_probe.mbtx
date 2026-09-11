@@ -27,6 +27,7 @@ struct Probe {
   transport_error : Bool
   usage_complete : Bool
   error_class : Json
+  malformed : Bool
 } derive(FromJson, ToJson)
 
 fn optional_int(value : Json) -> Int? {
@@ -45,20 +46,60 @@ fn normalize_probe(value : Json) -> Json {
       // fields with schema-safe sentinels so the aggregate can report an
       // invalid/unsuccessful probe instead of crashing before writing its
       // health artifact.
-      if fields.get("attempt_id") is None { fields["attempt_id"] = "" }
-      if fields.get("retry_index") is None { fields["retry_index"] = 0 }
-      if fields.get("arm") is None { fields["arm"] = "" }
-      if fields.get("time_window") is None { fields["time_window"] = 0 }
-      if fields.get("http_status") is None { fields["http_status"] = Json::null() }
-      if fields.get("first_byte_ms") is None { fields["first_byte_ms"] = Json::null() }
-      if fields.get("completed_ms") is None { fields["completed_ms"] = Json::null() }
+      let mut missing = false
+      if fields.get("attempt_id") is None {
+        fields["attempt_id"] = ""
+        missing = true
+      }
+      if fields.get("retry_index") is None {
+        fields["retry_index"] = 0
+        missing = true
+      }
+      if fields.get("arm") is None {
+        fields["arm"] = ""
+        missing = true
+      }
+      if fields.get("time_window") is None {
+        fields["time_window"] = 0
+        missing = true
+      }
+      if fields.get("http_status") is None {
+        fields["http_status"] = Json::null()
+        missing = true
+      }
+      if fields.get("first_byte_ms") is None {
+        fields["first_byte_ms"] = Json::null()
+        missing = true
+      }
+      if fields.get("completed_ms") is None {
+        fields["completed_ms"] = Json::null()
+        missing = true
+      }
       if fields.get("stream_disconnected") is None {
         fields["stream_disconnected"] = false
+        missing = true
       }
-      if fields.get("provider_error") is None { fields["provider_error"] = false }
-      if fields.get("transport_error") is None { fields["transport_error"] = false }
-      if fields.get("usage_complete") is None { fields["usage_complete"] = false }
-      if fields.get("error_class") is None { fields["error_class"] = Json::null() }
+      if fields.get("provider_error") is None {
+        fields["provider_error"] = false
+        missing = true
+      }
+      if fields.get("transport_error") is None {
+        fields["transport_error"] = false
+        missing = true
+      }
+      if fields.get("usage_complete") is None {
+        fields["usage_complete"] = false
+        missing = true
+      }
+      if fields.get("error_class") is None {
+        fields["error_class"] = Json::null()
+        missing = true
+      }
+      let prior_malformed = match fields.get("malformed") {
+        Some(True) => true
+        _ => false
+      }
+      fields["malformed"] = (missing || prior_malformed).to_json()
       Json::object(fields)
     }
     _ => value
@@ -110,6 +151,7 @@ fn health(probes : Array[Probe]) -> Json {
   let mut transparent_failures = 0
   let mut malformed = false
   for probe in probes {
+    if probe.malformed { malformed = true }
     if (probe.arm != "shell" && probe.arm != "transparent") ||
       probe.time_window <= 0 {
       malformed = true
