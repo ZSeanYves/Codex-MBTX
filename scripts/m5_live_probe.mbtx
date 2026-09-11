@@ -56,14 +56,74 @@ fn millis(value : Json) -> Int? {
 }
 
 fn text_has_completion(text : String) -> Bool {
-  text.contains("response.completed") ||
-    text.contains("\"status\":\"completed\"")
+  fn event_is_completion(value : Json) -> Bool {
+    value is { "type": "response.completed", .. } ||
+      value is { "status": "completed", .. } ||
+      value is { "response": { "status": "completed", .. }, .. }
+  }
+  let mut found = false
+  let data : Array[String] = []
+  fn flush() {
+    if data.is_empty() { return }
+    let payload = data.join("\n")
+    data.clear()
+    if payload == "[DONE]" { return }
+    try {
+      if event_is_completion(@json.parse(payload)) { found = true }
+    } catch {
+      _ => ()
+    }
+  }
+  for line in text.split("\n") {
+    let line = line.trim_end(chars="\r")
+    if line.is_empty() {
+      flush()
+    } else if line.has_prefix("data:") {
+      let value = line[5:]
+      data.push((if value.has_prefix(" ") { value[1:] } else { value }).to_owned())
+    }
+  }
+  flush()
+  if found { true } else { text.contains("response.completed") }
 }
 
 fn text_has_failure(text : String) -> Bool {
-  text.contains("response.failed") ||
-    text.contains("\"type\":\"error\"") ||
-    text.contains("\"error\"")
+  fn event_is_failure(value : Json) -> Bool {
+    value is { "type": "response.failed" | "error", .. } ||
+      value is { "error": Object(_), .. } ||
+      value is { "response": { "error": Object(_), .. }, .. }
+  }
+  let mut found = false
+  let data : Array[String] = []
+  fn flush() {
+    if data.is_empty() { return }
+    let payload = data.join("\n")
+    data.clear()
+    if payload == "[DONE]" { return }
+    try {
+      if event_is_failure(@json.parse(payload)) { found = true }
+    } catch {
+      _ => ()
+    }
+  }
+  for line in text.split("\n") {
+    let line = line.trim_end(chars="\r")
+    if line.is_empty() {
+      flush()
+    } else if line.has_prefix("data:") {
+      let value = line[5:]
+      data.push((if value.has_prefix(" ") { value[1:] } else { value }).to_owned())
+    }
+  }
+  flush()
+  if found {
+    true
+  } else {
+    // A plain JSON error response may not be framed as SSE.  Only recognize
+    // explicit event markers here; never classify a generic `"error"` key
+    // (often present as null in successful Responses) as a provider failure.
+    try { event_is_failure(@json.parse(text.trim())) } catch { _ => false }
+  }
 }
 
 fn usage_complete(text : String) -> Bool {
