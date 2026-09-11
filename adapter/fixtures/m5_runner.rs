@@ -2383,7 +2383,7 @@ fn argv_cwd_valid(task: &TaskSpec, trace: &TraceSummary, workspace: &Path) -> bo
         return false;
     }
     let expected_cwd = workspace.to_string_lossy();
-    trace.command_starts.iter().all(|record| {
+    let common_context_valid = trace.command_starts.iter().all(|record| {
         let cwd = record
             .get("cwd")
             .and_then(Value::as_str)
@@ -2398,13 +2398,48 @@ fn argv_cwd_valid(task: &TaskSpec, trace: &TraceSummary, workspace: &Path) -> bo
         if task.cohort == "process" && invoked_as != "python3" {
             return false;
         }
-        let args = record
-            .get("argv")
-            .and_then(Value::as_array)
-            .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>())
-            .unwrap_or_default();
-        !args.iter().any(|arg| arg.contains("SHOULD_NOT_EXIST"))
-    })
+        true
+    });
+    common_context_valid && (task.cohort != "process" || target_helper_argv_valid(task, trace))
+}
+
+fn target_helper_argv_valid(task: &TaskSpec, trace: &TraceSummary) -> bool {
+    let Some(helper) = expected_helper(task) else {
+        return false;
+    };
+    let expected_tail: Vec<Vec<&str>> = match task.id.as_str() {
+        "host_literal_argv" => vec![vec!["alpha beta", "quote'\"$", "$(touch SHOULD_NOT_EXIST)"]],
+        "host_stdin_stream"
+        | "host_path_inventory"
+        | "host_background"
+        | "host_large_output"
+        | "host_cwd_environment"
+        | "host_cancel_timeout" => vec![Vec::new()],
+        "host_exit_recovery" => vec![Vec::new(), vec!["--confirm"]],
+        _ => return false,
+    };
+    let target_records: Vec<&Value> = trace
+        .command_starts
+        .iter()
+        .filter(|record| record.get("helper").and_then(Value::as_str) == Some(helper.as_str()))
+        .collect();
+    target_records.len() == expected_tail.len()
+        && target_records
+            .iter()
+            .zip(expected_tail.iter())
+            .all(|(record, expected)| {
+                let args = record
+                    .get("argv")
+                    .and_then(Value::as_array)
+                    .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>())
+                    .unwrap_or_default();
+                let helper_matches = args
+                    .first()
+                    .and_then(|path| Path::new(path).file_name())
+                    .and_then(|name| name.to_str())
+                    == Some(helper.as_str());
+                helper_matches && args[1..] == expected[..]
+            })
 }
 
 fn trace_complete(task: &TaskSpec, trace: &TraceSummary) -> bool {
@@ -2774,6 +2809,53 @@ mod tests {
             json!({"nonce":"m5-runtime-fresh", "other":true})
         );
         assert_eq!(task.fixture_nonce, "m5-template");
+    }
+
+    #[test]
+    fn literal_argv_oracle_requires_the_exact_unexpanded_arguments() {
+        let task = TaskSpec {
+            id: "host_literal_argv".to_owned(),
+            cohort: "process".to_owned(),
+            prompt: String::new(),
+            inputs: [("capture_args.py".to_owned(), String::new())]
+                .into_iter()
+                .collect(),
+            expected: Value::Null,
+            expected_stdout: String::new(),
+            expected_stderr: String::new(),
+            expected_exit_code: 0,
+            expected_manifest: Vec::new(),
+            editable: None,
+            background: false,
+            fixture_nonce: "nonce".to_owned(),
+            receipt_path: ".m5/receipt.json".to_owned(),
+            oracle: "result_json+workspace_manifest+process_trace".to_owned(),
+        };
+        let exact = TraceSummary {
+            command_starts: vec![json!({
+                "cwd": "/tmp/work",
+                "invoked_as": "python3",
+                "helper": "capture_args.py",
+                "argv": [
+                    "./capture_args.py",
+                    "alpha beta",
+                    "quote'\"$",
+                    "$(touch SHOULD_NOT_EXIST)",
+                ],
+            })],
+            ..TraceSummary::default()
+        };
+        assert!(argv_cwd_valid(&task, &exact, Path::new("/tmp/work")));
+        let expanded = TraceSummary {
+            command_starts: vec![json!({
+                "cwd": "/tmp/work",
+                "invoked_as": "python3",
+                "helper": "capture_args.py",
+                "argv": ["capture_args.py", "alpha beta", "quote'\"$"],
+            })],
+            ..TraceSummary::default()
+        };
+        assert!(!argv_cwd_valid(&task, &expanded, Path::new("/tmp/work")));
     }
 
     #[test]

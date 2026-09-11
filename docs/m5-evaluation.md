@@ -183,6 +183,8 @@ Formal W1 第二次尝试 `34562806033` 的 probe 达到 9/10、最长连续失�
 
 第九次诊断 run `34567805251` 在 implementation `f194ab5` 的双平台 deterministic 采集阶段被主动取消，尚未执行 relay probe 或在线 block。最终只读协议审计发现 suite 中的 `fixture_nonce` 仍是任务版本常量，重复 block 无法用 nonce 证明 receipt 属于本次运行。后续版本在 runner 中为每个 block 生成新的运行时 nonce，让成对两臂使用相同值，并要求 run 与有效 receipt 的 task/nonce 一致。该取消 run 的 deterministic artifact 不复用，也不进入任何性能、pilot 或 formal 统计。
 
+同一次协议冻结审计还发现旧 `argv_cwd_valid` 会因为正确的 literal argv 包含 `SHOULD_NOT_EXIST` 字样而拒绝 `host_literal_argv`，同时没有逐任务验证目标 helper 的参数序列。正式采集前将该规则改为按 helper basename 筛选目标调用，并严格验证每个 process fixture 的 argv；`host_exit_recovery` 必须依次出现无参数调用和 `--confirm` 调用。未授权文件是否出现继续由完整 workspace manifest 独立判断，不能用参数字串替代文件系统证据。
+
 ## Artifact
 
 每次运行保存：
