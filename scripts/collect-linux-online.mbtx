@@ -30,7 +30,7 @@ async fn prepare_codex_lock(cargo : String, manifest : String, root : String) ->
   let cwd = root
   let check = @shell.Cmd(
     cargo,
-    ["metadata", "--format-version", "1", "--locked", "--no-deps", "--manifest-path", manifest],
+    ["metadata", "--format-version", "1", "--locked", "--manifest-path", manifest],
     cwd~,
   ).output(timeout_ms=300_000)
   if check.exit_code() == 0 {

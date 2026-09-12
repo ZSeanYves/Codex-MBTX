@@ -49,9 +49,10 @@ immutable per-attempt evidence, `online-summary.md`, `summary.json`,
 `provenance.txt`, and Markdown/JSON/CSV/HTML reports.
 
 The pinned upstream workspace currently carries stale internal package version
-markers in its checked-in lock. The collector detects this before the first
-build and refreshes that lock once; all subsequent builds use `--locked` and
-the resulting lock hash is recorded in `provenance.txt`.
+markers in its checked-in lock. The collector validates the complete dependency
+graph before the first build and refreshes that lock once when needed; all
+subsequent builds use `--locked` and the resulting lock hash is recorded in
+`provenance.txt`.
 
 The collector creates separate `CODEX_HOME` and workspace directories for
 every arm. It uses `approval_policy = "never"` for unattended collection and
