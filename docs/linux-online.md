@@ -4,10 +4,9 @@ This workflow builds the pinned Codex checkout, the MBTX launcher, and the
 Rust collector once, then runs sequential Shell/Transparent pairs against the
 configured OpenAI-compatible Responses relay.
 
-The repository uses the standard stable Rust toolchain. The pinned Codex
-dependency graph may require a newer compiler than an older fixed toolchain;
-the installer and CI therefore track `stable` and record the actual version in
-`provenance.txt`.
+The repository uses the standard stable Rust toolchain. The installer and CI
+track `stable` and record the actual Cargo version in `provenance.txt`.
+Codex dependencies are frozen in `codex/Cargo.lock`.
 
 On a clean Linux host, install the MoonBit CLI once, then make it available in
 the current shell:
@@ -53,11 +52,18 @@ only at the registered infrastructure thresholds. It writes `events.jsonl`,
 immutable per-attempt evidence, `online-summary.md`, `summary.json`,
 `provenance.txt`, and Markdown/JSON/CSV/HTML reports.
 
-The pinned upstream workspace currently carries stale internal package version
-markers in its checked-in lock. The collector validates the complete dependency
-graph before the first build and refreshes that lock once when needed; all
-subsequent builds use `--locked` and the resulting lock hash is recorded in
-`provenance.txt`.
+The pinned upstream lock has stale workspace version markers. The repository's
+`codex/Cargo.lock` corrects those markers while preserving all upstream external
+dependencies, including the matching Rama `0.3.0-alpha.4` packages. Preparation
+installs this lock atomically, backing up a differing existing lock alongside
+it as `Cargo.lock.before-mbtx-<git-blob-hash>`. Repeated preparation leaves an
+identical lock untouched. This also repairs locks created by older collectors.
+
+The collector never runs `cargo generate-lockfile` or updates dependencies.
+Builds use `--locked` and stream their output to the terminal. Each run retains
+a copy of `Cargo.lock`; the successful build's lock hash is also recorded in
+`provenance.txt`. Download failures stop preparation or the build without
+changing the pinned dependency graph.
 
 The collector creates separate `CODEX_HOME` and workspace directories for
 every arm. It uses `approval_policy = "never"` for unattended collection and

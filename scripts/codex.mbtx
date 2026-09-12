@@ -35,6 +35,33 @@ async fn copy_overlay_to_checkout(root : String, checkout : String) -> Unit {
   })
 }
 
+async fn install_lockfile(root : String, checkout : String) -> Unit {
+  let pinned = @fs.read_file("\{root}/codex/Cargo.lock").binary()
+  let path = "\{checkout}/codex-rs/Cargo.lock"
+  if @fs.exists(path) {
+    let previous = @fs.read_file(path).binary()
+    if previous == pinned {
+      println("[codex] using repository-pinned Cargo.lock")
+      return
+    }
+    let hash = @shell.Cmd("git", ["hash-object", "--", path], cwd=checkout).output()
+    hash.check()
+    let backup = "\{path}.before-mbtx-\{hash.stdout().trim()}"
+    if @fs.exists(backup) {
+      guard @fs.read_file(backup).binary() == previous else {
+        fail("Codex lock backup differs: \{backup}")
+      }
+    } else {
+      @fs.write_file(backup, previous, create_mode=@fs.CreateMode::CreateNew)
+    }
+    println("[codex] previous Cargo.lock saved to \{backup}")
+  }
+  let temporary = "\{path}.mbtx-tmp"
+  @fs.write_file(temporary, pinned)
+  @fs.rename(temporary, path, replace=true)
+  println("[codex] installed repository-pinned Cargo.lock")
+}
+
 async fn main {
   let root = @fs.realpath(".")
   let pin = @json.parse(@fs.read_file("codex/upstream.json").text())
@@ -70,7 +97,11 @@ async fn main {
         }
       })
     }
-    let diff = @shell.Cmd("git", ["diff", "--binary"], cwd=checkout).output()
+    let diff = @shell.Cmd(
+      "git",
+      ["diff", "--binary", "--", ".", ":(exclude)codex-rs/Cargo.lock"],
+      cwd=checkout,
+    ).output()
     if diff.exit_code() != 0 { fail("cannot capture Codex patch") }
     @fs.write_file("\{root}/codex/integration.patch", diff.stdout())
     println("Captured Codex integration patch")
@@ -88,5 +119,6 @@ async fn main {
     }
   }
   copy_overlay_to_checkout(root, checkout)
+  install_lockfile(root, checkout)
   println("Prepared Codex \{revision} in \{relative}")
 }

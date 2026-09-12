@@ -51,3 +51,13 @@ jobs:
           test "$code" -eq 143
       - name: Observer and report checks
         run: cargo test --locked --manifest-path adapter/Cargo.toml
+      - name: Codex preparation regression checks
+        run: moon run scripts/check-codex-preparation.mbtx
+      - name: Compile pinned Codex network dependencies
+        if: github.event_name != 'pull_request'
+        env:
+          CARGO_PROFILE_DEV_DEBUG: "0"
+        run: |
+          moon run scripts/codex.mbtx prepare
+          cargo check --locked --manifest-path _build/codex-upstream/codex-rs/Cargo.toml -p codex-network-proxy
+          cmp codex/Cargo.lock _build/codex-upstream/codex-rs/Cargo.lock

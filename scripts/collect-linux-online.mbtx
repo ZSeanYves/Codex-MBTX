@@ -6,10 +6,7 @@ import {
 }
 
 async fn run(program : String, args : Array[String], cwd : String) -> Unit {
-  let result = @shell.Cmd(program, args, cwd~).output(timeout_ms=3_600_000)
-  if result.exit_code() != 0 {
-    fail("command failed: \{program} \{result.stdout()}\n\{result.stderr()}")
-  }
+  @shell.Cmd(program, args, cwd~).run(timeout_ms=3_600_000)
 }
 
 async fn capture(program : String, args : Array[String], cwd : String) -> String {
@@ -24,25 +21,6 @@ async fn cargo_path() -> String {
   let home = @env.get_env_var("HOME").unwrap_or("")
   let candidate = "\{home}/.cargo/bin/cargo"
   if @fs.exists(candidate) { candidate } else { "cargo" }
-}
-
-async fn prepare_codex_lock(cargo : String, manifest : String, root : String) -> Unit {
-  let cwd = root
-  let check = @shell.Cmd(
-    cargo,
-    ["metadata", "--format-version", "1", "--locked", "--manifest-path", manifest],
-    cwd~,
-  ).output(timeout_ms=300_000)
-  if check.exit_code() == 0 {
-    println("[online] Codex Cargo.lock is current")
-    return
-  }
-  println("[online] Codex Cargo.lock needs one standard refresh")
-  run(
-    cargo,
-    ["generate-lockfile", "--manifest-path", manifest],
-    root,
-  )
 }
 
 async fn main {
@@ -71,7 +49,7 @@ async fn main {
   println("[online] output=\{output}")
   println("[online] building pinned Codex, MBTX and adapter once")
   run("moon", ["run", "scripts/codex.mbtx", "prepare"], root)
-  prepare_codex_lock(cargo, codex_manifest, root)
+  @fs.write_file("\{output}/Cargo.lock", @fs.read_file("\{root}/codex/Cargo.lock"))
   run(
     cargo,
     [

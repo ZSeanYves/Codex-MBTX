@@ -1,0 +1,78 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/core/json",
+}
+
+async fn git(args : Array[String], cwd : String) -> String {
+  let result = @shell.Cmd("git", args, cwd~).output()
+  result.check()
+  result.stdout().trim().to_owned()
+}
+
+async fn prepare(script : String, cwd : String) -> Unit {
+  @shell.Cmd("moon", ["run", script, "prepare"], cwd~).run()
+}
+
+async fn check(root : String, fixture : String) -> Unit {
+  let upstream = "\{fixture}/upstream"
+  @fs.mkdir("\{upstream}/codex-rs", recursive=true)
+  @fs.write_file("\{upstream}/codex-rs/Cargo.lock", "upstream lock\n")
+  @fs.write_file("\{upstream}/tracked.txt", "original\n")
+  let _ = git(["init", "--quiet"], upstream)
+  let _ = git(["add", "."], upstream)
+  let _ = git([
+    "-c", "user.name=MBTX test", "-c", "user.email=mbtx@example.invalid",
+    "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "fixture",
+  ], upstream)
+  let revision = git(["rev-parse", "HEAD"], upstream)
+  let pinned = @fs.read_file("\{root}/codex/Cargo.lock").binary()
+  @fs.mkdir("\{fixture}/codex")
+  @fs.write_file("\{fixture}/codex/Cargo.lock", pinned)
+  let pin : Json = {
+    "repository": upstream,
+    "revision": revision,
+    "directory": "checkout",
+  }
+  @fs.write_file("\{fixture}/codex/upstream.json", pin.stringify())
+  let script = "\{root}/scripts/codex.mbtx"
+  prepare(script, fixture)
+  let checkout = "\{fixture}/checkout"
+  let lock = "\{checkout}/codex-rs/Cargo.lock"
+  assert_eq(@fs.read_file(lock).binary(), pinned)
+  let initial_time = @fs.mtime(lock)
+  @async.sleep(20)
+  prepare(script, fixture)
+  assert_eq(@fs.mtime(lock), initial_time)
+
+  // Simulate a lock left by an older collector and verify lossless recovery.
+  let previous = "locally regenerated incompatible lock\n"
+  @fs.write_file(lock, previous)
+  let hash = git(["hash-object", "--", lock], checkout)
+  let backup = "\{lock}.before-mbtx-\{hash}"
+  prepare(script, fixture)
+  assert_eq(@fs.read_file(lock).binary(), pinned)
+  assert_eq(@fs.read_file(backup).text(), previous)
+  let backup_time = @fs.mtime(backup)
+  @fs.write_file(lock, previous)
+  @async.sleep(20)
+  prepare(script, fixture)
+  assert_eq(@fs.mtime(backup), backup_time)
+  assert_eq(@fs.read_file(backup).text(), previous)
+
+  @fs.write_file("\{checkout}/tracked.txt", "changed\n")
+  @shell.Cmd("moon", ["run", script, "capture"], cwd=fixture).run()
+  let patch = @fs.read_file("\{fixture}/codex/integration.patch").text()
+  assert_true(patch.contains("tracked.txt"))
+  assert_false(patch.contains("Cargo.lock"))
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  let fixture = @fs.tmpdir(prefix="mbtx-codex-preparation")
+  errdefer println("Preparation test fixture retained at \{fixture}")
+  check(root, fixture)
+  @fs.rmdir(fixture, recursive=true)
+  println("Codex preparation: clean checkout, lock recovery, reuse and capture passed")
+}
