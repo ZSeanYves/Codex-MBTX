@@ -46,7 +46,7 @@ fn tasks() -> [Task; 8] {
         },
         Task {
             id: "cwd_environment",
-            command: "printf '%s|%s\\n' \"$PWD\" \"$MBTX_EVAL_TOKEN\"",
+            command: "printf '%s|%s\\n' \"$PWD\" \"$MBTX_EVAL_MARKER\"",
             expected_exit: 0,
             marker: "online-fixture",
             timeout_ms: DEFAULT_TIMEOUT_MS,
@@ -78,10 +78,10 @@ fn tasks() -> [Task; 8] {
         },
         Task {
             id: "signal_exit",
-            command: "python3 -c 'import subprocess,time; subprocess.Popen([\"sh\",\"-c\",\"trap \\\"\\\" TERM; sleep 10\"]); print(\"term-start\", flush=True); time.sleep(10)'",
+            command: "python3 -c 'import os,signal; print(\"term-start\", flush=True); os.kill(os.getpid(), signal.SIGTERM)'",
             expected_exit: 143,
             marker: "term-start",
-            timeout_ms: 250,
+            timeout_ms: DEFAULT_TIMEOUT_MS,
             forbidden_path: None,
         },
         Task {
@@ -107,6 +107,7 @@ struct AttemptRecord {
     codex_signal: Option<i32>,
     command_exit_code: Option<i32>,
     command_status: Option<String>,
+    http_status: Option<u16>,
     elapsed_ms: u128,
     stdout_bytes: usize,
     stderr_bytes: usize,
@@ -180,7 +181,7 @@ fn config_text(model: &str, relay_base_url: &str, mbtx: Option<&Path>) -> String
         )
     });
     format!(
-        "model_provider = \"OpenrouterICU\"\nmodel = \"{}\"\nreview_model = \"{}\"\nmodel_reasoning_effort = \"xhigh\"\napproval_policy = \"never\"\nsandbox_mode = \"workspace-write\"\nexperimental_use_unified_exec_tool = true{}\n\n[model_providers.OpenrouterICU]\nname = \"OpenRouter ICU\"\nbase_url = \"{}\"\nwire_api = \"responses\"\nrequires_openai_auth = true\nrequest_max_retries = 0\nstream_max_retries = 0\n\n[sandbox_workspace_write]\nnetwork_access = true\n\n[features]\ngoals = true\n",
+        "model_provider = \"OpenrouterICU\"\nmodel = \"{}\"\nreview_model = \"{}\"\nmodel_reasoning_effort = \"xhigh\"\napproval_policy = \"never\"\nsandbox_mode = \"workspace-write\"{}\n\n[model_providers.OpenrouterICU]\nname = \"OpenRouter ICU\"\nbase_url = \"{}\"\nwire_api = \"responses\"\nenv_key = \"OPENAI_API_KEY\"\nrequires_openai_auth = false\nrequest_max_retries = 0\nstream_max_retries = 0\n\n[sandbox_workspace_write]\nnetwork_access = true\n\n[features]\ngoals = true\nunified_exec = true\ncode_mode_host = true\nplugins = false\n",
         toml_string(model),
         toml_string(model),
         launcher.unwrap_or_default(),
@@ -301,6 +302,11 @@ fn parse_codex_output(stdout: &[u8]) -> ParsedCodex {
             continue;
         };
         let item_type = item.get("type").and_then(Value::as_str).unwrap_or("");
+        if item_type == "error" {
+            if let Some(message) = item.get("message").and_then(Value::as_str) {
+                parsed.messages.push(message.to_string());
+            }
+        }
         if item_type != "command_execution" && item_type != "commandExecution" {
             continue;
         }
@@ -332,42 +338,59 @@ fn text_has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| lower.contains(needle))
 }
 
+fn http_error_status(parsed: &ParsedCodex, stderr: &str) -> Option<u16> {
+    parsed
+        .messages
+        .iter()
+        .map(String::as_str)
+        .chain([stderr])
+        .find_map(|message| {
+            ["unexpected status ", "HTTP "].iter().find_map(|prefix| {
+                let (_, tail) = message.split_once(prefix)?;
+                let status = tail.split_whitespace().next()?.parse::<u16>().ok()?;
+                (400..=599).contains(&status).then_some(status)
+            })
+        })
+}
+
 fn classify_external_failure(parsed: &ParsedCodex, stderr: &str) -> (String, String) {
     let messages = parsed.messages.join(" ");
     let combined = format!("{messages} {stderr}");
+    // Codex includes the relay URL and request ID in HTTP errors. Neither is
+    // evidence of a transport failure; classify the reported status first.
+    match http_error_status(parsed, stderr) {
+        Some(401) => return ("provider_error".into(), "provider_authentication".into()),
+        Some(429 | 500..=599) => return ("relay_error".into(), "relay_or_transport".into()),
+        Some(_) => return ("provider_error".into(), "provider_response".into()),
+        None => {}
+    }
+    if text_has_any(
+        &combined,
+        &["api_key_required", "invalid api key", "unauthorized"],
+    ) {
+        return ("provider_error".into(), "provider_authentication".into());
+    }
     if text_has_any(
         &combined,
         &[
-            "429",
-            "502",
-            "503",
-            "504",
             "disconnect",
             "connection reset",
             "connection refused",
             "upstream",
             "gateway",
-            "tokenadvent.com",
         ],
     ) {
         ("relay_error".to_string(), "relay_or_transport".to_string())
-    } else if text_has_any(
-        &combined,
-        &[
-            "401",
-            "403",
-            "404",
-            "invalid api key",
-            "unauthorized",
-            "quota",
-            "model not found",
-            "provider",
-        ],
-    ) {
+    } else if text_has_any(&combined, &["quota", "model not found"]) {
         (
             "provider_error".to_string(),
             "provider_response".to_string(),
         )
+    } else if text_has_any(
+        &combined,
+        &["code mode is unavailable", "host executable was not found"],
+    ) {
+        ("harness_error".into(), "codex_tool_configuration".into())
     } else if parsed.parse_errors > 0 {
         (
             "harness_error".to_string(),
@@ -410,7 +433,7 @@ fn run_process(
     cwd: &Path,
     codex_home: &Path,
     timeout: Duration,
-    env_token: &str,
+    env_marker: &str,
 ) -> ProcessOutput {
     let started = Instant::now();
     let mut command = Command::new(program);
@@ -418,7 +441,7 @@ fn run_process(
         .args(args)
         .current_dir(cwd)
         .env("CODEX_HOME", codex_home)
-        .env("MBTX_EVAL_TOKEN", env_token)
+        .env("MBTX_EVAL_MARKER", env_marker)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     #[cfg(unix)]
@@ -518,7 +541,7 @@ fn run_attempt(
         .to_string_lossy()
         .replace('\\', "/");
     let prompt = format!(
-        "Use the exec_command tool exactly once. Set its cmd field to this exact shell command, preserving every character. Do not rewrite it, split it, or call any other tool. Wait for the command to finish, then reply exactly DONE.\n\n{}",
+        "Use the exec_command tool exactly once. When tools are exposed through Code Mode, invoke tools.exec_command inside exec and forward its result. Set cmd to this exact shell command, preserving every character. Do not rewrite it, split it, or execute any other command. You may use wait or write_stdin only to wait for this same execution. Wait for the command to finish, then reply exactly DONE.\n\n{}",
         task.command
     );
     fs::write(artifact_dir.join("prompt.txt"), &prompt).expect("write prompt evidence");
@@ -588,6 +611,7 @@ fn run_attempt(
     let codex_exit_code = status_code(process.status.as_ref());
     let codex_signal = status_signal(process.status.as_ref());
     let stderr = String::from_utf8_lossy(&process.stderr);
+    let http_status = http_error_status(&parsed, &stderr);
     let forbidden_path_exists = task
         .forbidden_path
         .map(|path| workspace.join(path).exists())
@@ -636,6 +660,7 @@ fn run_attempt(
         .map_or(Value::Null, |class| json!(class));
     exit_event["artifact_dir"] = json!(artifact_relative);
     exit_event["elapsed_ms"] = json!(process.elapsed_ms);
+    exit_event["http_status"] = json!(http_status);
     exit_event["command"] = json!(parsed.command);
     exit_event["command_exit_code"] = parsed
         .command_exit_code
@@ -719,6 +744,7 @@ fn run_attempt(
             .map_or(Value::Null, |class| json!(class));
         relay_event["artifact_dir"] = json!(artifact_relative);
         relay_event["error_messages"] = json!(parsed.messages);
+        relay_event["http_status"] = json!(http_status);
         write_event(events, relay_event).expect("write relay event");
     }
     let metadata = json!({
@@ -743,6 +769,7 @@ fn run_attempt(
         "command": parsed.command,
         "command_exit_code": parsed.command_exit_code,
         "command_status": parsed.command_status,
+        "http_status": http_status,
         "aggregated_output": parsed.aggregated_output,
         "json_lines": parsed.json_lines,
         "parse_errors": parsed.parse_errors,
@@ -764,6 +791,7 @@ fn run_attempt(
         codex_signal,
         command_exit_code: parsed.command_exit_code,
         command_status: parsed.command_status,
+        http_status,
         elapsed_ms: process.elapsed_ms,
         stdout_bytes: process.stdout.len(),
         stderr_bytes: process.stderr.len(),
@@ -778,7 +806,7 @@ fn write_summary(
     records: &[AttemptRecord],
     planned_pairs: usize,
     stop_reason: Option<&str>,
-) {
+) -> usize {
     let successful_arms = records
         .iter()
         .filter(|record| record.status == "success")
@@ -834,6 +862,7 @@ fn write_summary(
         ));
     }
     fs::write(output.join("online-summary.md"), markdown).expect("write markdown summary");
+    complete_pairs
 }
 
 fn run(args: &[String]) {
@@ -924,6 +953,14 @@ fn run(args: &[String]) {
                     record.status.as_str(),
                     "relay_error" | "provider_error" | "harness_error" | "timeout"
                 );
+                println!(
+                    "[online] result pair={pair_id} backend={backend} status={} failure={} http_status={}",
+                    record.status,
+                    record.failure_class.as_deref().unwrap_or("none"),
+                    record
+                        .http_status
+                        .map_or_else(|| "unknown".to_string(), |status| status.to_string()),
+                );
                 if infrastructure {
                     consecutive_infra_failures += 1;
                 } else {
@@ -959,14 +996,16 @@ fn run(args: &[String]) {
             }
         }
     }
-    write_summary(&output, &records, planned_pairs, stop_reason);
+    let complete_pairs = write_summary(&output, &records, planned_pairs, stop_reason);
+    let outcome = if complete_pairs == planned_pairs {
+        "complete"
+    } else {
+        "partial"
+    };
     println!(
-        "[online] complete recorded_arms={} complete_pairs={} output={}",
+        "[online] {outcome} recorded_arms={} complete_pairs={complete_pairs}/{planned_pairs} stop_reason={} output={}",
         records.len(),
-        records
-            .chunks(2)
-            .filter(|pair| pair.len() == 2 && pair.iter().all(|record| record.status == "success"))
-            .count(),
+        stop_reason.unwrap_or("planned attempts finished"),
         output.display()
     );
 }
@@ -982,7 +1021,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{classify_external_failure, config_text, parse_codex_output};
+    use super::{classify_external_failure, config_text, http_error_status, parse_codex_output};
     use std::path::Path;
 
     #[test]
@@ -1016,7 +1055,34 @@ mod tests {
         assert!(config.contains("mbtx_backend = \"transparent\""));
         assert!(config.contains("mbtx_command = [\"/opt/mbtx\"]"));
         assert!(config.find("mbtx_backend").unwrap() < config.find("[model_providers").unwrap());
-        assert!(!config.contains("OPENAI_API_KEY"));
+        assert!(config.contains("env_key = \"OPENAI_API_KEY\""));
+        assert!(config.contains("requires_openai_auth = false"));
+        assert!(config.contains("unified_exec = true"));
+        assert!(config.contains("code_mode_host = true"));
+        assert!(!config.contains("code_mode ="));
+        assert!(!config.contains("experimental_use_unified_exec_tool"));
+    }
+
+    #[test]
+    fn authentication_errors_are_not_relay_failures_based_on_url_or_request_id() {
+        let parsed = parse_codex_output(br#"{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: API_KEY_REQUIRED, url: https://tokenadvent.com/v1/responses, request id: 502-503-504"}}"#);
+        assert_eq!(http_error_status(&parsed, ""), Some(401));
+        assert_eq!(
+            classify_external_failure(&parsed, ""),
+            ("provider_error".into(), "provider_authentication".into())
+        );
+        let unknown = parse_codex_output(br#"{"type":"error","message":"unknown error, url: https://tokenadvent.com/v1/responses, request id: 401-503"}"#);
+        assert_eq!(http_error_status(&unknown, ""), None);
+        assert_eq!(classify_external_failure(&unknown, "").0, "unknown");
+    }
+
+    #[test]
+    fn missing_code_mode_host_is_a_harness_configuration_failure() {
+        let parsed = parse_codex_output(br#"{"type":"item.completed","item":{"type":"error","message":"Code Mode is unavailable: host executable was not found"}}"#);
+        assert_eq!(
+            classify_external_failure(&parsed, ""),
+            ("harness_error".into(), "codex_tool_configuration".into())
+        );
     }
 
     #[cfg(unix)]

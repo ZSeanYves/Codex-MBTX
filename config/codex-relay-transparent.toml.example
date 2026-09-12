@@ -8,7 +8,6 @@ review_model = "gpt-5.6-terra"
 model_reasoning_effort = "xhigh"
 approval_policy = "never"
 sandbox_mode = "workspace-write"
-experimental_use_unified_exec_tool = true
 
 # These two fields are trusted user/system configuration and are intentionally
 # not valid in project-local config.
@@ -19,7 +18,8 @@ mbtx_command = ["/absolute/path/to/mbtx"]
 name = "OpenRouter ICU"
 base_url = "https://tokenadvent.com/v1"
 wire_api = "responses"
-requires_openai_auth = true
+env_key = "OPENAI_API_KEY"
+requires_openai_auth = false
 request_max_retries = 0
 stream_max_retries = 0
 
@@ -28,6 +28,9 @@ network_access = true
 
 [features]
 goals = true
+unified_exec = true
+code_mode_host = true
+plugins = false
 
 # disable_response_storage and windows_wsl_setup_acknowledged are not fields in
 # the pinned rust-v0.153.4 local config schema. See config/README.md.

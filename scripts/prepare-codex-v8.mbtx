@@ -1,0 +1,82 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+}
+
+async fn capture(program : String, args : Array[String], cwd : String) -> String {
+  let result = @shell.Cmd(program, args, cwd~).output(timeout_ms=600_000)
+  result.check()
+  result.stdout().trim().to_owned()
+}
+
+async fn download(url : String, destination : String, cwd : String) -> Unit {
+  let temporary = "\{destination}.download"
+  @shell.Cmd(
+    "curl",
+    ["--fail", "--location", "--silent", "--show-error", "--retry", "3", "--output", temporary, url],
+    cwd~,
+  ).run(timeout_ms=600_000)
+  @fs.rename(temporary, destination, replace=true)
+}
+
+async fn verify(directory : String, manifest : String, system : String) -> Bool {
+  if !@fs.exists("\{directory}/\{manifest}") { return false }
+  let result = if system == "Darwin" {
+    @shell.Cmd("shasum", ["-a", "256", "--check", manifest], cwd=directory).output()
+  } else {
+    @shell.Cmd("sha256sum", ["--check", manifest], cwd=directory).output()
+  }
+  result.exit_code() == 0
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  let system = capture("uname", ["-s"], root)
+  guard system == "Darwin" || system == "Linux" else {
+    fail("Codex V8 preparation supports macOS and Linux")
+  }
+  // The pinned upstream helper parses Cargo.lock with Python's TOML parser.
+  let version = capture(
+    "python3",
+    ["_build/codex-upstream/.github/scripts/rusty_v8_bazel.py", "resolved-v8-crate-version"],
+    root,
+  )
+  let rust = capture("rustc", ["-vV"], root)
+  let mut target = ""
+  for line in rust.split("\n") {
+    if line.has_prefix("host: ") { target = line[6:].to_owned() }
+  }
+  guard target != "" else { fail("rustc did not report its host target") }
+  let profile = "ptrcomp_sandbox_release"
+  let archive = "librusty_v8_\{profile}_\{target}.a.gz"
+  let binding = "src_binding_\{profile}_\{target}.rs"
+  let manifest = "rusty_v8_\{profile}_\{target}.sha256"
+  let directory = "\{root}/_build/codex-v8/\{version}/\{target}"
+  let source = "https://github.com/openai/codex/releases/download/rusty-v8-v\{version}"
+  if !@fs.exists(directory) { @fs.mkdir(directory, recursive=true) }
+  if !@fs.exists("\{directory}/\{archive}") ||
+    !@fs.exists("\{directory}/\{binding}") ||
+    !verify(directory, manifest, system) {
+    download("\{source}/\{manifest}", "\{directory}/\{manifest}", root)
+    let checksums = @fs.read_file("\{directory}/\{manifest}").text()
+    let lines = checksums.trim().split("\n").to_array()
+    guard lines.length() == 2 &&
+      lines.any(line => line.has_suffix("  \{archive}")) &&
+      lines.any(line => line.has_suffix("  \{binding}")) else {
+      fail("V8 checksum manifest must cover exactly the archive and matching binding")
+    }
+    download("\{source}/\{archive}", "\{directory}/\{archive}", root)
+    download("\{source}/\{binding}", "\{directory}/\{binding}", root)
+    guard verify(directory, manifest, system) else { fail("V8 checksum verification failed") }
+  }
+  let result : Json = {
+    "version": version,
+    "target": target,
+    "archive": "\{directory}/\{archive}",
+    "binding": "\{directory}/\{binding}",
+    "checksums": "\{directory}/\{manifest}",
+    "source_url": source,
+  }
+  println(result.stringify())
+}

@@ -3,6 +3,7 @@ import {
   "moonbitlang/async@0.21.3/fs",
   "moonbitlang/async@0.21.3/shell",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
 }
 
 async fn run(program : String, args : Array[String], cwd : String) -> Unit {
@@ -50,9 +51,21 @@ async fn main {
   println("[online] building pinned Codex, MBTX and adapter once")
   run("moon", ["run", "scripts/codex.mbtx", "prepare"], root)
   @fs.write_file("\{output}/Cargo.lock", @fs.read_file("\{root}/codex/Cargo.lock"))
+  let v8 = capture("moon", ["run", "scripts/prepare-codex-v8.mbtx"], root)
+  guard @json.parse(v8) is {
+    "archive": String(archive),
+    "binding": String(binding),
+    "checksums": String(checksums),
+    ..
+  } else { fail("invalid Codex V8 build inputs") }
+  @fs.write_file("\{output}/codex-v8.json", v8)
+  @fs.write_file("\{output}/codex-v8.sha256", @fs.read_file(checksums))
   run(
-    cargo,
+    "env",
     [
+      "RUSTY_V8_ARCHIVE=\{archive}",
+      "RUSTY_V8_SRC_BINDING_PATH=\{binding}",
+      cargo,
       "build",
       "--locked",
       "--release",
@@ -62,6 +75,10 @@ async fn main {
       "codex-cli",
       "--bin",
       "codex",
+      "-p",
+      "codex-code-mode-host",
+      "--bin",
+      "codex-code-mode-host",
     ],
     root,
   )
@@ -76,10 +93,11 @@ async fn main {
     root,
   )
   let codex = "\{root}/_build/codex-upstream/codex-rs/target/release/codex"
+  let code_mode_host = "\{root}/_build/codex-upstream/codex-rs/target/release/codex-code-mode-host"
   let mbtx = "\{root}/_build/native/release/build/cmd/mbtx/mbtx.exe"
   let online = "\{root}/adapter/target/release/mbtx-online"
   let evaluator = "\{root}/adapter/target/release/mbtx-eval"
-  guard @fs.exists(codex) && @fs.exists(mbtx) && @fs.exists(online) && @fs.exists(evaluator) else {
+  guard @fs.exists(codex) && @fs.exists(code_mode_host) && @fs.exists(mbtx) && @fs.exists(online) && @fs.exists(evaluator) else {
     fail("release artifacts were not produced")
   }
   println("[online] running sequential Shell/Transparent arms; relay failures remain in evidence")
@@ -117,7 +135,7 @@ async fn main {
   let moon = capture("moon", ["--version"], root)
   let hashes = capture(
     "sha256sum",
-    [codex, mbtx, online, evaluator, "\{root}/_build/codex-upstream/codex-rs/Cargo.lock"],
+    [codex, code_mode_host, mbtx, online, evaluator, "\{root}/_build/codex-upstream/codex-rs/Cargo.lock"],
     root,
   )
   @fs.write_file(

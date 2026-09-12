@@ -1,6 +1,6 @@
 # Linux online collection
 
-This workflow builds the pinned Codex checkout, the MBTX launcher, and the
+This workflow builds the pinned Codex CLI and Code Mode host, the MBTX launcher, and the
 Rust collector once, then runs sequential Shell/Transparent pairs against the
 configured OpenAI-compatible Responses relay.
 
@@ -51,6 +51,35 @@ pairs (64 arms). The collector keeps external relay/provider errors and stops
 only at the registered infrastructure thresholds. It writes `events.jsonl`,
 immutable per-attempt evidence, `online-summary.md`, `summary.json`,
 `provenance.txt`, and Markdown/JSON/CSV/HTML reports.
+
+The collector binds `model_providers.OpenrouterICU.env_key` to `OPENAI_API_KEY`
+in every isolated Codex home. A saved interactive Codex login is not required.
+Both arms use `features.unified_exec = true`, `features.code_mode_host = true`,
+and `features.plugins = false`; plugin startup sync is unrelated to the launcher
+comparison and would add an uncontrolled GitHub dependency to every arm.
+The pinned `gpt-5.6-terra` metadata selects `code_mode_only`; the model invokes
+`exec_command` through Code Mode. Both Codex binaries are produced by one Cargo
+build, and their hashes are retained in provenance.
+
+Before that Cargo build, `scripts/prepare-codex-v8.mbtx` resolves the `v8`
+version from the pinned lockfile, downloads the matching Codex-published
+sandbox archive and Rust binding, and verifies both against the release
+checksum manifest. The verified pair is cached under `_build/codex-v8/` and
+reused on later runs; it is never mixed across targets or crate versions.
+
+Every arm prints its result status, failure class, and observed HTTP error status
+(`unknown` when absent). A `401` is a provider authentication failure even when
+the message includes a relay URL. `partial` means the planned comparison did not
+complete; writing a report successfully is not a successful experiment.
+Keep a failed run intact and start a new timestamped run after fixing its cause.
+
+The isolated-home authentication path can be checked without a real API key or
+provider by running the Rust integration test against a local mock relay:
+
+```bash
+MBTX_TEST_CODEX="$PWD/_build/codex-upstream/codex-rs/target/release/codex" \
+  cargo test --locked --manifest-path adapter/Cargo.toml --test online_auth -- --ignored
+```
 
 The pinned upstream lock has stale workspace version markers. The repository's
 `codex/Cargo.lock` corrects those markers while preserving all upstream external
