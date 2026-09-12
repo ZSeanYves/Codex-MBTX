@@ -4,6 +4,11 @@ This workflow builds the pinned Codex checkout, the MBTX launcher, and the
 Rust collector once, then runs sequential Shell/Transparent pairs against the
 configured OpenAI-compatible Responses relay.
 
+The repository uses the standard stable Rust toolchain. The pinned Codex
+dependency graph may require a newer compiler than an older fixed toolchain;
+the installer and CI therefore track `stable` and record the actual version in
+`provenance.txt`.
+
 On a clean Linux host, install the MoonBit CLI once, then make it available in
 the current shell:
 

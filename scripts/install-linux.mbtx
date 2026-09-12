@@ -76,8 +76,8 @@ async fn main {
     println("[install] rustup already exists")
   }
   guard @fs.exists(rustup) else { fail("rustup was not installed at \{rustup}") }
-  println("[install] installing the pinned Rust toolchain")
-  run(rustup, ["toolchain", "install", "1.95.0", "--profile", "minimal"])
-  run(rustup, ["component", "add", "rustfmt", "clippy", "--toolchain", "1.95.0"])
+  println("[install] installing the stable Rust toolchain")
+  run(rustup, ["toolchain", "install", "stable", "--profile", "minimal"])
+  run(rustup, ["component", "add", "rustfmt", "clippy", "--toolchain", "stable"])
   println("[install] complete; run `. $HOME/.cargo/env` in the current shell")
 }
