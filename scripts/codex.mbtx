@@ -18,6 +18,23 @@ async fn copy_if_changed(source : String, destination : String) -> Unit {
   @fs.write_file(destination, content)
 }
 
+async fn copy_overlay_to_checkout(root : String, checkout : String) -> Unit {
+  let overlay = "\{root}/codex/overlay"
+  if !@fs.exists(overlay) { return }
+  @fs.walk(overlay, (directory, entries) => {
+    let suffix = directory[overlay.length():].to_owned()
+    if !@fs.exists("\{checkout}\{suffix}") {
+      @fs.mkdir("\{checkout}\{suffix}", recursive=true)
+    }
+    for name in entries {
+      let path = "\{directory}/\{name}"
+      if @fs.kind(path) != @fs.FileKind::Directory {
+        copy_if_changed(path, "\{checkout}\{suffix}/\{name}")
+      }
+    }
+  })
+}
+
 async fn main {
   let root = @fs.realpath(".")
   let pin = @json.parse(@fs.read_file("codex/upstream.json").text())
@@ -42,15 +59,17 @@ async fn main {
   }
   if mode == "capture" {
     let overlay = "\{root}/codex/overlay"
-    @fs.walk(overlay, (directory, entries) => {
-      let suffix = directory[overlay.length():].to_owned()
-      for name in entries {
-        let path = "\{directory}/\{name}"
-        if @fs.kind(path) != @fs.FileKind::Directory {
-          copy_if_changed("\{checkout}\{suffix}/\{name}", path)
+    if @fs.exists(overlay) {
+      @fs.walk(overlay, (directory, entries) => {
+        let suffix = directory[overlay.length():].to_owned()
+        for name in entries {
+          let path = "\{directory}/\{name}"
+          if @fs.kind(path) != @fs.FileKind::Directory {
+            copy_if_changed("\{checkout}\{suffix}/\{name}", path)
+          }
         }
-      }
-    })
+      })
+    }
     let diff = @shell.Cmd("git", ["diff", "--binary"], cwd=checkout).output()
     if diff.exit_code() != 0 { fail("cannot capture Codex patch") }
     @fs.write_file("\{root}/codex/integration.patch", diff.stdout())
@@ -68,18 +87,6 @@ async fn main {
       if applied.exit_code() != 0 { fail("Codex patch conflicts with local edits") }
     }
   }
-  let overlay = "\{root}/codex/overlay"
-  @fs.walk(overlay, (directory, entries) => {
-    let suffix = directory[overlay.length():].to_owned()
-    if !@fs.exists("\{checkout}\{suffix}") {
-      @fs.mkdir("\{checkout}\{suffix}", recursive=true)
-    }
-    for name in entries {
-      let path = "\{directory}/\{name}"
-      if @fs.kind(path) != @fs.FileKind::Directory {
-        copy_if_changed(path, "\{checkout}\{suffix}/\{name}")
-      }
-    }
-  })
+  copy_overlay_to_checkout(root, checkout)
   println("Prepared Codex \{revision} in \{relative}")
 }
