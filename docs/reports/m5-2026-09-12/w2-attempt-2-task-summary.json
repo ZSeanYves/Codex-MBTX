@@ -1,0 +1,66 @@
+[
+  {
+    "task": "host_background",
+    "runs": 28,
+    "relay_clean": 17,
+    "provider_error": 10,
+    "transport_error": 1,
+    "unknown": 11
+  },
+  {
+    "task": "host_cancel_timeout",
+    "runs": 28,
+    "relay_clean": 16,
+    "provider_error": 10,
+    "transport_error": 2,
+    "unknown": 12
+  },
+  {
+    "task": "host_cwd_environment",
+    "runs": 28,
+    "relay_clean": 17,
+    "provider_error": 10,
+    "transport_error": 1,
+    "unknown": 11
+  },
+  {
+    "task": "host_exit_recovery",
+    "runs": 28,
+    "relay_clean": 16,
+    "provider_error": 10,
+    "transport_error": 2,
+    "unknown": 12
+  },
+  {
+    "task": "host_large_output",
+    "runs": 28,
+    "relay_clean": 17,
+    "provider_error": 10,
+    "transport_error": 1,
+    "unknown": 11
+  },
+  {
+    "task": "host_literal_argv",
+    "runs": 28,
+    "relay_clean": 16,
+    "provider_error": 9,
+    "transport_error": 3,
+    "unknown": 12
+  },
+  {
+    "task": "host_path_inventory",
+    "runs": 28,
+    "relay_clean": 16,
+    "provider_error": 9,
+    "transport_error": 3,
+    "unknown": 12
+  },
+  {
+    "task": "host_stdin_stream",
+    "runs": 28,
+    "relay_clean": 15,
+    "provider_error": 11,
+    "transport_error": 2,
+    "unknown": 12
+  }
+]

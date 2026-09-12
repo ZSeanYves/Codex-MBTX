@@ -399,7 +399,9 @@ jobs:
             ANALYZE_EXIT=$?
           else
             echo "Relay health gate failed; writing an INCONCLUSIVE artifact without online samples."
-            env -u M5_RUNNER moon run scripts/m5_eval.mbtx "$MODE"
+            # Preserve the runner hash used by the complete prefix. The failed
+            # health artifact prevents m5_eval from invoking it.
+            moon run scripts/m5_eval.mbtx "$MODE"
             EVAL_EXIT=$?
             moon run scripts/m5_analyze.mbtx
             ANALYZE_EXIT=$?

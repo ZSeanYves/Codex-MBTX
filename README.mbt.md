@@ -53,11 +53,13 @@ moon run scripts/m5_probe.mbtx < probes.json
 ```
 
 The protocol and default-backend gates are frozen in
-[`docs/m5-evaluation.md`](docs/m5-evaluation.md). The current implementation
-report is [M5 decision report](docs/reports/m5-decision-2026-09-10.md); it is
-intentionally `INCONCLUSIVE` until a controlled Linux runner passes the relay
-health gate, supplies the complete formal process cohort, and provides
-deterministic Linux plus macOS runtime/replay artifacts. `M5_START_BLOCK` is
+[`docs/m5-evaluation.md`](docs/m5-evaluation.md). The current
+[M5 decision report](docs/reports/m5-decision-2026-09-12.md) remains
+`INCONCLUSIVE`: the controlled pilot, Linux/macOS deterministic suite, replay,
+and formal W1 are valid, but three W2 collection attempts were invalidated by
+relay/provider failures, so W3 could not legally start. The evidence supports
+keeping Transparent MBTX opt-in; it does not support making it the default.
+`M5_START_BLOCK` is
 reserved for resumptions; a continuation must be merged at a complete block
 boundary before analysis. Raw runner stdout/stderr/exit evidence is saved per
 block with a unique retry suffix, so a failed continuation cannot overwrite an
@@ -66,7 +68,9 @@ The controlled workflow derives formal continuations as three independent
 7/7/6 repetition windows (56/56/48 paired blocks) and requires explicit pilot,
 deterministic, and previous-window run IDs. Exact dispatch commands and frozen
 toolchain versions are part of the preregistered protocol.
-The redacted machine-readable acceptance snapshot is stored under
+The final redacted evidence index is stored under
+[`docs/reports/m5-2026-09-12/`](docs/reports/m5-2026-09-12/README.md); the
+earlier implementation-only snapshot remains unchanged under
 [`docs/reports/m5-2026-09-10/`](docs/reports/m5-2026-09-10/README.md).
 Formal online runs also require `scripts/m5_platforms.mbtx` to validate the
 saved Linux and macOS runtime/replay artifacts; a declared platform list alone
@@ -135,9 +139,9 @@ compatibility and M2 interactive controls. Tests require no model account,
 API key, or GPU.
 
 The `CI` GitHub Actions workflow runs Wasm and native jobs on Linux for pushes and
-pull requests. It pins MoonBit to `0.10.11+6ff76a5f9` and records its
-version in the log. Local development was validated with `moon 0.1.20260827`
-and `moonc v0.10.11+6ff76a5f9`; `moonbitlang/async` is declared at `0.21.2`.
+pull requests. It records the current MoonBit toolchain in the log. M5 was
+validated with `moon 0.1.20260904`, `moonc v0.10.12+1634b282e`, and
+`moonbitlang/async@0.21.3`.
 
 Agent-authored automation scripts use the `.mbtx` extension and are run with
 MoonBit's script mode. See [`docs/architecture.md`](docs/architecture.md) for

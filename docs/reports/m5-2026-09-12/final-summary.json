@@ -1,0 +1,79 @@
+{
+  "schema_version": 5,
+  "experiment_id": "m5-formal-20260910-final-audit",
+  "implementation_sha": "cbff45de17edb675a3042146a4c231ac81abfcc4",
+  "decision": {
+    "status": "INCONCLUSIVE",
+    "deployment_recommendation": "KEEP_OPT_IN",
+    "reason": "formal W2 could not be validated after three relay/provider attempts; W3 was not run"
+  },
+  "formal": {
+    "planned_blocks": 160,
+    "accepted_blocks": 56,
+    "accepted_runs": 112,
+    "required_windows": 3,
+    "observed_windows": [
+      1
+    ],
+    "missing_windows": [
+      2,
+      3
+    ],
+    "canonical_prefix_run_id": 34640581498
+  },
+  "pilot": {
+    "run_id": 34632860192,
+    "blocks": 40,
+    "runs": 80,
+    "valid": true
+  },
+  "relay": {
+    "w1": {
+      "probes": 10,
+      "successful": 10,
+      "provider_errors": 0,
+      "transport_errors": 0,
+      "first_byte_p95_ms": 1836
+    },
+    "w2_attempts": [
+      {
+        "run_id": 34651280446,
+        "successful": 9,
+        "provider_errors": 0,
+        "transport_errors": 1,
+        "first_byte_p95_ms": 59264,
+        "valid": false
+      },
+      {
+        "run_id": 34652337987,
+        "successful": 10,
+        "provider_errors": 0,
+        "transport_errors": 0,
+        "first_byte_p95_ms": 2295,
+        "batch_valid": false
+      },
+      {
+        "run_id": 34661904479,
+        "successful": 0,
+        "provider_errors": 10,
+        "transport_errors": 0,
+        "first_byte_p95_ms": 779,
+        "valid": false
+      }
+    ]
+  },
+  "evidence": {
+    "report": "report.json",
+    "analysis": "analysis.json",
+    "deterministic_platforms": "deterministic-platforms.json",
+    "replay": [
+      "replay-linux.json",
+      "replay-darwin.json"
+    ],
+    "faults": "faults.json"
+  },
+  "cost": {
+    "status": "not_inferred",
+    "basis": "no independent billing or trusted price data"
+  }
+}

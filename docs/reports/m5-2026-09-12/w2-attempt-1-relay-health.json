@@ -1,0 +1,10 @@
+{
+  "probes": 10,
+  "successful_probes": 9,
+  "provider_errors": 0,
+  "transport_errors": 1,
+  "max_consecutive_failures": 1,
+  "first_byte_p95_ms": 59264,
+  "arm_failure_rate_basis_points": 2000,
+  "time_windows": 1
+}

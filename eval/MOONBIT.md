@@ -1,6 +1,6 @@
 # MoonBit Reference
 
-MoonBit and the `moonbitlang/async@0.21.2` package are installed. Script files
+MoonBit and the `moonbitlang/async@0.21.3` package are installed. Script files
 use `.mbtx`; run an existing script with `moon run path.mbtx ARG...`.
 New scripts may have imports followed by `async fn main { ... }` (no `()` after
 `main`). Async calls need no `await`. Use structured JSON and literal argv.

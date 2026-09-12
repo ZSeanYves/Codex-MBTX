@@ -1,0 +1,106 @@
+[
+  {
+    "task": "host_background",
+    "shell": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_cancel_timeout",
+    "shell": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_cwd_environment",
+    "shell": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_exit_recovery",
+    "shell": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_large_output",
+    "shell": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_literal_argv",
+    "shell": {
+      "runs": 7,
+      "successes": 6,
+      "failures": 1
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_path_inventory",
+    "shell": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 7,
+      "failures": 0
+    }
+  },
+  {
+    "task": "host_stdin_stream",
+    "shell": {
+      "runs": 7,
+      "successes": 4,
+      "failures": 3
+    },
+    "transparent": {
+      "runs": 7,
+      "successes": 2,
+      "failures": 5
+    }
+  }
+]

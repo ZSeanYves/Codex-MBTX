@@ -1,0 +1,31 @@
+{
+  "run_id": 34651280446,
+  "health": {
+    "probes": 10,
+    "successful_probes": 9,
+    "provider_errors": 0,
+    "transport_errors": 1,
+    "max_consecutive_failures": 1,
+    "first_byte_p95_ms": 59264,
+    "arm_failure_rate_basis_points": 2000,
+    "time_windows": 1
+  },
+  "health_valid": false,
+  "failed_attempts": [
+    {
+      "attempt_id": "probe-6",
+      "retry_index": 0,
+      "arm": "shell",
+      "time_window": 2,
+      "http_status": 0,
+      "first_byte_ms": 0,
+      "completed_ms": null,
+      "stream_disconnected": true,
+      "provider_error": false,
+      "transport_error": true,
+      "usage_complete": false,
+      "error_class": "transport_disconnect",
+      "malformed": false
+    }
+  ]
+}

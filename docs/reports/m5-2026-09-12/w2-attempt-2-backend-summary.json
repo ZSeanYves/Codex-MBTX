@@ -1,0 +1,20 @@
+[
+  {
+    "backend": "shell",
+    "runs": 112,
+    "successes": 62,
+    "failures": 50,
+    "relay_clean": 66,
+    "unknown_observation": 46,
+    "usage_complete": 72
+  },
+  {
+    "backend": "transparent",
+    "runs": 112,
+    "successes": 59,
+    "failures": 53,
+    "relay_clean": 64,
+    "unknown_observation": 47,
+    "usage_complete": 71
+  }
+]

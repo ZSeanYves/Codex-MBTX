@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  MOONBIT_INSTALL_VERSION: "0.10.11+6ff76a5f9"
+  MOONBIT_INSTALL_VERSION: "0.10.12+1634b282e"
 
 jobs:
   codex-adapter:
