@@ -176,6 +176,66 @@ async fn main {
   } else {
     fail("small-sample probe p95 did not use the conservative nearest rank")
   }
+  let operational_probe_records = probe_records.copy()
+  operational_probe_records[0] = {
+    "attempt_id": "operational-0",
+    "retry_index": 0,
+    "arm": "shell",
+    "time_window": 1,
+    "http_status": Json::null(),
+    "first_byte_ms": Json::null(),
+    "completed_ms": Json::null(),
+    "stream_disconnected": true,
+    "provider_error": false,
+    "transport_error": true,
+    "usage_complete": false,
+    "error_class": "transport_disconnect",
+    "malformed": false,
+  }
+  operational_probe_records[1] = {
+    "attempt_id": "operational-1",
+    "retry_index": 0,
+    "arm": "transparent",
+    "time_window": 1,
+    "http_status": Json::null(),
+    "first_byte_ms": Json::null(),
+    "completed_ms": Json::null(),
+    "stream_disconnected": true,
+    "provider_error": false,
+    "transport_error": true,
+    "usage_complete": false,
+    "error_class": "transport_disconnect",
+    "malformed": false,
+  }
+  operational_probe_records[2] = {
+    "attempt_id": "operational-2",
+    "retry_index": 0,
+    "arm": "shell",
+    "time_window": 1,
+    "http_status": 200,
+    "first_byte_ms": 30_001,
+    "completed_ms": 30_100,
+    "stream_disconnected": false,
+    "provider_error": false,
+    "transport_error": false,
+    "usage_complete": true,
+    "error_class": Json::null(),
+    "malformed": false,
+  }
+  let operational_probe = @shell.Cmd(
+    "moon",
+    ["run", "scripts/m5_probe.mbtx"],
+    stdin=@shell.Stdin::Text(operational_probe_records.to_json().stringify()),
+  ).output(timeout_ms=120_000)
+  operational_probe.check()
+  guard @json.parse(operational_probe.stdout()) is {
+    "health_valid": false,
+    "health_usable": true,
+    "latency_degraded": true,
+    ..
+  } else {
+    fail("bounded slow transport noise was not marked operationally usable")
+  }
   // Legacy collector records used MoonBit's one-element Option arrays.  Keep
   // them readable while the canonical live wire format remains number|null.
   let legacy_probe = @shell.Cmd(
@@ -356,5 +416,5 @@ async fn main {
   } else {
     fail("M5 runner failure did not preserve an auditable report")
   }
-  println("M5 offline verification passed: planner, health gate, classification, runtime, replay, faults and inconclusive online gate")
+  println("M5 offline verification passed: planner, strict/operational health gates, classification, runtime, replay, faults and inconclusive online gate")
 }

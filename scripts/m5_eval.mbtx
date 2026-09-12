@@ -578,13 +578,43 @@ fn mode_repetitions(mode : String) -> Int {
   if mode == "pilot" { 5 } else if mode == "formal" { 20 } else { 10 }
 }
 
-fn health_valid(health : M5RelayHealth) -> Bool {
+fn operational_policy() -> Bool {
+  @env.get_env_var("M5_RELAY_POLICY") == Some("operational")
+}
+
+fn policy_name() -> String {
+  if operational_policy() { "operational" } else { "strict" }
+}
+
+fn strict_health_valid(health : M5RelayHealth) -> Bool {
   health.probes >= 10 &&
   health.successful_probes >= 9 &&
   health.provider_errors + health.transport_errors <= 1 &&
   health.max_consecutive_failures < 2 &&
   health.first_byte_p95_ms <= 15_000 &&
   health.time_windows >= 1
+}
+
+fn operational_health_valid(health : M5RelayHealth) -> Bool {
+  health.probes >= 10 &&
+  health.successful_probes >= 8 &&
+  health.provider_errors <= 1 &&
+  health.provider_errors + health.transport_errors <= 2 &&
+  health.max_consecutive_failures <= 2 &&
+  health.arm_failure_rate_basis_points <= 5_000 &&
+  health.time_windows >= 1
+}
+
+/// Keep the original gate as the default. Online collection opts into the
+/// explicitly recorded operational policy, which tolerates relay latency and
+/// a small amount of symmetric transport noise without changing run
+/// classification or removing failed attempts.
+fn health_valid(health : M5RelayHealth) -> Bool {
+  if operational_policy() {
+    operational_health_valid(health)
+  } else {
+    strict_health_valid(health)
+  }
 }
 
 fn planned_windows_valid(blocks : Array[M5Block], required : Int) -> Bool {
@@ -695,7 +725,12 @@ fn markdown(report : M5Report, health_ok : Bool, runner_configured : Bool) -> St
     "",
     "## Validity",
     "",
-    "- Relay health gate: " + health_ok.to_string() + ".",
+    "- Relay policy: " + policy_name() + ".",
+    "- Operational relay gate: " + health_ok.to_string() + ".",
+    "- Strict preregistered relay gate: " +
+      strict_health_valid(report.relay_health).to_string() + ".",
+    "- First-byte p95: " + report.relay_health.first_byte_p95_ms.to_string() +
+      " ms (latency is recorded even when the operational policy accepts it).",
     "- Online runner configured: " + runner_configured.to_string() + ".",
     "- Planned blocks: " + report.blocks.length().to_string() + ".",
     "- Recorded runs: " + report.runs.length().to_string() + ".",
@@ -1101,14 +1136,16 @@ fn run_evidence_complete(run : Json, tool_catalog : String) -> Bool {
 fn observed_batch_valid(runs : Array[Json]) -> Bool {
   if runs.is_empty() { return false }
   let failures = runs.filter(infrastructure_run).length()
-  if failures * 10_000 / runs.length() > 500 { return false }
+  let failure_limit = if operational_policy() { 2_000 } else { 500 }
+  let arm_difference_limit = if operational_policy() { 500 } else { 200 }
+  if failures * 10_000 / runs.length() > failure_limit { return false }
   let shell = runs.filter(r => string_field(r, "backend") == "shell")
   let transparent = runs.filter(r => string_field(r, "backend") == "transparent")
   if shell.is_empty() || transparent.is_empty() { return false }
   let shell_rate = shell.filter(infrastructure_run).length() * 10_000 / shell.length()
   let transparent_rate = transparent.filter(infrastructure_run).length() * 10_000 /
     transparent.length()
-  (shell_rate - transparent_rate).abs() <= 200
+  (shell_rate - transparent_rate).abs() <= arm_difference_limit
 }
 
 fn reliability(runs : Array[Json], planned_arms : Int) -> Json {
@@ -1361,9 +1398,10 @@ async fn main {
   // overwritten by the new suffix.
   put("_build/m5-results/plan.json", ToJson::to_json(full_plan).stringify())
   let health = read_health()
-  // Probe health is a preflight gate. The 5% batch failure rule is applied
-  // separately to the recorded block runs below; a 9/10 healthy probe set is
-  // therefore allowed to start a batch as preregistered.
+  // Probe health is a preflight gate. The effective policy is explicit in the
+  // environment; the strict result is retained below for audit. Batch
+  // failure limits are applied separately to recorded block runs.
+  let strict_health_ok = strict_health_valid(health)
   let health_ok = health_valid(health)
   // A continuation is allowed to start in a new relay time window.  Previous
   // blocks retain their own health snapshot; new blocks receive this probe's
@@ -1449,6 +1487,11 @@ async fn main {
   }
   let decision_reasons : Array[String] = []
   if !health_ok { decision_reasons.push("relay health gate did not pass") }
+  if operational_policy() && !strict_health_ok {
+    decision_reasons.push(
+      "operational relay policy accepted slow or sporadically disconnected probes; strict result retained",
+    )
+  }
   if !planned_windows_ok {
     decision_reasons.push("planned blocks do not cover the required time windows")
   }
@@ -1458,7 +1501,13 @@ async fn main {
   if !runner_configured { decision_reasons.push("M5_RUNNER is not configured") }
   if runner_errors > 0 { decision_reasons.push("one or more runner blocks failed") }
   if !observed_batch_ok && !all_runs.is_empty() {
-    decision_reasons.push("observed batch infrastructure failure rate exceeded 5% or arm difference exceeded 2pp")
+    decision_reasons.push(
+      if operational_policy() {
+        "observed batch infrastructure failure rate exceeded 20% or arm difference exceeded 5pp"
+      } else {
+        "observed batch infrastructure failure rate exceeded 5% or arm difference exceeded 2pp"
+      },
+    )
   }
   if !tool_catalog_valid {
     decision_reasons.push("model-visible tool catalog is missing, inconsistent or not frozen")
@@ -1482,10 +1531,21 @@ async fn main {
     } else {
       (health.provider_errors + health.transport_errors) * 10_000 / health.probes
     }).to_json(),
+    "relay_policy": policy_name().to_json(),
+    "relay_health_strict_valid": strict_health_ok.to_json(),
+    "relay_health_usable": health_ok.to_json(),
+    "relay_latency_degraded": (health.first_byte_p95_ms > 15_000).to_json(),
     "confidence_intervals": "pending analyzer",
   }
   let validity : Json = {
-    "relay_health_valid": health_valid(health).to_json(),
+    // Keep the historical key as the effective gate result for downstream
+    // consumers, while exposing the strict and operational results
+    // separately instead of hiding the relaxed policy.
+    "relay_health_valid": health_ok.to_json(),
+    "relay_health_strict_valid": strict_health_ok.to_json(),
+    "relay_health_usable": health_ok.to_json(),
+    "relay_policy": policy_name().to_json(),
+    "relay_latency_degraded": (health.first_byte_p95_ms > 15_000).to_json(),
     "relay_batch_valid": (health_ok && observed_batch_ok).to_json(),
     "planned_time_windows_valid": planned_windows_ok.to_json(),
     "block_health_valid": block_health_ok.to_json(),

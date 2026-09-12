@@ -37,7 +37,11 @@ pub fn m5_prompt(M5Task) -> String
 
 pub fn m5_receipt_valid(M5Task, Json) -> Bool
 
+pub fn m5_relay_batch_usable(M5RelayHealth) -> Bool
+
 pub fn m5_relay_batch_valid(M5RelayHealth) -> Bool
+
+pub fn m5_relay_health_usable(M5RelayHealth) -> Bool
 
 pub fn m5_relay_health_valid(M5RelayHealth) -> Bool
 

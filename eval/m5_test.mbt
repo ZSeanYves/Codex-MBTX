@@ -118,6 +118,35 @@ test "M5 relay health applies conservative validity gates" {
 }
 
 ///|
+test "M5 operational relay policy tolerates bounded slow transport noise" {
+  let degraded : @eval.M5RelayHealth = {
+    probes: 10,
+    successful_probes: 8,
+    provider_errors: 0,
+    transport_errors: 2,
+    max_consecutive_failures: 2,
+    first_byte_p95_ms: 58_533,
+    arm_failure_rate_basis_points: 4_000,
+    time_windows: 1,
+  }
+  assert_false(@eval.m5_relay_health_valid(degraded))
+  assert_true(@eval.m5_relay_health_usable(degraded))
+  assert_true(@eval.m5_relay_batch_usable(degraded))
+  assert_false(
+    @eval.m5_relay_health_usable({ ..degraded, transport_errors: 3, }),
+  )
+  assert_false(
+    @eval.m5_relay_health_usable({ ..degraded, provider_errors: 2, }),
+  )
+  assert_false(
+    @eval.m5_relay_batch_usable({
+      ..degraded,
+      arm_failure_rate_basis_points: 5_001,
+    }),
+  )
+}
+
+///|
 test "M5 failure categories preserve infrastructure and observability boundaries" {
   assert_eq(
     @eval.m5_failure_category(

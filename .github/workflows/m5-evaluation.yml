@@ -364,6 +364,10 @@ jobs:
           M5_DETERMINISTIC_MANIFEST: _build/m5-results/deterministic-platforms.json
           M5_RELAY_HEALTH_FILE: _build/m5-results/relay-health.json
           M5_TIME_WINDOW: ${{ inputs.time_window == '0' && '1' || inputs.time_window }}
+          # Formal collection uses the recorded operational policy: relay
+          # latency is retained as a covariate, while only widespread or
+          # asymmetric failures stop data collection.
+          M5_RELAY_POLICY: operational
         run: |
           set +e
           MODE="${{ inputs.mode }}"
@@ -390,7 +394,7 @@ jobs:
               ;;
           esac
           PROBE_WINDOW=${M5_TIME_WINDOW}
-          jq -e '.health_valid == true' "_build/m5-results/probe-health-window-$PROBE_WINDOW.json"
+          jq -e '.health_usable == true' "_build/m5-results/probe-health-window-$PROBE_WINDOW.json"
           HEALTH_OK=$?
           if [ "$HEALTH_OK" -eq 0 ]; then
             moon run scripts/m5_eval.mbtx "$MODE"

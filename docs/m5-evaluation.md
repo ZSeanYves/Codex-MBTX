@@ -89,6 +89,14 @@ Probe gate 与 batch gate 分开：probe 允许 10 次中 9 次成功；正式 b
 
 batch 中 provider/transport error 超过 5%、usage 完整率不足以计算 token 指标、顺序/seed 变化或 artifact 不完整时，batch 只能标记 INCONCLUSIVE。provider error 不得填成 backend 失败，也不得静默删除。
 
+## 执行补充修订：operational relay policy（2026-09-12）
+
+充值后的重跑表明当前 relay 的主要问题是高首字节延迟和偶发无响应断流，而不是持续性的 provider 计费错误。为优先取得 W1--W3 的完整可比较数据，经本轮执行授权，在线 workflow 显式设置 `M5_RELAY_POLICY=operational`。原始严格结果仍保存在每个 probe artifact 的 `health_valid`、报告的 `relay_health_strict_valid` 和延迟字段中，不覆盖或删除任何失败 attempt。
+
+operational probe 只在以下条件同时满足时继续采样：至少 10 次 probe、至少 8 次成功、provider error 不超过 1 次、provider/transport 总失败不超过 2 次、最大连续失败不超过 2 次、两臂失败率差不超过 50 个百分点且至少有一个有效窗口。首字节 p95 不再作为停止条件，但以 `latency_degraded` 记录并在报告中单独呈现。正式 batch 的 operational 上限为基础设施失败不超过 20%，两臂失败率差不超过 5 个百分点；失败仍进入 ITT 分母，只有完整可观测的成对样本进入 relay-clean 条件分析。
+
+每个 W1、W2、W3 窗口最多允许 5 次独立 workflow 尝试。每次尝试和 probe artifact 都保留；选择用于主报告的批次只依据 operational gate、成对证据完整性和可重建性，不依据某个 backend 的得分或延迟挑选“最好看”的样本。该修订放宽的是 relay 采集停止条件，不放宽 approval、sandbox、argv、退出码、生命周期、unknown/violation 分类或 deterministic 零回归门槛。
+
 ## 统计视图
 
 所有 block 同时进入 intention-to-treat（ITT）视图：provider error、timeout、missing usage 都保留在计划分母中；`analysis.json` 固定输出计划 arm 数、实际记录 arm 数、Shell/Transparent 各自成功数和按计划分母计算的成功率差异。

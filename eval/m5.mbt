@@ -633,6 +633,33 @@ pub fn m5_relay_batch_valid(health : M5RelayHealth) -> Bool {
 }
 
 ///|
+/// Operational evidence is sufficient to continue collecting a batch even
+/// when the relay is slow. The strict preregistered gate above remains
+/// available for audit; this policy only tolerates a small, symmetric amount
+/// of transport noise and deliberately records the degraded latency.
+pub fn m5_relay_health_usable(health : M5RelayHealth) -> Bool {
+  health.probes >= 10 &&
+  health.successful_probes >= 8 &&
+  health.provider_errors <= 1 &&
+  health.provider_errors + health.transport_errors <= 2 &&
+  health.max_consecutive_failures <= 2 &&
+  health.arm_failure_rate_basis_points <= 5_000 &&
+  health.time_windows >= 1
+}
+
+///|
+/// The operational batch limit is 20% infrastructure failures with at most a
+/// five-point difference between the two backend arms. Failed attempts remain
+/// in ITT and are excluded from the relay-clean conditional view.
+pub fn m5_relay_batch_usable(health : M5RelayHealth) -> Bool {
+  m5_relay_health_usable(health) &&
+  health.probes > 0 &&
+  (health.provider_errors + health.transport_errors) * 10_000 / health.probes <=
+  2_000 &&
+  health.arm_failure_rate_basis_points <= 5_000
+}
+
+///|
 /// Classify the first consequential failure without converting an unknown
 /// observation into a backend violation.
 pub fn m5_failure_category(

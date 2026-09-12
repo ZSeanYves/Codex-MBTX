@@ -102,6 +102,8 @@ async fn main {
       let output : Json = {
         "health_valid": @eval.m5_relay_health_valid(health),
         "batch_valid": @eval.m5_relay_batch_valid(health),
+        "health_usable": @eval.m5_relay_health_usable(health),
+        "batch_usable": @eval.m5_relay_batch_usable(health),
       }
       println(output.stringify())
     }

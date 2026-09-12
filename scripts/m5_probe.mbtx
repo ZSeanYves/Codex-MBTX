@@ -141,6 +141,34 @@ fn is_success(probe : Probe) -> Bool {
     completed_ok && probe.usage_complete
 }
 
+/// The operational policy keeps the strict health result intact but allows a
+/// small amount of relay noise so a slow upstream does not discard an
+/// otherwise comparable paired batch. This is intentionally a probe-level
+/// continuation rule, not a backend success rule.
+fn operational_health_valid(
+  probes : Int,
+  successful : Int,
+  provider : Int,
+  transport : Int,
+  max_consecutive : Int,
+  arm_failure_rate : Int,
+  shell_successful : Int,
+  transparent_successful : Int,
+  malformed : Bool,
+  windows : Int,
+) -> Bool {
+  probes >= 10 &&
+  successful >= 8 &&
+  provider <= 1 &&
+  provider + transport <= 2 &&
+  max_consecutive <= 2 &&
+  arm_failure_rate <= 5_000 &&
+  shell_successful >= 3 &&
+  transparent_successful >= 3 &&
+  !malformed &&
+  windows >= 1
+}
+
 fn health(probes : Array[Probe]) -> Json {
   let mut successful = 0
   let mut provider = 0
@@ -194,6 +222,24 @@ fn health(probes : Array[Probe]) -> Json {
   } else {
     (shell_rate - transparent_rate).abs()
   }
+  let shell_successful = shell_total - shell_failures
+  let transparent_successful = transparent_total - transparent_failures
+  let strict_valid = probes.length() >= 10 && successful >= 9 &&
+    provider + transport <= 1 && max_consecutive < 2 &&
+    percentile(first_bytes, 95) <= 15_000 &&
+    !malformed && windows.length() >= 1
+  let operational_valid = operational_health_valid(
+    probes.length(),
+    successful,
+    provider,
+    transport,
+    max_consecutive,
+    arm_failure_rate,
+    shell_successful,
+    transparent_successful,
+    malformed,
+    windows.length(),
+  )
   let health : Json = {
     "probes": probes.length().to_json(),
     "successful_probes": successful.to_json(),
@@ -203,14 +249,21 @@ fn health(probes : Array[Probe]) -> Json {
     "first_byte_p95_ms": percentile(first_bytes, 95).to_json(),
     "arm_failure_rate_basis_points": arm_failure_rate.to_json(),
     "time_windows": windows.length().to_json(),
+    "shell_probes": shell_total.to_json(),
+    "transparent_probes": transparent_total.to_json(),
+    "shell_successful_probes": shell_successful.to_json(),
+    "transparent_successful_probes": transparent_successful.to_json(),
   }
   {
     "schema_version": 5,
     "health": health,
-    "health_valid": probes.length() >= 10 && successful >= 9 &&
-      provider + transport <= 1 && max_consecutive < 2 &&
-      percentile(first_bytes, 95) <= 15_000 &&
-      !malformed && windows.length() >= 1,
+    // `health_valid` is the original preregistered strict result.  The
+    // operational result is separate and is only used by an explicitly
+    // configured online collection policy.
+    "health_valid": strict_valid,
+    "health_usable": operational_valid,
+    "latency_degraded": (percentile(first_bytes, 95) > 15_000),
+    "health_policy": "strict+operational",
     "attempts": probes.to_json(),
   }
 }

@@ -44,6 +44,45 @@ struct RelayHealth {
   time_windows : Int
 } derive(FromJson)
 
+fn environment_operational_policy() -> Bool {
+  @env.get_env_var("M5_RELAY_POLICY") == Some("operational")
+}
+
+fn report_operational_policy(report : Report) -> Bool {
+  match field(report.validity, "relay_policy") {
+    Some(String("operational")) => true
+    Some(String(_)) => false
+    _ => environment_operational_policy()
+  }
+}
+
+fn strict_relay_health_valid(health : RelayHealth) -> Bool {
+  health.probes >= 10 &&
+  health.successful_probes >= 9 &&
+  health.provider_errors + health.transport_errors <= 1 &&
+  health.max_consecutive_failures < 2 &&
+  health.first_byte_p95_ms <= 15_000 &&
+  health.time_windows >= 1
+}
+
+fn operational_relay_health_valid(health : RelayHealth) -> Bool {
+  health.probes >= 10 &&
+  health.successful_probes >= 8 &&
+  health.provider_errors <= 1 &&
+  health.provider_errors + health.transport_errors <= 2 &&
+  health.max_consecutive_failures <= 2 &&
+  health.arm_failure_rate_basis_points <= 5_000 &&
+  health.time_windows >= 1
+}
+
+fn effective_relay_health_valid(report : Report, health : RelayHealth) -> Bool {
+  if report_operational_policy(report) {
+    operational_relay_health_valid(health)
+  } else {
+    strict_relay_health_valid(health)
+  }
+}
+
 struct Pair {
   block_id : String
   task : String
@@ -586,10 +625,7 @@ fn block_health_valid(report : Report) -> Bool {
     match field(block, "relay_health") {
       Some(value) => try {
         let health : RelayHealth = @json.from_json(value)
-        health.probes >= 10 && health.successful_probes >= 9 &&
-          health.provider_errors + health.transport_errors <= 1 &&
-          health.max_consecutive_failures < 2 &&
-          health.first_byte_p95_ms <= 15_000 && health.time_windows >= 1 &&
+        effective_relay_health_valid(report, health) &&
           health.arm_failure_rate_basis_points >= 0 &&
           health.arm_failure_rate_basis_points <= 10_000
       } catch {
@@ -991,6 +1027,12 @@ fn decision(
   }
   if clean_runs == 0 { evidence_complete = false }
   let reasons : Array[String] = []
+  if report_operational_policy(report) &&
+    !validity_bool(report.validity, "relay_health_strict_valid") {
+    reasons.push(
+      "operational relay policy used; strict latency/noise gate did not pass and remains reported",
+    )
+  }
   if !relay_batch_valid { reasons.push("relay batch health invalid") }
   if !windows_valid { reasons.push("block time-window coverage is invalid") }
   if !health_snapshots_valid {
@@ -1083,6 +1125,13 @@ fn markdown(report : Report, analysis : Analysis, final_decision : Json) -> Stri
     "",
     "## Relay and Validity",
     "",
+    "Relay policy: " + text_field(report.validity, "relay_policy") +
+      "; strict gate: " +
+      validity_bool(report.validity, "relay_health_strict_valid").to_string() +
+      "; effective gate: " +
+      validity_bool(report.validity, "relay_health_usable").to_string() +
+      "; latency degraded: " +
+      validity_bool(report.validity, "relay_latency_degraded").to_string() + ".",
     "Saved validity: " + report.validity.stringify() + ".",
     "Planned runs: " + report.blocks.length().to_string() +
       " blocks; recorded runs: " + report.runs.length().to_string() + ".",
