@@ -1,0 +1,1058 @@
+[
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-literal_argv",
+    "attempt_id": "attempt-00-0-shell",
+    "task_id": "literal_argv",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-literal_argv/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-literal_argv",
+    "attempt_id": "attempt-00-0-transparent",
+    "task_id": "literal_argv",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-literal_argv/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-stdin_utf8",
+    "attempt_id": "attempt-00-1-transparent",
+    "task_id": "stdin_utf8",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-stdin_utf8/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-stdin_utf8",
+    "attempt_id": "attempt-00-1-shell",
+    "task_id": "stdin_utf8",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-stdin_utf8/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-cwd_environment",
+    "attempt_id": "attempt-00-2-shell",
+    "task_id": "cwd_environment",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-cwd_environment/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-cwd_environment",
+    "attempt_id": "attempt-00-2-transparent",
+    "task_id": "cwd_environment",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-cwd_environment/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-large_output",
+    "attempt_id": "attempt-00-3-transparent",
+    "task_id": "large_output",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-large_output/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-large_output",
+    "attempt_id": "attempt-00-3-shell",
+    "task_id": "large_output",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-large_output/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-nonzero_exit",
+    "attempt_id": "attempt-00-4-shell",
+    "task_id": "nonzero_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-nonzero_exit/shell",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-nonzero_exit",
+    "attempt_id": "attempt-00-4-transparent",
+    "task_id": "nonzero_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-nonzero_exit/transparent",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-background_cleanup",
+    "attempt_id": "attempt-00-5-transparent",
+    "task_id": "background_cleanup",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-background_cleanup/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-background_cleanup",
+    "attempt_id": "attempt-00-5-shell",
+    "task_id": "background_cleanup",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-background_cleanup/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-signal_exit",
+    "attempt_id": "attempt-00-6-shell",
+    "task_id": "signal_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-signal_exit/shell",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-signal_exit",
+    "attempt_id": "attempt-00-6-transparent",
+    "task_id": "signal_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-signal_exit/transparent",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-recovery",
+    "attempt_id": "attempt-00-7-transparent",
+    "task_id": "recovery",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-recovery/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-00-recovery",
+    "attempt_id": "attempt-00-7-shell",
+    "task_id": "recovery",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-00-recovery/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-literal_argv",
+    "attempt_id": "attempt-01-0-transparent",
+    "task_id": "literal_argv",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-literal_argv/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-literal_argv",
+    "attempt_id": "attempt-01-0-shell",
+    "task_id": "literal_argv",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-literal_argv/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-stdin_utf8",
+    "attempt_id": "attempt-01-1-shell",
+    "task_id": "stdin_utf8",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-stdin_utf8/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-stdin_utf8",
+    "attempt_id": "attempt-01-1-transparent",
+    "task_id": "stdin_utf8",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-stdin_utf8/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-cwd_environment",
+    "attempt_id": "attempt-01-2-transparent",
+    "task_id": "cwd_environment",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-cwd_environment/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-cwd_environment",
+    "attempt_id": "attempt-01-2-shell",
+    "task_id": "cwd_environment",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-cwd_environment/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-large_output",
+    "attempt_id": "attempt-01-3-shell",
+    "task_id": "large_output",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-large_output/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-large_output",
+    "attempt_id": "attempt-01-3-transparent",
+    "task_id": "large_output",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-large_output/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-nonzero_exit",
+    "attempt_id": "attempt-01-4-transparent",
+    "task_id": "nonzero_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-nonzero_exit/transparent",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-nonzero_exit",
+    "attempt_id": "attempt-01-4-shell",
+    "task_id": "nonzero_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-nonzero_exit/shell",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-background_cleanup",
+    "attempt_id": "attempt-01-5-shell",
+    "task_id": "background_cleanup",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-background_cleanup/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-background_cleanup",
+    "attempt_id": "attempt-01-5-transparent",
+    "task_id": "background_cleanup",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-background_cleanup/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-signal_exit",
+    "attempt_id": "attempt-01-6-transparent",
+    "task_id": "signal_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-signal_exit/transparent",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-signal_exit",
+    "attempt_id": "attempt-01-6-shell",
+    "task_id": "signal_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-signal_exit/shell",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-recovery",
+    "attempt_id": "attempt-01-7-shell",
+    "task_id": "recovery",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-recovery/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-01-recovery",
+    "attempt_id": "attempt-01-7-transparent",
+    "task_id": "recovery",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-01-recovery/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-literal_argv",
+    "attempt_id": "attempt-02-0-shell",
+    "task_id": "literal_argv",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-literal_argv/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-literal_argv",
+    "attempt_id": "attempt-02-0-transparent",
+    "task_id": "literal_argv",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-literal_argv/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-stdin_utf8",
+    "attempt_id": "attempt-02-1-transparent",
+    "task_id": "stdin_utf8",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-stdin_utf8/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-stdin_utf8",
+    "attempt_id": "attempt-02-1-shell",
+    "task_id": "stdin_utf8",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-stdin_utf8/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-cwd_environment",
+    "attempt_id": "attempt-02-2-shell",
+    "task_id": "cwd_environment",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-cwd_environment/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-cwd_environment",
+    "attempt_id": "attempt-02-2-transparent",
+    "task_id": "cwd_environment",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-cwd_environment/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-large_output",
+    "attempt_id": "attempt-02-3-transparent",
+    "task_id": "large_output",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-large_output/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-large_output",
+    "attempt_id": "attempt-02-3-shell",
+    "task_id": "large_output",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-large_output/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-nonzero_exit",
+    "attempt_id": "attempt-02-4-shell",
+    "task_id": "nonzero_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-nonzero_exit/shell",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-nonzero_exit",
+    "attempt_id": "attempt-02-4-transparent",
+    "task_id": "nonzero_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-nonzero_exit/transparent",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-background_cleanup",
+    "attempt_id": "attempt-02-5-transparent",
+    "task_id": "background_cleanup",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-background_cleanup/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-background_cleanup",
+    "attempt_id": "attempt-02-5-shell",
+    "task_id": "background_cleanup",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-background_cleanup/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-signal_exit",
+    "attempt_id": "attempt-02-6-shell",
+    "task_id": "signal_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-signal_exit/shell",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-signal_exit",
+    "attempt_id": "attempt-02-6-transparent",
+    "task_id": "signal_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-signal_exit/transparent",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-recovery",
+    "attempt_id": "attempt-02-7-transparent",
+    "task_id": "recovery",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-recovery/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-02-recovery",
+    "attempt_id": "attempt-02-7-shell",
+    "task_id": "recovery",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-02-recovery/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-literal_argv",
+    "attempt_id": "attempt-03-0-transparent",
+    "task_id": "literal_argv",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-literal_argv/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-literal_argv",
+    "attempt_id": "attempt-03-0-shell",
+    "task_id": "literal_argv",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-literal_argv/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-stdin_utf8",
+    "attempt_id": "attempt-03-1-shell",
+    "task_id": "stdin_utf8",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-stdin_utf8/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-stdin_utf8",
+    "attempt_id": "attempt-03-1-transparent",
+    "task_id": "stdin_utf8",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf 'stdin✓\\n'"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-stdin_utf8/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-cwd_environment",
+    "attempt_id": "attempt-03-2-transparent",
+    "task_id": "cwd_environment",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-cwd_environment/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-cwd_environment",
+    "attempt_id": "attempt-03-2-shell",
+    "task_id": "cwd_environment",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf '%s' \"$PWD\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-cwd_environment/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-large_output",
+    "attempt_id": "attempt-03-3-shell",
+    "task_id": "large_output",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-large_output/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-large_output",
+    "attempt_id": "attempt-03-3-transparent",
+    "task_id": "large_output",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "yes x | head -c 65536"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-large_output/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-nonzero_exit",
+    "attempt_id": "attempt-03-4-transparent",
+    "task_id": "nonzero_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-nonzero_exit/transparent",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-nonzero_exit",
+    "attempt_id": "attempt-03-4-shell",
+    "task_id": "nonzero_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf before; exit 7"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-nonzero_exit/shell",
+    "expected_exit_code": 7
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-background_cleanup",
+    "attempt_id": "attempt-03-5-shell",
+    "task_id": "background_cleanup",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-background_cleanup/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-background_cleanup",
+    "attempt_id": "attempt-03-5-transparent",
+    "task_id": "background_cleanup",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "(sleep .02; exit 0) & wait"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-background_cleanup/transparent",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-signal_exit",
+    "attempt_id": "attempt-03-6-transparent",
+    "task_id": "signal_exit",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-signal_exit/transparent",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-signal_exit",
+    "attempt_id": "attempt-03-6-shell",
+    "task_id": "signal_exit",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "kill -TERM \"$$\""
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-signal_exit/shell",
+    "expected_exit_code": 143
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-recovery",
+    "attempt_id": "attempt-03-7-shell",
+    "task_id": "recovery",
+    "backend": "shell",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-recovery/shell",
+    "expected_exit_code": 0
+  },
+  {
+    "experiment_id": "launcher-comparison-v1",
+    "pair_id": "pair-03-recovery",
+    "attempt_id": "attempt-03-7-transparent",
+    "task_id": "recovery",
+    "backend": "transparent",
+    "command": [
+      "/home/zseanyves/Moonbit/Codex-MBTX/_build/native/debug/build/cmd/mbtx/mbtx.exe",
+      "exec",
+      "--",
+      "/bin/sh",
+      "-c",
+      "printf first; printf second"
+    ],
+    "cwd": null,
+    "artifact_dir": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260913T055354901398588/pair-03-recovery/transparent",
+    "expected_exit_code": 0
+  }
+]
