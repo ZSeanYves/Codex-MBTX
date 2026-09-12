@@ -4,6 +4,14 @@ This workflow builds the pinned Codex checkout, the MBTX launcher, and the
 Rust collector once, then runs sequential Shell/Transparent pairs against the
 configured OpenAI-compatible Responses relay.
 
+On a clean Linux host, install the MoonBit CLI once, then make it available in
+the current shell:
+
+```bash
+curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+export PATH="$HOME/.moon/bin:$PATH"
+```
+
 From a clean checkout on Linux:
 
 ```bash
