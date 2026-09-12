@@ -55,6 +55,7 @@ For a real Linux run, export `OPENAI_API_KEY` and optionally
 `MBTX_RELAY_BASE_URL`, then run:
 
 ```bash
+moon update
 moon run scripts/install-linux.mbtx
 . "$HOME/.cargo/env"
 moon run scripts/collect-linux-online.mbtx

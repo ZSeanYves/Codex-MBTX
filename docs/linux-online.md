@@ -16,6 +16,7 @@ From a clean checkout on Linux:
 
 ```bash
 git pull --ff-only origin main
+moon update
 moon run scripts/install-linux.mbtx
 . "$HOME/.cargo/env"
 
@@ -24,6 +25,13 @@ export MBTX_RELAY_BASE_URL='https://tokenadvent.com/v1'
 export MBTX_MODEL='gpt-5.6-terra'
 moon run scripts/collect-linux-online.mbtx
 ```
+
+`moon update` refreshes the package registry index after installing MoonBit.
+Standalone `.mbtx` scripts resolve their own dependencies, independently of
+the root `moon.mod`. Their imports explicitly select `moonbitlang/async@0.21.3`,
+matching the launcher module, so an older registry default cannot select a
+release without the required `shell` package. CI builds every script without
+running installation or online collection.
 
 For the JSON credential form, store it outside the checkout with mode `600`
 and export it without copying the key into the repository:

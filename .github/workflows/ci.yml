@@ -25,6 +25,15 @@ jobs:
         uses: dtolnay/rust-toolchain@1.95.0
       - name: Resolve dependencies
         run: moon update
+      - name: Build standalone automation entry points
+        env:
+          MOON_DEP_CACHE: ${{ runner.temp }}/mbtx-script-deps
+        run: |
+          moon run --build-only scripts/install-linux.mbtx
+          moon run --build-only scripts/codex.mbtx
+          moon run --build-only scripts/collect-linux.mbtx
+          moon run --build-only scripts/collect-macos.mbtx
+          moon run --build-only scripts/collect-linux-online.mbtx
       - name: MoonBit checks and tests
         run: |
           moon check --deny-warn --target native
