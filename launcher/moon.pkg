@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/process" @child,
+  "moonbitlang/async/stdio",
+}
+
+supported_targets = "native+wasm"

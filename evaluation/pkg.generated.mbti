@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "ZSeanYves/Codex-MBTX/evaluation"
+
+// Values
+pub fn comparable(Outcome, Outcome) -> Bool
+
+pub fn count_comparable(Array[PairResult]) -> Int
+
+// Errors
+
+// Types and methods
+pub(all) enum Outcome {
+  Success
+  BackendFailure
+  RelayError
+  ProviderError
+  HarnessError
+  Timeout
+  Censored
+  Unknown
+} derive(Eq, Show)
+
+pub(all) struct PairResult {
+  pair_id : String
+  task_id : String
+  shell : Outcome
+  transparent : Outcome
+}
+pub fn PairResult::is_comparable(Self) -> Bool
+
+// Type aliases
+
+// Traits

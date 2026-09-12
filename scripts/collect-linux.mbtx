@@ -1,0 +1,37 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+}
+
+async fn run(program : String, args : Array[String], cwd? : String = "") -> Unit {
+  let command = match cwd {
+    "" => @shell.Cmd(program, args)
+    directory => @shell.Cmd(program, args, cwd=directory)
+  }
+  let result = command.output(timeout_ms=1_800_000)
+  if result.exit_code() != 0 { fail("command failed: \{program} \{result.stdout()}\n\{result.stderr()}") }
+}
+
+async fn main {
+  let system = @shell.Cmd("uname", ["-s"]).output().stdout().trim()
+  guard system == "Linux" else { fail("collect-linux.mbtx must run on Linux") }
+  let root = @fs.realpath(".")
+  let output = @env.args().get(1).unwrap_or("_build/launcher-evidence-linux")
+  @fs.mkdir(output, recursive=true)
+  println("[linux] building launcher and observer once")
+  run("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"])
+  run("cargo", ["build", "--locked", "--manifest-path", "adapter/Cargo.toml", "--bins"])
+  let launcher = "\{root}/_build/native/debug/build/cmd/mbtx/mbtx.exe"
+  let evaluator = "\{root}/adapter/target/debug/mbtx-eval"
+  guard @fs.exists(launcher) && @fs.exists(evaluator) else { fail("native artifacts were not produced") }
+  println("[linux] collecting eight task classes with AB/BA ordering")
+  run(evaluator, ["run", "--mbtx", launcher, "--pairs", "4", "--output", output])
+  let md = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "md"]).output()
+  @fs.write_file("\{output}/report.md", md.stdout())
+  let html = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "html"]).output()
+  @fs.write_file("\{output}/report.html", html.stdout())
+  println("[linux] complete: \{output}/events.jsonl and \{output}/report.html")
+  println("[linux] this run is local launcher evidence; Codex online collection is a separate authenticated phase")
+}

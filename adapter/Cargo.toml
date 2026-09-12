@@ -5,29 +5,17 @@ edition = "2024"
 license = "Apache-2.0"
 publish = false
 
-[lib]
-path = "../codex/overlay/codex-rs/core/src/tools/handlers/mbtx/protocol.rs"
+[[bin]]
+name = "mbtx-observe"
+path = "src/main.rs"
 
 [[bin]]
-name = "mbtx-fake-runner"
-path = "fixtures/fake_runner.rs"
-
-[[bin]]
-name = "m5-trace-launcher"
-path = "fixtures/m5_trace_launcher.rs"
-
-[[bin]]
-name = "m5-command-trace"
-path = "fixtures/m5_command_trace.rs"
-
-[[bin]]
-name = "m5-runner"
-path = "fixtures/m5_runner.rs"
+name = "mbtx-eval"
+path = "src/eval.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
 
 [profile.dev]
 debug = 0

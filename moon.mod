@@ -1,14 +1,3 @@
-// Learn more about moon.mod configuration:
-// https://docs.moonbitlang.com/en/latest/toolchain/moon/module.html
-//
-// To add a dependency, run this command in your terminal:
-//   moon add moonbitlang/x
-//
-// Or manually declare it in `import`, for example:
-// import {
-//   "moonbitlang/x@0.4.6",
-// }
-
 name = "ZSeanYves/Codex-MBTX"
 
 version = "0.1.0"
@@ -19,11 +8,9 @@ repository = "https://github.com/ZSeanYves/Codex-MBTX"
 
 license = "Apache-2.0"
 
-keywords = [ ]
+preferred_target = "native"
 
-preferred_target = "wasm"
-
-description = "An experiment for using MBTX as a Codex script execution backend."
+description = "A transparent MBTX process launcher and Codex integration evaluation harness."
 
 import {
   "moonbitlang/async@0.21.3",

@@ -1,4 +1,4 @@
-name: CI
+name: Offline checks
 
 on:
   push:
@@ -12,41 +12,34 @@ env:
   MOONBIT_INSTALL_VERSION: "0.10.12+1634b282e"
 
 jobs:
-  moonbit:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [wasm, native]
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
+      - uses: actions/checkout@v5
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
-
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: Resolve dependencies
+        run: moon update
+      - name: MoonBit checks and tests
         run: |
-          moon version --all
-          moon update
-
-      - name: Check
-        run: moon check --deny-warn --target ${{ matrix.target }}
-
-      - name: Test
-        run: moon test --target ${{ matrix.target }}
-
-      - name: Exercise JSONL CLI
-        run: moon run scripts/smoke.mbtx
-
-      - name: Exercise job lifecycle CLI
-        run: moon run scripts/jobs_smoke.mbtx ${{ matrix.target }}
-
-      - name: Check generated interfaces and formatting
-        run: |
+          moon check --deny-warn --target native
+          moon test --target native
           moon info
           moon fmt
           git diff --exit-code
+      - name: Launcher smoke test
+        run: |
+          moon run --build-only --output-json --target native cmd/mbtx
+          bin=$(moon run --build-only --output-json --target native cmd/mbtx | sed -n 's/.*"\(.*mbtx.exe\)".*/\1/p')
+          test "$($bin exec -- printf '%s' literal)" = literal
+          set +e
+          $bin exec -- sh -c 'kill -TERM "$$"'
+          code=$?
+          test "$code" -eq 143
+      - name: Observer and report checks
+        run: cargo test --locked --manifest-path adapter/Cargo.toml

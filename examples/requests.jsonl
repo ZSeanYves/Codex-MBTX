@@ -1,2 +1,0 @@
-{"id":"hello","op":"run","script_path":"examples/hello.mbtx","args":["MBTX","two words","$(echo literal) | *"],"cwd":"."}
-{"id":"inline","op":"run","source":"fn main { println(6 * 7) }"}

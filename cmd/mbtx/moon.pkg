@@ -1,6 +1,5 @@
 import {
-  "ZSeanYves/Codex-MBTX/session",
-  "ZSeanYves/Codex-MBTX/process",
+  "ZSeanYves/Codex-MBTX/launcher",
   "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbitlang/core/env",
@@ -9,3 +8,7 @@ import {
 supported_targets = "native+wasm"
 
 pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "native-stub/exit.c" ],
+)
