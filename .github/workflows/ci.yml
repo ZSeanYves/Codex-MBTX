@@ -32,6 +32,7 @@ jobs:
           moon run --build-only scripts/install-linux.mbtx
           moon run --build-only scripts/codex.mbtx
           moon run --build-only scripts/prepare-codex-v8.mbtx
+          moon run --build-only scripts/diagnose-linux-online.mbtx
           moon run --build-only scripts/collect-linux.mbtx
           moon run --build-only scripts/collect-macos.mbtx
           moon run --build-only scripts/collect-linux-online.mbtx

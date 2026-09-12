@@ -38,6 +38,7 @@ async fn main {
     .get_env_var("MBTX_MODEL")
     .unwrap_or("gpt-5.6-terra")
   let pairs = @env.get_env_var("MBTX_PAIRS").unwrap_or("4")
+  let min_interval = @env.get_env_var("MBTX_MIN_INTERVAL_MS").unwrap_or("6000")
   let base = @env
     .args()
     .get(1)
@@ -117,6 +118,8 @@ async fn main {
       relay,
       "--pairs",
       pairs,
+      "--min-interval-ms",
+      min_interval,
     ],
     root,
   )
@@ -140,7 +143,7 @@ async fn main {
   )
   @fs.write_file(
     "\{output}/provenance.txt",
-    "implementation_sha=\{provenance.trim()}\nsystem=\{system_info.trim()}\n\{rust.trim()}\n\{moon.trim()}\n\{hashes}",
+    "implementation_sha=\{provenance.trim()}\nsystem=\{system_info.trim()}\n\{rust.trim()}\n\{moon.trim()}\nrequest_min_interval_ms=\{min_interval}\n\{hashes}",
   )
   println("[online] reports: \{output}/report.{md,json,csv,html}")
   println("[online] upload \{output} and inspect online-summary.md before committing")

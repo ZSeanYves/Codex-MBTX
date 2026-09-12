@@ -52,6 +52,11 @@ only at the registered infrastructure thresholds. It writes `events.jsonl`,
 immutable per-attempt evidence, `online-summary.md`, `summary.json`,
 `provenance.txt`, and Markdown/JSON/CSV/HTML reports.
 
+Arms are executed by one sequential loop. To also stay below the relay's RPM
+window, the collector waits 6 seconds after each arm before starting the next
+(at most 10 arm starts per minute). Set `MBTX_MIN_INTERVAL_MS` to a larger
+value for a lower account limit; use `0` only with a local mock relay.
+
 The collector binds `model_providers.OpenrouterICU.env_key` to `OPENAI_API_KEY`
 in every isolated Codex home. A saved interactive Codex login is not required.
 Both arms use `features.unified_exec = true`, `features.code_mode_host = true`,
@@ -72,6 +77,18 @@ Every arm prints its result status, failure class, and observed HTTP error statu
 the message includes a relay URL. `partial` means the planned comparison did not
 complete; writing a report successfully is not a successful experiment.
 Keep a failed run intact and start a new timestamped run after fixing its cause.
+
+If the relay returns a new error, run the read-only diagnostic bundle on Linux:
+
+```bash
+moon run scripts/diagnose-linux-online.mbtx diagnostics/linux-online \
+  evidence/linux/codex-relay/<failed-run>
+```
+
+It records versions, artifact hashes, V8 checksum status, and matching error
+lines from the failed run without sending a model request. To make one optional
+authenticated `GET /models` probe, set `MBTX_DIAGNOSTIC_PROBE=1`; the response
+status and body are recorded, never the key itself.
 
 The isolated-home authentication path can be checked without a real API key or
 provider by running the Rust integration test against a local mock relay:

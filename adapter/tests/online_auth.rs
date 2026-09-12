@@ -197,6 +197,8 @@ fn collect(respond: fn(TcpStream) -> Request, launcher: &str) -> (PathBuf, Outpu
             "1",
             "--timeout-ms",
             "30000",
+            "--min-interval-ms",
+            "1",
             "--output",
         ])
         .arg(&output)

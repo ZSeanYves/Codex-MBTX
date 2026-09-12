@@ -139,7 +139,7 @@ struct ProcessOutput {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: mbtx-online run --codex CODEX --mbtx MBTX --output DIR [--model MODEL] [--relay-base-url URL] [--pairs N] [--timeout-ms N]"
+        "usage: mbtx-online run --codex CODEX --mbtx MBTX --output DIR [--model MODEL] [--relay-base-url URL] [--pairs N] [--timeout-ms N] [--min-interval-ms N]"
     );
     std::process::exit(2)
 }
@@ -162,6 +162,12 @@ fn parse_positive(args: &[String], name: &str, default: u64) -> u64 {
     option(args, name)
         .and_then(|value| value.parse::<u64>().ok())
         .filter(|value| *value > 0)
+        .unwrap_or(default)
+}
+
+fn parse_nonnegative(args: &[String], name: &str, default: u64) -> u64 {
+    option(args, name)
+        .and_then(|value| value.parse::<u64>().ok())
         .unwrap_or(default)
 }
 
@@ -345,11 +351,13 @@ fn http_error_status(parsed: &ParsedCodex, stderr: &str) -> Option<u16> {
         .map(String::as_str)
         .chain([stderr])
         .find_map(|message| {
-            ["unexpected status ", "HTTP "].iter().find_map(|prefix| {
-                let (_, tail) = message.split_once(prefix)?;
-                let status = tail.split_whitespace().next()?.parse::<u16>().ok()?;
-                (400..=599).contains(&status).then_some(status)
-            })
+            ["unexpected status ", "last status: ", "HTTP "]
+                .iter()
+                .find_map(|prefix| {
+                    let (_, tail) = message.split_once(prefix)?;
+                    let status = tail.split_whitespace().next()?.parse::<u16>().ok()?;
+                    (400..=599).contains(&status).then_some(status)
+                })
         })
 }
 
@@ -878,6 +886,10 @@ fn run(args: &[String]) {
         option(args, "--relay-base-url").unwrap_or_else(|| DEFAULT_RELAY_BASE_URL.to_string());
     let pairs = parse_positive(args, "--pairs", 4).clamp(1, 6) as usize;
     let timeout = Duration::from_millis(parse_positive(args, "--timeout-ms", DEFAULT_TIMEOUT_MS));
+    // The arms are sequential, but an RPM limit also requires spacing starts.
+    // Six seconds is at most ten arm starts per minute. Set to zero only for
+    // a local mock relay.
+    let min_interval = Duration::from_millis(parse_nonnegative(args, "--min-interval-ms", 6_000));
     if !codex.is_file() || !mbtx.is_file() {
         eprintln!("codex and mbtx must be existing files");
         std::process::exit(2);
@@ -913,12 +925,13 @@ fn run(args: &[String]) {
     let task_list = tasks();
     let planned_pairs = pairs * task_list.len();
     println!(
-        "[online] plan={} pairs={} arms={} model={} relay={}",
+        "[online] plan={} pairs={} arms={} model={} relay={} min_interval_ms={}",
         EXPERIMENT_ID,
         planned_pairs,
         planned_pairs * 2,
         model,
-        relay_base_url
+        relay_base_url,
+        min_interval.as_millis()
     );
     let mut records = Vec::new();
     let mut consecutive_infra_failures = 0_usize;
@@ -961,6 +974,13 @@ fn run(args: &[String]) {
                         .http_status
                         .map_or_else(|| "unknown".to_string(), |status| status.to_string()),
                 );
+                if !min_interval.is_zero() {
+                    println!(
+                        "[online] throttle sleeping {} ms before next arm",
+                        min_interval.as_millis()
+                    );
+                    thread::sleep(min_interval);
+                }
                 if infrastructure {
                     consecutive_infra_failures += 1;
                 } else {
@@ -1074,6 +1094,18 @@ mod tests {
         let unknown = parse_codex_output(br#"{"type":"error","message":"unknown error, url: https://tokenadvent.com/v1/responses, request id: 401-503"}"#);
         assert_eq!(http_error_status(&unknown, ""), None);
         assert_eq!(classify_external_failure(&unknown, "").0, "unknown");
+    }
+
+    #[test]
+    fn classifies_retry_limit_status_as_relay_error() {
+        let parsed = parse_codex_output(
+            br#"{"type":"error","message":"exceeded retry limit, last status: 429 Too Many Requests, request id: abc"}"#,
+        );
+        assert_eq!(http_error_status(&parsed, ""), Some(429));
+        assert_eq!(
+            classify_external_failure(&parsed, ""),
+            ("relay_error".into(), "relay_or_transport".into())
+        );
     }
 
     #[test]
