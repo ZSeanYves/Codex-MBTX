@@ -41,9 +41,33 @@ The first collection target is four valid pairs for each of eight functional
 classes: literal argv; stdin and UTF-8; cwd and environment; large output;
 non-zero exit; background cleanup; timeout and signals; repeated execution and
 recovery. Failed attempts remain in the report and collection uses at most 48
-attempts. Relay and provider failures are reported separately from backend
+pair attempts (96 arms). Relay and provider failures are reported separately from backend
 failures. The report includes default Shell versus MBTX and Direct Shell versus
 MBTX because transparent mode disables the Shell zsh-fork optimization.
+
+The repository keeps platform evidence under `evidence/`:
+
+- `evidence/macos/launcher/` for the macOS local launcher comparison;
+- `evidence/linux/launcher/` for the Linux local launcher comparison;
+- `evidence/linux/codex-relay/` for real Linux Codex plus relay runs.
+
+For a real Linux run, export `OPENAI_API_KEY` and optionally
+`MBTX_RELAY_BASE_URL`, then run:
+
+```bash
+moon run scripts/install-linux.mbtx
+. "$HOME/.cargo/env"
+moon run scripts/collect-linux-online.mbtx
+```
+
+The online script builds the pinned Codex, MBTX, and adapter once, creates
+separate run-local Shell and Transparent configs, executes the sequential AB/BA
+collection, and writes raw evidence plus Markdown, JSON, CSV, and HTML reports.
+It never writes `OPENAI_API_KEY` to the repository or evidence directory.
+Use `config/` for the checked-in configuration templates and
+`config/credentials.env.example` for the expected environment variable names.
+The complete Linux procedure, including upload and macOS pull paths, is in
+[`docs/linux-online.md`](docs/linux-online.md).
 
 ## Development
 

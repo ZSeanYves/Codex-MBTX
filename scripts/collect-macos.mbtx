@@ -14,7 +14,20 @@ async fn main {
   let system = @shell.Cmd("uname", ["-s"]).output().stdout().trim()
   guard system == "Darwin" else { fail("collect-macos.mbtx must run on macOS") }
   let root = @fs.realpath(".")
-  let output = @env.args().get(1).unwrap_or("_build/launcher-evidence-macos")
+  let output = match @env.args().get(1) {
+    Some(path) => path
+    None => {
+      let stamp = @shell.Cmd("date", ["+%Y%m%dT%H%M%S"]).output().stdout().trim()
+      let base = "\{root}/evidence/macos/launcher/\{stamp}"
+      let mut candidate = base
+      let mut suffix = 1
+      while @fs.exists(candidate) {
+        candidate = "\{base}-\{suffix}"
+        suffix += 1
+      }
+      candidate
+    }
+  }
   @fs.mkdir(output, recursive=true)
   println("[macOS] building launcher and observer once")
   run("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"])
@@ -24,6 +37,12 @@ async fn main {
   guard @fs.exists(launcher) && @fs.exists(evaluator) else { fail("native artifacts were not produced") }
   println("[macOS] collecting eight task classes with AB/BA ordering")
   run(evaluator, ["run", "--mbtx", launcher, "--pairs", "4", "--output", output])
+  let md = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "md"]).output()
+  let json = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "json"]).output()
+  let csv = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "csv"]).output()
+  @fs.write_file("\{output}/report.md", md.stdout())
+  @fs.write_file("\{output}/report.json", json.stdout())
+  @fs.write_file("\{output}/report.csv", csv.stdout())
   let html = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "html"]).output()
   @fs.write_file("\{output}/report.html", html.stdout())
   println("[macOS] complete: \{output}/events.jsonl and \{output}/report.html")

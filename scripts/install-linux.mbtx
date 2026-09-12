@@ -1,0 +1,83 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+}
+
+async fn run(program : String, args : Array[String]) -> Unit {
+  let result = @shell.Cmd(program, args).output(timeout_ms=1_800_000)
+  if result.exit_code() != 0 {
+    fail("command failed: \{program} \{result.stdout()}\n\{result.stderr()}")
+  }
+}
+
+async fn main {
+  let system = @shell.Cmd("uname", ["-s"]).output().stdout().trim()
+  guard system == "Linux" else { fail("install-linux.mbtx must run on Linux") }
+  println("[install] installing standard Linux build dependencies")
+  run(
+    "sudo",
+    [
+      "apt-get",
+      "update",
+    ],
+  )
+  run(
+    "sudo",
+    [
+      "apt-get",
+      "install",
+      "-y",
+      "build-essential",
+      "pkg-config",
+      "libssl-dev",
+      "libcap-dev",
+      "bubblewrap",
+      "apparmor",
+      "apparmor-utils",
+      "curl",
+      "ca-certificates",
+      "git",
+      "jq",
+      "python3",
+      "iproute2",
+    ],
+  )
+  let home = @env.get_env_var("HOME").unwrap_or("")
+  guard home != "" else { fail("HOME is required") }
+  let rustup = "\{home}/.cargo/bin/rustup"
+  if !@fs.exists(rustup) {
+    println("[install] installing rustup with the standard upstream installer")
+    run(
+      "curl",
+      [
+        "--proto",
+        "=https",
+        "--tlsv1.2",
+        "-sSf",
+        "https://sh.rustup.rs",
+        "-o",
+        "/tmp/rustup-init-codex-mbtx.sh",
+      ],
+    )
+    run(
+      "sh",
+      [
+        "/tmp/rustup-init-codex-mbtx.sh",
+        "-y",
+        "--profile",
+        "minimal",
+        "--default-toolchain",
+        "none",
+      ],
+    )
+  } else {
+    println("[install] rustup already exists")
+  }
+  guard @fs.exists(rustup) else { fail("rustup was not installed at \{rustup}") }
+  println("[install] installing the pinned Rust toolchain")
+  run(rustup, ["toolchain", "install", "1.95.0", "--profile", "minimal"])
+  run(rustup, ["component", "add", "rustfmt", "clippy", "--toolchain", "1.95.0"])
+  println("[install] complete; run `. $HOME/.cargo/env` in the current shell")
+}

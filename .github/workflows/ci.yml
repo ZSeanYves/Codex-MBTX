@@ -22,7 +22,7 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.95.0
       - name: Resolve dependencies
         run: moon update
       - name: MoonBit checks and tests
@@ -34,7 +34,6 @@ jobs:
           git diff --exit-code
       - name: Launcher smoke test
         run: |
-          moon run --build-only --output-json --target native cmd/mbtx
           bin=$(moon run --build-only --output-json --target native cmd/mbtx | sed -n 's/.*"\(.*mbtx.exe\)".*/\1/p')
           test "$($bin exec -- printf '%s' literal)" = literal
           set +e

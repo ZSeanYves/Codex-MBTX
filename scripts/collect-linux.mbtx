@@ -18,7 +18,13 @@ async fn main {
   let system = @shell.Cmd("uname", ["-s"]).output().stdout().trim()
   guard system == "Linux" else { fail("collect-linux.mbtx must run on Linux") }
   let root = @fs.realpath(".")
-  let output = @env.args().get(1).unwrap_or("_build/launcher-evidence-linux")
+  let output = match @env.args().get(1) {
+    Some(path) => path
+    None => {
+      let stamp = @shell.Cmd("date", ["+%Y%m%dT%H%M%S%N"]).output().stdout().trim()
+      "\{root}/evidence/linux/launcher/\{stamp}"
+    }
+  }
   @fs.mkdir(output, recursive=true)
   println("[linux] building launcher and observer once")
   run("moon", ["run", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"])
@@ -29,7 +35,11 @@ async fn main {
   println("[linux] collecting eight task classes with AB/BA ordering")
   run(evaluator, ["run", "--mbtx", launcher, "--pairs", "4", "--output", output])
   let md = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "md"]).output()
+  let json = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "json"]).output()
+  let csv = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "csv"]).output()
   @fs.write_file("\{output}/report.md", md.stdout())
+  @fs.write_file("\{output}/report.json", json.stdout())
+  @fs.write_file("\{output}/report.csv", csv.stdout())
   let html = @shell.Cmd(evaluator, ["report", "--events", "\{output}/events.jsonl", "--format", "html"]).output()
   @fs.write_file("\{output}/report.html", html.stdout())
   println("[linux] complete: \{output}/events.jsonl and \{output}/report.html")

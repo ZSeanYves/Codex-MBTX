@@ -5,12 +5,12 @@ lock, model settings, task fixture, prompt, environment, seed, and platform.
 Shell and transparent MBTX are adjacent AB/BA arms over the same immutable
 fixture and separate mutable workspaces.
 
-Eight task classes are collected in four valid pairs each. Failed attempts are
-retained. Collection may use at most 48 attempts to obtain 32 valid pairs. A
-single relay or provider error does not stop collection. Collection pauses only
-after five consecutive infrastructure failures, infrastructure failure in at
-least half of the latest 16 arms, or loss of the local runner itself. A partial
-report is always emitted.
+Eight task classes are collected in four valid pairs each (32 pairs, 64 arms).
+Failed attempts are retained. Collection may expand to at most six pairs per
+class (48 pairs, 96 arms). A single relay or provider error does not stop
+collection. Collection pauses only after five consecutive infrastructure
+failures, infrastructure failure in at least half of the latest 16 arms, or
+loss of the local runner itself. A partial report is always emitted.
 
 The report has intention-to-treat and complete-pair views. It attributes timing
 segments to launcher, child, Codex, relay, or unknown evidence. Since

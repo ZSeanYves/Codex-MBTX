@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "ZSeanYves/Codex-MBTX/evaluation"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn comparable(Outcome, Outcome) -> Bool
 
@@ -18,7 +22,7 @@ pub(all) enum Outcome {
   Timeout
   Censored
   Unknown
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PairResult {
   pair_id : String

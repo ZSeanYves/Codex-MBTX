@@ -4,3 +4,6 @@ target/
 target
 .mooncakes/
 .moonagent/
+config/*.toml
+config/*.env
+config/credentials.json

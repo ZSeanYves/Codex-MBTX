@@ -1,0 +1,151 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+}
+
+async fn run(program : String, args : Array[String], cwd : String) -> Unit {
+  let result = @shell.Cmd(program, args, cwd~).output(timeout_ms=3_600_000)
+  if result.exit_code() != 0 {
+    fail("command failed: \{program} \{result.stdout()}\n\{result.stderr()}")
+  }
+}
+
+async fn capture(program : String, args : Array[String], cwd : String) -> String {
+  let result = @shell.Cmd(program, args, cwd~).output(timeout_ms=3_600_000)
+  if result.exit_code() != 0 {
+    fail("command failed: \{program} \{result.stdout()}\n\{result.stderr()}")
+  }
+  result.stdout()
+}
+
+async fn cargo_path() -> String {
+  let home = @env.get_env_var("HOME").unwrap_or("")
+  let candidate = "\{home}/.cargo/bin/cargo"
+  if @fs.exists(candidate) { candidate } else { "cargo" }
+}
+
+async fn prepare_codex_lock(cargo : String, manifest : String, root : String) -> Unit {
+  let cwd = root
+  let check = @shell.Cmd(
+    cargo,
+    ["metadata", "--format-version", "1", "--locked", "--no-deps", "--manifest-path", manifest],
+    cwd~,
+  ).output(timeout_ms=300_000)
+  if check.exit_code() == 0 {
+    println("[online] Codex Cargo.lock is current")
+    return
+  }
+  println("[online] Codex Cargo.lock needs one standard refresh")
+  run(
+    cargo,
+    ["generate-lockfile", "--manifest-path", manifest],
+    root,
+  )
+}
+
+async fn main {
+  let system = @shell.Cmd("uname", ["-s"]).output().stdout().trim()
+  guard system == "Linux" else { fail("collect-linux-online.mbtx must run on Linux") }
+  guard @env.get_env_var("OPENAI_API_KEY") is Some(key) && key != "" else {
+    fail("OPENAI_API_KEY must be exported; the collector never writes it to evidence")
+  }
+  let root = @fs.realpath(".")
+  let relay = @env
+    .get_env_var("MBTX_RELAY_BASE_URL")
+    .unwrap_or("https://tokenadvent.com/v1")
+  let model = @env
+    .get_env_var("MBTX_MODEL")
+    .unwrap_or("gpt-5.6-terra")
+  let pairs = @env.get_env_var("MBTX_PAIRS").unwrap_or("4")
+  let base = @env
+    .args()
+    .get(1)
+    .unwrap_or("evidence/linux/codex-relay")
+  let stamp = @shell.Cmd("date", ["+%Y%m%dT%H%M%S%N"]).output().stdout().trim()
+  let output = "\{root}/\{base}/\{stamp}"
+  @fs.mkdir(output, recursive=true)
+  let cargo = cargo_path()
+  let codex_manifest = "\{root}/_build/codex-upstream/codex-rs/Cargo.toml"
+  println("[online] output=\{output}")
+  println("[online] building pinned Codex, MBTX and adapter once")
+  run("moon", ["run", "scripts/codex.mbtx", "prepare"], root)
+  prepare_codex_lock(cargo, codex_manifest, root)
+  run(
+    cargo,
+    [
+      "build",
+      "--locked",
+      "--release",
+      "--manifest-path",
+      codex_manifest,
+      "-p",
+      "codex-cli",
+      "--bin",
+      "codex",
+    ],
+    root,
+  )
+  run(
+    "moon",
+    ["run", "--release", "--build-only", "--output-json", "--target", "native", "cmd/mbtx"],
+    root,
+  )
+  run(
+    cargo,
+    ["build", "--locked", "--release", "--manifest-path", "adapter/Cargo.toml", "--bins"],
+    root,
+  )
+  let codex = "\{root}/_build/codex-upstream/codex-rs/target/release/codex"
+  let mbtx = "\{root}/_build/native/release/build/cmd/mbtx/mbtx.exe"
+  let online = "\{root}/adapter/target/release/mbtx-online"
+  let evaluator = "\{root}/adapter/target/release/mbtx-eval"
+  guard @fs.exists(codex) && @fs.exists(mbtx) && @fs.exists(online) && @fs.exists(evaluator) else {
+    fail("release artifacts were not produced")
+  }
+  println("[online] running sequential Shell/Transparent arms; relay failures remain in evidence")
+  run(
+    online,
+    [
+      "run",
+      "--codex",
+      codex,
+      "--mbtx",
+      mbtx,
+      "--output",
+      output,
+      "--model",
+      model,
+      "--relay-base-url",
+      relay,
+      "--pairs",
+      pairs,
+    ],
+    root,
+  )
+  let events = "\{output}/events.jsonl"
+  let md = capture(evaluator, ["report", "--events", events, "--format", "md"], root)
+  let json = capture(evaluator, ["report", "--events", events, "--format", "json"], root)
+  let csv = capture(evaluator, ["report", "--events", events, "--format", "csv"], root)
+  let html = capture(evaluator, ["report", "--events", events, "--format", "html"], root)
+  @fs.write_file("\{output}/report.md", md)
+  @fs.write_file("\{output}/report.json", json)
+  @fs.write_file("\{output}/report.csv", csv)
+  @fs.write_file("\{output}/report.html", html)
+  let provenance = capture("git", ["rev-parse", "HEAD"], root)
+  let system_info = capture("uname", ["-a"], root)
+  let rust = capture(cargo, ["--version"], root)
+  let moon = capture("moon", ["--version"], root)
+  let hashes = capture(
+    "sha256sum",
+    [codex, mbtx, online, evaluator, "\{root}/_build/codex-upstream/codex-rs/Cargo.lock"],
+    root,
+  )
+  @fs.write_file(
+    "\{output}/provenance.txt",
+    "implementation_sha=\{provenance.trim()}\nsystem=\{system_info.trim()}\n\{rust.trim()}\n\{moon.trim()}\n\{hashes}",
+  )
+  println("[online] reports: \{output}/report.{md,json,csv,html}")
+  println("[online] upload \{output} and inspect online-summary.md before committing")
+}

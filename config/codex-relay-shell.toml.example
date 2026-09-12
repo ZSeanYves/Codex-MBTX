@@ -1,0 +1,31 @@
+# Copy this file to $CODEX_HOME/config.toml for the default Shell arm.
+# Keep the copy outside the repository when it contains local policy changes.
+# OPENAI_API_KEY is read from the environment; it is never stored here.
+
+model_provider = "OpenrouterICU"
+model = "gpt-5.6-terra"
+review_model = "gpt-5.6-terra"
+model_reasoning_effort = "xhigh"
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+experimental_use_unified_exec_tool = true
+
+[model_providers.OpenrouterICU]
+name = "OpenRouter ICU"
+base_url = "https://tokenadvent.com/v1"
+wire_api = "responses"
+requires_openai_auth = true
+request_max_retries = 0
+stream_max_retries = 0
+
+# The relay recommendation uses network_access = "enabled". The pinned Codex
+# release represents that policy as a boolean under sandbox_workspace_write.
+[sandbox_workspace_write]
+network_access = true
+
+[features]
+goals = true
+
+# disable_response_storage and windows_wsl_setup_acknowledged are not fields in
+# the pinned rust-v0.153.4 local config schema, so --strict-config would reject
+# them. Add them only when moving to a Codex release that explicitly supports them.

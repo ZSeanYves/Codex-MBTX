@@ -13,6 +13,8 @@ struct Job {
     command: Vec<String>,
     cwd: Option<String>,
     artifact_dir: String,
+    #[serde(default)]
+    expected_exit_code: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -99,7 +101,10 @@ fn run(job: &Job, origin: Instant) {
             let signal = output.status.signal();
             #[cfg(not(unix))]
             let signal: Option<i32> = None;
-            let status = if code == Some(0) {
+            let observed_code = code.or_else(|| signal.map(|value| 128 + value));
+            let status = if job.expected_exit_code == Some(observed_code.unwrap_or(-1))
+                || (job.expected_exit_code.is_none() && code == Some(0))
+            {
                 "success"
             } else {
                 "backend_failure"
