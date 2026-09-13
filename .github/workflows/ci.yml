@@ -21,12 +21,7 @@ jobs:
         with:
           filters: |
             code:
-              - 'launcher/**'
-              - 'cmd/**'
-              - 'evaluation/**'
-              - 'adapter/**'
-              - 'codex/**'
-              - 'scripts/**'
+              - '{launcher,cmd,evaluation,adapter,codex,scripts}/**/!(*.md)'
               - 'moon.*'
               - 'rust-toolchain.toml'
               - '.github/workflows/ci.yml'
@@ -96,10 +91,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
+          cache-workspace-crates: true
           workspaces: |
             adapter
             _build/codex-upstream/codex-rs
-          key: linux-native-dev-${{ hashFiles('codex/Cargo.lock', 'codex/upstream.json', 'rust-toolchain.toml', 'adapter/Cargo.lock', 'adapter/src/fixture.rs') }}
+          key: linux-native-dev-${{ hashFiles('codex/Cargo.lock', 'codex/upstream.json', 'codex/integration.patch', 'codex/overlay/**/*.rs', 'rust-toolchain.toml', 'adapter/Cargo.lock', 'adapter/src/fixture.rs', 'adapter/src/process_identity.rs') }}
       - name: Reuse one bundle for real Codex replay and injected faults
         run: moon run scripts/verify-offline.mbtx full
       - name: Preserve offline verification artifacts

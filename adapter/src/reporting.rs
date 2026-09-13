@@ -420,7 +420,7 @@ pub fn build(root: &Path, model_path: &Path) -> io::Result<Value> {
         .count();
     let summary = json!({"intention_to_treat":{"attempted_pairs":pairs.len(),"arm_statuses":statuses},"strict_comparable_pairs":valid,
         "target_pairs":manifest["target_pairs"],"partial":manifest["target_pairs"].as_u64().is_none_or(|target|valid<(target as usize)),
-        "stop":latest_summary(root),"platform":manifest["platform"],
+        "stop":latest_summary(root),"platform":manifest["platform"],"purpose":manifest["purpose"],
         "default_shell_is_direct":arms.iter().filter(|a|a["result"]["backend"] == "shell").filter_map(|a|a["result"]["shell_modes"].as_array()).flatten().next().map(|_|arms.iter().filter(|a|a["result"]["backend"] == "shell").filter_map(|a|a["result"]["shell_modes"].as_array()).flatten().all(|v| v == "Direct")),
         "limits":["No universal lossless replacement claim from this sample.","Model compute and relay internal waiting are inseparable without server evidence.",
             "Intervals overlap; local residual and missing stages remain unexplained.","Online scenario samples do not support stable p99 estimates.",
@@ -554,7 +554,7 @@ fn startup(root: &Path, manifest: Value, model: &mut Model) -> io::Result<Value>
         .as_u64()
         .map(|n| n * 6);
     Ok(
-        json!({"schema_version":2,"manifest":manifest,"summary":{"failed_arms":failed,"complete_jsonl":complete,"formal_pairs_per_stratum":manifest["pairs_per_workload_observation"],
+        json!({"schema_version":2,"manifest":manifest,"summary":{"purpose":manifest["purpose"],"failed_arms":failed,"complete_jsonl":complete,"formal_pairs_per_stratum":manifest["pairs_per_workload_observation"],
         "strict_comparable_pairs":valid,"target_pairs":target,"partial":target.is_none_or(|n| valid<n),"intention_to_treat":{"attempted_pairs":pairs.len()},
         "limits":["Minimal observation is primary. Full trace is a separate perturbation calibration.","All arms create new processes. Warmup is not process reuse."]},"statistics":statistics,"events":rows,"pairs":pairs,"arms":arms}),
     )

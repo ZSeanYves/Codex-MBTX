@@ -11,8 +11,9 @@ const node = (tag, text) => {
 const shown = value => value == null ? 'unknown' : typeof value === 'number' ? Number(value.toPrecision(5)).toString() : String(value);
 const summary = report.summary;
 byId('totals').textContent = report.manifest.suite === 'launcher-startup'
-  ? `Platform: ${shown(report.manifest.platform)} | Failed arms: ${summary.failed_arms}\nFormal pairs per workload and observation: ${summary.formal_pairs_per_stratum}`
+  ? `Platform: ${shown(report.manifest.platform)} | Failed arms: ${summary.failed_arms}\nMeasured pairs per workload and observation: ${summary.formal_pairs_per_stratum}`
   : `Platform: ${shown(summary.platform)} | Strict pairs: ${summary.strict_comparable_pairs}/${shown(summary.target_pairs)} | ${summary.partial ? 'Partial' : 'Target reached'}\nITT arm statuses: ${pretty(summary.intention_to_treat.arm_statuses)}`;
+byId('totals').textContent += `\nRun purpose: ${shown(summary.purpose)}`;
 byId('limits').textContent = pretty(summary.limits || []);
 for (const [id, label, values] of [
   ['task', 'All scenarios', pairs.map(p => p.task_id)],

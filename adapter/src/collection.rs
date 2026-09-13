@@ -812,6 +812,11 @@ pub fn run(args: &[String]) -> io::Result<()> {
         return Err(io::Error::other("--pairs must be positive"));
     }
     let rounds = if replay_mode || per_task < 2 { 1 } else { 2 };
+    let purpose = if per_task < if replay_mode { 10 } else { 8 } || tasks.len() < 24 {
+        "validation"
+    } else {
+        "formal"
+    };
     let interval = number(args, "--min-interval-ms", 15000)?.max(6000);
     let codex = fs::canonicalize(required(args, "--codex")?)?;
     let mbtx = fs::canonicalize(required(args, "--mbtx")?)?;
@@ -869,7 +874,7 @@ pub fn run(args: &[String]) -> io::Result<()> {
         "{suite_name}-{}",
         digest(output.to_string_lossy().as_bytes())
     );
-    let manifest = json!({"schema_version":2,"experiment_id":experiment,"suite":suite_name,"target_pairs":tasks.len()*per_task,
+    let manifest = json!({"schema_version":2,"experiment_id":experiment,"suite":suite_name,"purpose":purpose,"target_pairs":tasks.len()*per_task,
         "pairs_per_task":per_task,"rounds":rounds,"seed":20260913,"tasks":tasks,
         "min_request_interval_ms":interval,"max_concurrent_requests":1,"tool_mode":tool_mode,"fault":fault,
         "direct_control":args.iter().any(|v| v == "--direct-shell"),"platform":std::env::consts::OS,

@@ -161,6 +161,7 @@ fn run(args: &[String]) -> io::Result<()> {
     write_json(
         &root.join("manifest.json"),
         &json!({"schema_version":2,"suite":"launcher-startup","experiment_id":format!("launcher-startup-{}", digest(root.to_string_lossy().as_bytes())),"platform":std::env::consts::OS,
+        "purpose":if samples<1000 {"validation"} else {"formal"},
         "pairs_per_workload_observation":samples,"warmup_pairs":warmups,"workloads":["native-noop","native-small","shell-noop"],
         "observation_modes":["minimal","full"],"primary_observation":"minimal","order":"AB/BA; observation order alternates per pair",
         "ready_transport":"inherited pipe, native u64 OS CLOCK_MONOTONIC; recorded before fixture IO",

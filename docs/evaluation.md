@@ -26,6 +26,8 @@ Each round permits 6 attempts per scenario: target 192 pairs, maximum 288.
 Task order uses seed 20260913; adjacent pairs alternate AB/BA. Failed attempts
 remain in intention-to-treat (ITT). Replacement is based on evidence completeness,
 never on a duration threshold. Short validation runs are separate directories.
+Reduced scenario/sample selections are explicitly marked `purpose: validation`
+in the frozen manifest and reports; they are not full protocol measurements.
 
 Offline replay defaults to 10 pairs per scenario. It runs the actual Codex
 executable, sandbox and launcher against a local fixed Responses/SSE server.
