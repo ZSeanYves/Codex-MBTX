@@ -98,6 +98,25 @@ test "a completed turn with sandbox denial identifies the boundary without blami
       ..
     },
   )
+  let step : Json = {
+    "tool": "exec_command",
+    "arguments": { "cmd": "./non-executable" },
+  }
+  assert_true(
+    @evaluation.evaluate({
+      "task": {
+        "steps": [step],
+        "expected_exits": [126],
+        "check": "exec_errors",
+      },
+      "actual_steps": [step],
+      "infrastructure": "none",
+      "turn_completed": true,
+      "tool_results": [{ "exit_code": 126, "sandbox_denied": true }],
+      "processes_clean": true,
+    })
+    is { "status": "success", "strict_comparable": true, .. },
+  )
 }
 
 ///|

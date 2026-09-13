@@ -545,7 +545,7 @@ index 81946e4..392c429 100644
                      }
                      Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
 diff --git a/codex-rs/core/src/unified_exec/process_manager.rs b/codex-rs/core/src/unified_exec/process_manager.rs
-index 2121857..6104faf 100644
+index 2121857..7e3ab84 100644
 --- a/codex-rs/core/src/unified_exec/process_manager.rs
 +++ b/codex-rs/core/src/unified_exec/process_manager.rs
 @@ -490,10 +490,21 @@ impl UnifiedExecProcessManager {
@@ -588,7 +588,18 @@ index 2121857..6104faf 100644
  
          let original_token_count = usize::try_from(approx_tokens_from_byte_count(
              collected_output.total_bytes(),
-@@ -1407,6 +1420,7 @@ impl UnifiedExecProcessManager {
+@@ -1361,6 +1374,10 @@ impl UnifiedExecProcessManager {
+         strip_output_env(&mut env);
+         let mut explicit_env_overrides = shell_environment_policy.r#set.clone();
+         strip_output_env(&mut explicit_env_overrides);
++        if codex_utils_pty::trace::enabled() {
++            env.insert("MBTX_TOOL_CALL_ID".into(), context.call_id.clone());
++            explicit_env_overrides.insert("MBTX_TOOL_CALL_ID".into(), context.call_id.clone());
++        }
+         let exec_server_env_config = ExecServerEnvConfig {
+             policy: exec_env_policy_from_shell_policy(shell_environment_policy),
+             local_policy_env,
+@@ -1407,6 +1424,7 @@ impl UnifiedExecProcessManager {
              .await;
          let req = UnifiedExecToolRequest {
              command: request.command.clone(),
@@ -596,7 +607,7 @@ index 2121857..6104faf 100644
              shell_type: request.shell_type,
              hook_command: request.hook_command.clone(),
              process_id: request.process_id,
-@@ -1460,7 +1474,7 @@ impl UnifiedExecProcessManager {
+@@ -1460,7 +1478,7 @@ impl UnifiedExecProcessManager {
          mut pause_state: Option<watch::Receiver<bool>>,
          mut deadline: Instant,
      ) -> HeadTailBuffer<MAX_BYTES> {
@@ -605,7 +616,7 @@ index 2121857..6104faf 100644
  
          let OutputHandles {
              output_buffer,
-@@ -1509,6 +1523,7 @@ impl UnifiedExecProcessManager {
+@@ -1509,6 +1527,7 @@ impl UnifiedExecProcessManager {
                          .get_or_insert_with(|| now + remaining.min(POST_EXIT_CLOSE_WAIT_CAP));
                      let close_wait_remaining = close_wait_deadline.saturating_duration_since(now);
                      if close_wait_remaining == Duration::ZERO {
@@ -613,7 +624,7 @@ index 2121857..6104faf 100644
                          break;
                      }
                      let notified = wait_for_output.unwrap_or_else(|| output_notify.notified());
-@@ -1518,7 +1533,10 @@ impl UnifiedExecProcessManager {
+@@ -1518,7 +1537,10 @@ impl UnifiedExecProcessManager {
                      tokio::select! {
                          _ = &mut notified => {}
                          _ = &mut closed => {}
@@ -926,7 +937,7 @@ index 1200c11..6852bb0 100644
  mod unix_io;
  #[cfg(windows)]
 diff --git a/codex-rs/utils/pty/src/pipe.rs b/codex-rs/utils/pty/src/pipe.rs
-index e189c13..abb3c4d 100644
+index e189c13..1ba5f2f 100644
 --- a/codex-rs/utils/pty/src/pipe.rs
 +++ b/codex-rs/utils/pty/src/pipe.rs
 @@ -106,19 +106,37 @@ fn kill_process(pid: u32) -> io::Result<()> {
@@ -971,29 +982,18 @@ index e189c13..abb3c4d 100644
          }
      }
  }
-@@ -189,7 +207,21 @@ async fn spawn_process_with_stdin_mode(
+@@ -189,7 +207,10 @@ async fn spawn_process_with_stdin_mode(
  
      #[cfg(windows)]
      let job = crate::win::JobObject::create().map(Arc::new);
 +    let trace_id = crate::trace::next_id();
-+    crate::trace::emit(
-+        "spawn",
-+        "begin",
-+        &format!("{{\"stream_id\":{trace_id},\"tty\":false}}"),
-+    );
++    crate::trace::spawn_begin(trace_id, false, env);
      let mut child = command.spawn()?;
-+    crate::trace::emit(
-+        "spawn",
-+        "return",
-+        &format!(
-+            "{{\"stream_id\":{trace_id},\"child_pid\":{}}}",
-+            child.id().unwrap_or(0)
-+        ),
-+    );
++    crate::trace::spawn_return(trace_id, child.id(), env);
      #[cfg(windows)]
      let windows_terminator = {
          // Accept the small race: a descendant created between spawn and
-@@ -242,13 +274,13 @@ async fn spawn_process_with_stdin_mode(
+@@ -242,13 +263,13 @@ async fn spawn_process_with_stdin_mode(
      let stdout_handle = stdout.map(|stdout| {
          let stdout_tx = stdout_tx.clone();
          tokio::spawn(async move {
@@ -1009,7 +1009,7 @@ index e189c13..abb3c4d 100644
          })
      });
      let mut reader_abort_handles = Vec::new();
-@@ -280,6 +312,19 @@ async fn spawn_process_with_stdin_mode(
+@@ -280,6 +301,19 @@ async fn spawn_process_with_stdin_mode(
      let wait_handle: JoinHandle<()> = tokio::spawn(async move {
          let code = match child.wait().await {
              Ok(status) => {
@@ -1098,7 +1098,7 @@ index 5593450..d445853 100644
                      }
                      None => {
 diff --git a/codex-rs/utils/pty/src/pty.rs b/codex-rs/utils/pty/src/pty.rs
-index 1b848b3..1bea19c 100644
+index 1b848b3..ab0b307 100644
 --- a/codex-rs/utils/pty/src/pty.rs
 +++ b/codex-rs/utils/pty/src/pty.rs
 @@ -1,6 +1,7 @@
@@ -1167,31 +1167,18 @@ index 1b848b3..1bea19c 100644
  async fn spawn_process_portable(
      program: &str,
      args: &[String],
-@@ -177,7 +186,23 @@ async fn spawn_process_portable(
+@@ -177,7 +186,10 @@ async fn spawn_process_portable(
          command_builder.env(key, value);
      }
  
 +    let trace_id = crate::trace::next_id();
-+    crate::trace::emit(
-+        "spawn",
-+        "begin",
-+        &format!("{{\"stream_id\":{trace_id},\"tty\":true}}"),
-+    );
++    crate::trace::spawn_begin(trace_id, true, env);
      let mut child = pair.slave.spawn_command(command_builder)?;
-+    crate::trace::emit(
-+        "spawn",
-+        "return",
-+        &format!(
-+            "{{\"stream_id\":{trace_id},\"child_pid\":{}}}",
-+            child
-+                .process_id()
-+                .map_or("null".into(), |pid| pid.to_string())
-+        ),
-+    );
++    crate::trace::spawn_return(trace_id, child.process_id(), env);
      #[cfg(unix)]
      // portable-pty establishes the spawned PTY child as a new session leader on
      // Unix, so PID == PGID and we can reuse the pipe backend's process-group
-@@ -193,6 +218,7 @@ async fn spawn_process_portable(
+@@ -193,6 +205,7 @@ async fn spawn_process_portable(
          stdout_tx,
          writer_rx,
          crate::unix_io::StdinCloseBehavior::SendEof,
@@ -1199,7 +1186,7 @@ index 1b848b3..1bea19c 100644
      );
      #[cfg(not(unix))]
      let (reader_handle, writer_handle) = {
-@@ -243,7 +269,17 @@ async fn spawn_process_portable(
+@@ -243,7 +256,17 @@ async fn spawn_process_portable(
      let wait_exit_code = Arc::clone(&exit_code);
      let wait_handle: JoinHandle<()> = tokio::task::spawn_blocking(move || {
          let code = match child.wait() {
@@ -1218,7 +1205,7 @@ index 1b848b3..1bea19c 100644
              Err(_) => -1,
          };
          wait_exit_status.store(true, std::sync::atomic::Ordering::SeqCst);
-@@ -318,6 +354,11 @@ async fn spawn_process_preserving_fds(
+@@ -318,6 +341,11 @@ async fn spawn_process_preserving_fds(
      let stdin = slave.try_clone()?;
      let stdout = slave.try_clone()?;
      let stderr = slave.try_clone()?;
@@ -1230,22 +1217,14 @@ index 1b848b3..1bea19c 100644
      let inherited_fds = inherited_fds.to_vec();
  
      unsafe {
-@@ -357,18 +398,25 @@ async fn spawn_process_preserving_fds(
+@@ -357,18 +385,17 @@ async fn spawn_process_preserving_fds(
              });
      }
  
 +    let trace_id = crate::trace::next_id();
-+    crate::trace::emit(
-+        "spawn",
-+        "begin",
-+        &format!("{{\"stream_id\":{trace_id},\"tty\":true}}"),
-+    );
++    crate::trace::spawn_begin(trace_id, true, env);
      let mut child = command.spawn()?;
-+    crate::trace::emit(
-+        "spawn",
-+        "return",
-+        &format!("{{\"stream_id\":{trace_id},\"child_pid\":{}}}", child.id()),
-+    );
++    crate::trace::spawn_return(trace_id, Some(child.id()), env);
      drop(slave);
      let process_group_id = child.id();
  
@@ -1261,7 +1240,7 @@ index 1b848b3..1bea19c 100644
  
      let (exit_tx, exit_rx) = oneshot::channel::<i32>();
      let exit_status = Arc::new(AtomicBool::new(false));
-@@ -377,7 +425,19 @@ async fn spawn_process_preserving_fds(
+@@ -377,7 +404,19 @@ async fn spawn_process_preserving_fds(
      let wait_exit_code = Arc::clone(&exit_code);
      let wait_handle: JoinHandle<()> = tokio::task::spawn_blocking(move || {
          let code = match child.wait() {

@@ -27,19 +27,24 @@ fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let mode = args.get(1).map(String::as_str).unwrap_or("noop");
     let evidence = env::var_os("MBTX_FIXTURE_DIR").map(PathBuf::from);
-    let context = json!({"experiment_id":env::var("MBTX_EXPERIMENT_ID").ok(),
+    let instance = format!("{}-{ready}", std::process::id());
+    let mut context = json!({"experiment_id":env::var("MBTX_EXPERIMENT_ID").ok(),
         "pair_id":env::var("MBTX_PAIR_ID").ok(),"attempt_id":env::var("MBTX_ATTEMPT_ID").ok(),
         "task_id":env::var("MBTX_TASK_ID").ok(),"backend":env::var("MBTX_BACKEND").ok(),
-        "mode":mode,"argv":args,"pid":std::process::id(),
+        "mode":mode,"argv":args,"pid":std::process::id(),"process_instance":instance,
+        "call_id":env::var("MBTX_TOOL_CALL_ID").ok(),
         "pgid":unsafe { libc::getpgrp() },"ppid":unsafe { libc::getppid() }});
+    context.as_object_mut().unwrap().extend(
+        codex_mbtx_contract::process_identity::fixture_scope()
+            .as_object()
+            .unwrap()
+            .clone(),
+    );
     let trace = evidence
         .as_ref()
         .map(|dir| -> io::Result<Trace> {
             fs::create_dir_all(dir)?;
-            Trace::create(
-                &dir.join(format!("{}.jsonl", std::process::id())),
-                context.clone(),
-            )
+            Trace::create(&dir.join(format!("{instance}.jsonl")), context.clone())
         })
         .transpose()?;
     if let Some(trace) = &trace {
@@ -50,10 +55,7 @@ fn main() -> io::Result<()> {
     receipt["cwd"] = json!(env::current_dir()?);
     receipt["stdin_tty"] = json!(unsafe { libc::isatty(0) } == 1);
     if let Some(dir) = &evidence {
-        write_json(
-            &dir.join(format!("{}.started.json", std::process::id())),
-            &receipt,
-        )?;
+        write_json(&dir.join(format!("{instance}.started.json")), &receipt)?;
     }
     let mut exit = 0;
     match mode {
@@ -146,10 +148,7 @@ fn main() -> io::Result<()> {
                 receipt["child_pid"] = json!(child.id());
             }
             if let Some(dir) = &evidence {
-                write_json(
-                    &dir.join(format!("{}.ready.json", std::process::id())),
-                    &receipt,
-                )?;
+                write_json(&dir.join(format!("{instance}.ready.json")), &receipt)?;
             }
             println!("cancel-ready");
             io::stdout().flush()?;
@@ -185,10 +184,7 @@ fn main() -> io::Result<()> {
         trace.emit("child", "return", json!({"exit_code_requested":exit}))?;
     }
     if let Some(dir) = &evidence {
-        write_json(
-            &dir.join(format!("{}.receipt.json", std::process::id())),
-            &receipt,
-        )?;
+        write_json(&dir.join(format!("{instance}.receipt.json")), &receipt)?;
     }
     if exit != 0 {
         std::process::exit(exit);

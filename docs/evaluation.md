@@ -65,7 +65,9 @@ reports remain available; relay failures never become launcher failures.
 
 Raw JSONL events record experiment/pair/attempt, request and call identifiers,
 session and PID/process-group information where observed, phase, sequence,
-monotonic time and clock domain. Missing values remain null. All streams are
+monotonic time and clock domain. Linux fixture identities include PID namespace
+and process start ticks, resolved to host PIDs before cancellation. Spawn/ready
+timing joins use the actual tool call ID. Missing values remain null. All streams are
 retained independently, with read-order events and original merged Codex output.
 Cross-stream differences are shown even if each individual stream is correct.
 
@@ -83,7 +85,9 @@ long-duration drift and unobserved descendants remain outside that claim.
 The offline `--boundaries` option adds `detached_descendant`, which intentionally
 leaves the original process group. Control signals target only the specified
 root fixture. Surviving detached descendants are a recorded lifecycle failure,
-even when the collector's subsequent containment succeeds.
+even when the collector's subsequent containment succeeds. Linux PID-namespace
+teardown can contain this descendant; that outcome is recorded separately from
+a process-group escape that remains alive on another platform.
 
 Codex and launcher use the same OS monotonic clock. Unaligned or missing times
 are not subtracted. Both arms share the observation layer and immutable fixture.

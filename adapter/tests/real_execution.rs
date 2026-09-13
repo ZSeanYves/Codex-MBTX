@@ -240,6 +240,14 @@ fn real_codex_scenarios_and_immutable_recovery() {
             report["summary"]["strict_comparable_pairs"],
             summary["target_pairs"]
         );
+        for arm in report["arms"].as_array().unwrap() {
+            if arm["result"]["task_id"] == "argv_empty_unicode" {
+                assert!(
+                    arm["metrics"]["startup_to_ready_ns"].as_u64().is_some(),
+                    "spawn-to-ready attribution must cross sandbox PID namespaces"
+                );
+            }
+        }
         for format in ["md", "json", "csv", "html", "trace"] {
             assert!(
                 !codex_mbtx_contract::reporting::render(&report, format)
@@ -247,6 +255,47 @@ fn real_codex_scenarios_and_immutable_recovery() {
                     .is_empty()
             );
         }
+        let manifest = json_file(output.join("manifest.json"));
+        let replay_output = root.join(format!("{mode}-frozen"));
+        let replay_args = [
+            "replay".to_owned(),
+            output.display().to_string(),
+            "--output".into(),
+            replay_output.display().to_string(),
+            "--pairs".into(),
+            "1".into(),
+            "--tasks".into(),
+            manifest["tasks"][0]["id"].as_str().unwrap().into(),
+        ];
+        let changed_environment = Command::new(env!("CARGO_BIN_EXE_mbtx-eval"))
+            .args(&replay_args)
+            .env("PATH", "/invalid/frozen-replay-path")
+            .output()
+            .unwrap();
+        assert!(!changed_environment.status.success());
+        assert!(
+            String::from_utf8_lossy(&changed_environment.stderr)
+                .contains("original platform and environment PATH")
+        );
+        assert!(!replay_output.join("manifest.json").exists());
+        let replayed = Command::new(env!("CARGO_BIN_EXE_mbtx-eval"))
+            .args(&replay_args)
+            .output()
+            .unwrap();
+        assert!(
+            replayed.status.success(),
+            "{}",
+            String::from_utf8_lossy(&replayed.stderr)
+        );
+        assert_eq!(
+            json_file(replay_output.join("summary.json"))["valid_pairs"],
+            1
+        );
+        assert_eq!(
+            json_file(replay_output.join("source-manifest.json")),
+            manifest
+        );
+        assert_eq!(fs::read(output.join("events.jsonl")).unwrap(), before);
     }
     fs::remove_dir_all(root).unwrap();
 }
@@ -349,6 +398,93 @@ fn launcher_escalates_ignored_term_and_reaps_child() {
     }
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+#[ignore = "requires bubblewrap user/PID namespaces; checks host identity and repeated namespace PIDs"]
+fn linux_fixture_namespaces_resolve_host_pids_and_keep_distinct_evidence() {
+    use codex_mbtx_contract::process_identity::{Resolution, resolve};
+    let root = scratch("namespace");
+    let mut seen = std::collections::BTreeSet::new();
+    for _ in 0..2 {
+        let mut child = KillOnDrop(
+            Command::new("bwrap")
+                .args([
+                    "--unshare-user",
+                    "--unshare-pid",
+                    "--new-session",
+                    "--ro-bind",
+                    "/",
+                    "/",
+                    "--bind",
+                ])
+                .arg(&root)
+                .arg(&root)
+                .args([
+                    "--proc",
+                    "/proc",
+                    "--",
+                    env!("CARGO_BIN_EXE_mbtx-fixture"),
+                    "term",
+                ])
+                .env("MBTX_FIXTURE_DIR", &root)
+                .stdout(Stdio::null())
+                .stderr(Stdio::inherit())
+                .process_group(0)
+                .spawn()
+                .unwrap(),
+        );
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let receipt = loop {
+            if let Some(entry) = fs::read_dir(&root)
+                .unwrap()
+                .filter_map(Result::ok)
+                .find(|e| {
+                    e.file_name().to_string_lossy().ends_with(".ready.json")
+                        && !seen.contains(&e.file_name())
+                })
+            {
+                seen.insert(entry.file_name());
+                break json_file(entry.path());
+            }
+            assert!(
+                Instant::now() < deadline,
+                "fixture never entered its namespace"
+            );
+            thread::sleep(Duration::from_millis(10));
+        };
+        let Resolution::Live { pid, identity } = resolve(&receipt) else {
+            panic!("host mapping missing: {receipt}");
+        };
+        assert_ne!(pid as i64, receipt["pid"].as_i64().unwrap());
+        assert_eq!(
+            codex_mbtx_contract::process_identity::identity(pid),
+            Some(identity)
+        );
+        assert_eq!(unsafe { libc::kill(pid, libc::SIGTERM) }, 0);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if child.0.try_wait().unwrap().is_some() {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "namespace child did not terminate"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert!(matches!(resolve(&receipt), Resolution::Gone));
+    }
+    assert_eq!(
+        fs::read_dir(&root)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_name().to_string_lossy().ends_with(".started.json"))
+            .count(),
+        2
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
 #[test]
 #[ignore = "requires MBTX_TEST_CODEX, MBTX_TEST_LAUNCHER and MBTX_TEST_MODEL; offline HTTP failure classification"]
 fn real_codex_external_faults_remain_reportable() {
@@ -395,19 +531,36 @@ fn real_codex_external_faults_remain_reportable() {
             String::from_utf8_lossy(&run.stderr)
         );
         let report = codex_mbtx_contract::reporting::build(&output, Path::new(&model)).unwrap();
-        assert_eq!(
-            report["summary"]["intention_to_treat"]["arm_statuses"][if fault == "detached" {
-                "backend_failure"
-            } else {
-                "relay_error"
-            }],
-            2,
-            "summary={}; evidence={}",
-            report["summary"],
-            output.display()
-        );
-        assert_eq!(report["summary"]["strict_comparable_pairs"], 0);
-        assert_eq!(report["summary"]["partial"], true);
+        if fault == "detached" {
+            // A Linux PID namespace can contain a descendant that escaped its PGID.
+            // Judge the state before fallback, rather than assuming platforms match.
+            for arm in report["arms"].as_array().unwrap() {
+                let result = &arm["result"];
+                let facts = json_file(
+                    output
+                        .join(result["artifact_dir"].as_str().unwrap())
+                        .join("facts.json"),
+                );
+                assert_eq!(result["actual_exits"], result["expected_exits"]);
+                if facts["processes_clean"] == true {
+                    assert_eq!(result["status"], "success");
+                } else {
+                    assert_eq!(facts["processes_clean"], false);
+                    assert_eq!(result["status"], "backend_failure");
+                    assert_eq!(result["failure_class"], "lifecycle_residual");
+                }
+            }
+        } else {
+            assert_eq!(
+                report["summary"]["intention_to_treat"]["arm_statuses"]["relay_error"],
+                2,
+                "summary={}; evidence={}",
+                report["summary"],
+                output.display()
+            );
+            assert_eq!(report["summary"]["strict_comparable_pairs"], 0);
+            assert_eq!(report["summary"]["partial"], true);
+        }
         for format in ["md", "html", "csv", "json", "trace"] {
             assert!(
                 !codex_mbtx_contract::reporting::render(&report, format)

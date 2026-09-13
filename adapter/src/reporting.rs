@@ -24,6 +24,8 @@ fn span(rows: &[Value], phase: &str, start: &str, end: &str) -> Vec<(u64, u64)> 
         };
         let key = (
             row["pid"].to_string(),
+            row["pid_namespace"].to_string(),
+            row["process_instance"].to_string(),
             row["request_id"].to_string(),
             row["stream_id"].to_string(),
             row["call_id"].to_string(),
@@ -83,18 +85,15 @@ fn metrics(rows: &[Value], result: &Value) -> Value {
                 && row["pid"] == begin["pid"]
                 && row["stream_id"] == begin["stream_id"]
         });
-        let Some(returned) = returned else {
+        if returned.is_none() {
             continue;
-        };
-        let Some(child) = returned["child_pid"].as_u64() else {
+        }
+        let Some(call_id) = begin["call_id"].as_str() else {
             continue;
         };
         let ready = rows
             .iter()
-            .filter(|row| {
-                event(row, "child", "ready")
-                    && (row["pid"].as_u64() == Some(child) || row["pgid"].as_u64() == Some(child))
-            })
+            .filter(|row| event(row, "child", "ready") && row["call_id"] == call_id)
             .filter_map(ns)
             .min();
         if let Some((start, end)) = ns(begin).zip(ready).filter(|(a, b)| b >= a) {
@@ -622,8 +621,26 @@ pub fn render(report: &Value, format: &str) -> io::Result<String> {
             Ok(out)
         }
         "trace" => {
-            let events=report["arms"].as_array().unwrap().iter().flat_map(|a|a["trace"].as_array().into_iter().flatten())
-                .filter_map(|r|ns(r).map(|t|json!({"name":r["event"],"cat":r["phase"],"ph":"i","s":"t","ts":t as f64/1000.0,"pid":r["pid"],"tid":r["attempt_id"],"args":r}))).collect::<Vec<_>>();
+            let mut events = Vec::new();
+            let mut processes = BTreeMap::new();
+            for (thread, arm) in report["arms"].as_array().unwrap().iter().enumerate() {
+                for row in arm["trace"].as_array().into_iter().flatten() {
+                    let Some(time) = ns(row) else {
+                        continue;
+                    };
+                    let key = json!([row["pid_namespace"], row["pid"], row["process_instance"]])
+                        .to_string();
+                    let next = processes.len() + 1;
+                    let pid = *processes.entry(key.clone()).or_insert_with(|| {
+                        events.push(json!({"ph":"M","name":"process_name","pid":next,"tid":0,"args":{"name":key}}));
+                        next
+                    });
+                    events.push(
+                        json!({"name":row["event"],"cat":row["phase"],"ph":"i","s":"t",
+                        "ts":time as f64/1000.0,"pid":pid,"tid":thread,"args":row}),
+                    );
+                }
+            }
             Ok(serde_json::to_string(
                 &json!({"traceEvents":events,"displayTimeUnit":"ns"}),
             )?)
@@ -685,5 +702,22 @@ mod tests {
         let m = metrics(&[], &json!({}));
         assert!(m["external_response_ns"].is_null());
         assert!(m["unexplained_ns"].is_null());
+    }
+    #[test]
+    fn startup_attribution_uses_the_call_across_pid_namespaces() {
+        let mut rows = vec![
+            json!({"phase":"spawn","event":"begin","pid":100,"stream_id":7,"call_id":"a","monotonic_ns":10}),
+            json!({"phase":"spawn","event":"return","pid":100,"child_pid":200,"stream_id":7,"call_id":"a","monotonic_ns":12}),
+            json!({"phase":"child","event":"ready","pid":2,"pid_namespace":"pid:[1]","call_id":"old","monotonic_ns":13}),
+            json!({"phase":"child","event":"ready","pid":2,"pid_namespace":"pid:[2]","call_id":"a","monotonic_ns":15}),
+        ];
+        for row in &mut rows {
+            row["clock_domain"] = json!("os-monotonic");
+        }
+        let result = metrics(&rows, &json!({}));
+        assert_eq!(result["startup_to_ready_ns"], 5);
+        assert_eq!(result["spawn_return_ns"], 2);
+        rows[0]["call_id"] = Value::Null;
+        assert!(metrics(&rows, &json!({}))["startup_to_ready_ns"].is_null());
     }
 }

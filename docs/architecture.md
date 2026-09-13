@@ -30,6 +30,13 @@ the parent's observation, not a kernel exit timestamp. Residual fixture processe
 are recorded before fallback cleanup; detached or unobserved descendants are not
 assumed reaped. Cleanup never targets an entire UID.
 
+Linux bubblewrap gives each invocation a PID namespace. A fixture records its
+namespace and kernel process start time; the collector resolves these to a host
+PID before signalling. Missing identity evidence stays unknown. Receipt filenames
+also include the observed start timestamp, so namespace PID reuse cannot overwrite
+a previous invocation. Tool call IDs connect spawn to fixture ready across the
+sandbox boundary; namespace-local PIDs are not used as host timing joins.
+
 Rust observes OS and Codex boundaries; the report renderer consumes immutable
 JSONL events. Missing values remain null or unknown. Relay, provider, harness,
 timeout, censored, and backend failures remain distinct.

@@ -34,6 +34,29 @@ pub fn next_id() -> u64 {
     SEQUENCE.fetch_add(1, Ordering::Relaxed)
 }
 
+pub fn spawn_begin(id: u64, tty: bool, env: &std::collections::HashMap<String, String>) {
+    let call_id = env
+        .get("MBTX_TOOL_CALL_ID")
+        .map_or("null".into(), |id| escape_json(id));
+    emit(
+        "spawn",
+        "begin",
+        &format!("{{\"stream_id\":{id},\"tty\":{tty},\"call_id\":{call_id}}}"),
+    );
+}
+
+pub fn spawn_return(id: u64, pid: Option<u32>, env: &std::collections::HashMap<String, String>) {
+    let call_id = env
+        .get("MBTX_TOOL_CALL_ID")
+        .map_or("null".into(), |id| escape_json(id));
+    let pid = pid.map_or("null".into(), |pid| pid.to_string());
+    emit(
+        "spawn",
+        "return",
+        &format!("{{\"stream_id\":{id},\"child_pid\":{pid},\"call_id\":{call_id}}}"),
+    );
+}
+
 pub struct Span {
     phase: &'static str,
     detail: String,

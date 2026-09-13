@@ -1,6 +1,7 @@
 use crate::codex_evidence::{classify_external_failure, parse_codex_output};
 use crate::evidence::{Trace, digest, lines, now_ns, read_json, seal, write_json, write_new};
 use crate::model::Model;
+use crate::process_identity::{Resolution, identity, resolve};
 use crate::replay::Replay;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -147,29 +148,6 @@ fn trace_rows(directory: &Path) -> io::Result<Vec<Value>> {
     }
     rows.sort_by_key(|row| row["monotonic_ns"].as_u64());
     Ok(rows)
-}
-
-// A PID alone is not sufficient authorization for cleanup after it has exited.
-fn identity(pid: i32) -> Option<String> {
-    let result = Command::new("ps")
-        .args([
-            "-p",
-            &pid.to_string(),
-            "-o",
-            "lstart=",
-            "-o",
-            "stat=",
-            "-o",
-            "pgid=",
-        ])
-        .output()
-        .ok()?;
-    let text = String::from_utf8(result.stdout).ok()?;
-    let fields: Vec<_> = text.split_whitespace().collect();
-    if fields.len() < 7 {
-        return None;
-    }
-    Some(fields[..5].join(" ") + " " + fields[6])
 }
 
 fn signal_owned(pid: i32, expected: &str, signal: i32, trace: &Trace) -> io::Result<bool> {
@@ -409,6 +387,8 @@ impl Engine {
         let mut identities = BTreeMap::<i32, String>::new();
         let mut controlled = BTreeSet::new();
         let mut inspected = BTreeSet::new();
+        let mut fixture_pids = BTreeMap::new();
+        let mut unresolved = BTreeMap::new();
         let mut kill_due = Vec::<(i32, String, Instant)>::new();
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
@@ -460,14 +440,33 @@ impl Engine {
                         let Ok(receipt) = read_json(&path) else {
                             continue;
                         };
-                        let Some(pid) = receipt["pid"].as_i64().map(|v| v as i32) else {
+                        let Some(instance) = receipt["process_instance"].as_str() else {
                             continue;
                         };
-                        if inspected.insert(pid)
-                            && let Some(current) = identity(pid)
-                        {
-                            identities.entry(pid).or_insert(current);
+                        if !inspected.contains(instance) {
+                            match resolve(&receipt) {
+                                Resolution::Live { pid, identity } => {
+                                    trace.emit("process_identity", "resolved", json!({
+                                        "process_instance":instance,"namespace_pid":receipt["pid"],
+                                        "pid_namespace":receipt["pid_namespace"],"host_pid":pid,
+                                        "host_pgid":unsafe {libc::getpgid(pid)},"identity":identity}))?;
+                                    identities.insert(pid, identity);
+                                    fixture_pids.insert(instance.to_owned(), pid);
+                                    inspected.insert(instance.to_owned());
+                                    unresolved.remove(instance);
+                                }
+                                Resolution::Gone => {
+                                    inspected.insert(instance.to_owned());
+                                    unresolved.remove(instance);
+                                }
+                                Resolution::Unknown => {
+                                    unresolved.insert(instance.to_owned(), receipt.clone());
+                                }
+                            }
                         }
+                        let Some(&pid) = fixture_pids.get(instance) else {
+                            continue;
+                        };
                         let control = task["control"].as_str().unwrap_or("none");
                         if control == "none"
                             || !path.to_string_lossy().ends_with(".ready.json")
@@ -555,6 +554,16 @@ impl Engine {
         }
         let end = wait_ns.zip(io_end).map(|(wait, io)| wait.max(io));
         let mut rows = trace_rows(&observation)?;
+        let mut unidentified_live = Vec::new();
+        for receipt in unresolved.values() {
+            match resolve(receipt) {
+                Resolution::Live { pid, identity } => {
+                    identities.insert(pid, identity);
+                }
+                Resolution::Gone => {}
+                Resolution::Unknown => unidentified_live.push(receipt.clone()),
+            }
+        }
         let mut residual = Vec::new();
         for (pid, proof) in &identities {
             if identity(*pid).as_deref() == Some(proof) {
@@ -685,10 +694,6 @@ impl Engine {
                 write_new(&relay_copy.join(name), &fs::read(entry.path())?)?;
             }
         }
-        let unidentified_live: Vec<_> = inspected
-            .iter()
-            .filter(|pid| !identities.contains_key(pid) && identity(**pid).is_some())
-            .collect();
         let processes_clean = if !residual.is_empty() {
             Some(false)
         } else if unidentified_live.is_empty() {
@@ -811,6 +816,13 @@ pub fn run(args: &[String]) -> io::Result<()> {
     let codex = fs::canonicalize(required(args, "--codex")?)?;
     let mbtx = fs::canonicalize(required(args, "--mbtx")?)?;
     if let Some(prior) = &frozen {
+        if prior["platform"] != std::env::consts::OS
+            || prior["path"] != json!(std::env::var("PATH").ok())
+        {
+            return Err(io::Error::other(
+                "frozen replay requires the original platform and environment PATH",
+            ));
+        }
         if prior["binaries"]["fixture"]["path"] != fixture.to_string_lossy().as_ref() {
             return Err(io::Error::other(
                 "frozen argv requires the original fixture path; no command rewriting is performed",
