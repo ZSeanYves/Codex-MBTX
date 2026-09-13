@@ -1,4 +1,4 @@
-name: Offline checks
+name: Execution checks
 
 on:
   push:
@@ -7,59 +7,123 @@ on:
 
 permissions:
   contents: read
-
-env:
-  MOONBIT_INSTALL_VERSION: "0.10.12+1634b282e"
+  pull-requests: read
 
 jobs:
-  checks:
+  changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    outputs:
+      code: ${{ steps.paths.outputs.code }}
     steps:
       - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: paths
+        with:
+          filters: |
+            code:
+              - 'launcher/**'
+              - 'cmd/**'
+              - 'evaluation/**'
+              - 'adapter/**'
+              - 'codex/**'
+              - 'scripts/**'
+              - 'moon.*'
+              - 'rust-toolchain.toml'
+              - '.github/workflows/ci.yml'
+
+  fast:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MBTX_BUILD_PROFILE: dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Resolve dependencies
-        run: moon update
-      - name: Build standalone automation entry points
-        env:
-          MOON_DEP_CACHE: ${{ runner.temp }}/mbtx-script-deps
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: adapter
+      - name: Check MoonBit and generated interfaces
         run: |
-          moon run --build-only scripts/install-linux.mbtx
-          moon run --build-only scripts/codex.mbtx
-          moon run --build-only scripts/prepare-codex-v8.mbtx
-          moon run --build-only scripts/diagnose-linux-online.mbtx
-          moon run --build-only scripts/collect-linux.mbtx
-          moon run --build-only scripts/collect-macos.mbtx
-          moon run --build-only scripts/collect-linux-online.mbtx
-      - name: MoonBit checks and tests
-        run: |
-          moon check --deny-warn --target native
+          moon update
+          moon check --target native --deny-warn
           moon test --target native
           moon info
           moon fmt
           git diff --exit-code
-      - name: Launcher smoke test
+      - name: Compile automation without running installers or relay calls
         run: |
-          bin=$(moon run --build-only --output-json --target native cmd/mbtx | sed -n 's/.*"\(.*mbtx.exe\)".*/\1/p')
-          test "$($bin exec -- printf '%s' literal)" = literal
-          set +e
-          $bin exec -- sh -c 'kill -TERM "$$"'
-          code=$?
-          test "$code" -eq 143
-      - name: Observer and report checks
-        run: cargo test --locked --manifest-path adapter/Cargo.toml
-      - name: Codex preparation regression checks
+          for entry in scripts/*.mbtx; do moon run --build-only "$entry"; done
+      - name: Rust format, launcher contracts and parser tests
+        run: |
+          cargo fmt --manifest-path adapter/Cargo.toml --check
+          moon run scripts/verify-offline.mbtx fast
+      - name: Codex preparation regression
         run: moon run scripts/check-codex-preparation.mbtx
-      - name: Compile pinned Codex network dependencies
-        if: github.event_name != 'pull_request'
-        env:
-          CARGO_PROFILE_DEV_DEBUG: "0"
+
+  integration:
+    needs: [changes, fast]
+    if: github.event_name != 'pull_request' && (needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      MBTX_BUILD_PROFILE: dev
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install build dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev cmake clang bubblewrap
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Prepare pinned upstream
+        run: |
+          moon update
           moon run scripts/codex.mbtx prepare
-          cargo check --locked --manifest-path _build/codex-upstream/codex-rs/Cargo.toml -p codex-network-proxy
-          cmp codex/Cargo.lock _build/codex-upstream/codex-rs/Cargo.lock
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            adapter
+            _build/codex-upstream/codex-rs
+          key: linux-native-dev-${{ hashFiles('codex/Cargo.lock', 'codex/upstream.json', 'rust-toolchain.toml', 'adapter/Cargo.lock', 'adapter/src/fixture.rs') }}
+      - name: Reuse one bundle for real Codex replay and injected faults
+        run: moon run scripts/verify-offline.mbtx full
+      - name: Preserve offline verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-offline-verification
+          path: |
+            /tmp/mbtx-replay-*
+            /tmp/mbtx-faults-*
+            _build/bundles/*/bundle.json
+            _build/bundles/*/inputs.txt
+            _build/bundles/*/binaries.sha256
+          if-no-files-found: ignore
+
+  required:
+    name: Required checks
+    if: always()
+    needs: [changes, fast, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate required status
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          FAST: ${{ needs.fast.result }}
+          INTEGRATION: ${{ needs.integration.result }}
+        run: |
+          test "$CHANGES" = success
+          test "$FAST" = success -o "$FAST" = skipped
+          test "$INTEGRATION" = success -o "$INTEGRATION" = skipped

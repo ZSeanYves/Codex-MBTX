@@ -1,84 +1,86 @@
-# Codes-MBTX
+# Codex-MBTX
 
-Codes-MBTX evaluates `mbtx exec -- COMMAND...` as a transparent launcher for
-Codex's existing `exec_command` backend. MBTX receives a resolved argv, starts
-the child process with the requested streams and working directory, waits for
-it, and returns the same observable exit result. It does not parse shell
-syntax, compile a MoonBit script, or expose a second model tool.
+MBTX is a transparent process launcher for Codex: `mbtx exec -- COMMAND...`.
+Codex still owns command resolution, approval and sandbox policy. MBTX launches
+the resolved child, forwards cancellation, waits for its exit, and preserves its
+observable exit status. It is neither a shell language parser nor a script runtime.
+The default Codex backend remains Shell.
 
-## Launcher
+## Build and Check
 
-```bash
-moon run --build-only --output-json --target native cmd/mbtx
-_build/native/debug/build/cmd/mbtx/mbtx.exe exec -- printf '%s\n' 'literal $(echo text)'
-```
-
-The only supported command form is `mbtx exec -- COMMAND [ARGUMENTS...]`.
-Ordinary exit codes are preserved and signal exits are re-raised. Transparent
-mode keeps the original command for Codex approval, policy, sandbox, and
-telemetry, then adds `exec --` only at the final local process launch.
-
-## Codex integration
-
-Configure the trusted launcher from a user, system, managed, or runtime layer:
-
-```toml
-mbtx_backend = "transparent"
-mbtx_command = ["/absolute/path/to/mbtx"]
-```
-
-Project-local configuration cannot select the launcher. Remote environments are
-rejected explicitly. The default shell backend remains unchanged.
-
-## Evidence collection
-
-`adapter` contains `mbtx-observe` for immutable job descriptions and JSONL
-lifecycle events, and `mbtx-eval` for log, Markdown, JSON, CSV, and self-contained
-HTML output. Events retain pair, attempt, task, backend, monotonic clock, exit,
-signal, output-size, status, and failure class fields.
-
-The first collection target is four valid pairs for each of eight functional
-classes: literal argv; stdin and UTF-8; cwd and environment; large output;
-non-zero exit; background cleanup; timeout and signals; repeated execution and
-recovery. Failed attempts remain in the report and collection uses at most 48
-pair attempts (96 arms). Relay and provider failures are reported separately from backend
-failures. The report includes default Shell versus MBTX and Direct Shell versus
-MBTX because transparent mode disables the Shell zsh-fork optimization.
-
-The repository keeps platform evidence under `evidence/`:
-
-- `evidence/macos/launcher/` for the macOS local launcher comparison;
-- `evidence/linux/launcher/` for the Linux local launcher comparison;
-- `evidence/linux/codex-relay/` for real Linux Codex plus relay runs.
-
-For a real Linux run, export `OPENAI_API_KEY` and optionally
-`MBTX_RELAY_BASE_URL`, then run:
+Install the latest MoonBit CLI and stable Rust, then:
 
 ```bash
 moon update
-moon run scripts/install-linux.mbtx
-. "$HOME/.cargo/env"
+moon check --target native --deny-warn
+moon test --target native
+cargo test --locked --manifest-path adapter/Cargo.toml
+moon run scripts/build-evaluation.mbtx launcher
+```
+
+The build command prints a verified bundle path. A matching bundle is reused
+without starting a compiler. Immutable fixture, launcher, evaluator and, for the
+`codex` bundle, Codex, Code Mode host and Responses proxy are built once. Source,
+toolchain, dependency locks, platform and profile contribute to the cache key.
+
+## Collect Evidence
+
+```bash
+# macOS local launcher comparison, no API:
+moon run scripts/collect-macos.mbtx
+
+# Linux local launcher comparison, no API:
+moon run scripts/collect-linux.mbtx
+
+# Real Codex with fixed local Responses, no API credentials:
+moon run scripts/collect.mbtx codex-replay
+
+# Linux only, after configuring OPENAI_API_KEY:
 moon run scripts/collect-linux-online.mbtx
 ```
 
-The online script builds the pinned Codex, MBTX, and adapter once, creates
-separate run-local Shell and Transparent configs, executes the sequential AB/BA
-collection, and writes raw evidence plus Markdown, JSON, CSV, and HTML reports.
-It never writes `OPENAI_API_KEY` to the repository or evidence directory.
-Use `config/` for the checked-in configuration templates and
-`config/credentials.env.example` for the expected environment variable names.
-The complete Linux procedure, including upload and macOS pull paths, is in
-[`docs/linux-online.md`](docs/linux-online.md).
+See [Linux setup and collection](docs/linux-online.md) for installation,
+credentials, short validation, resume, rate limits and uploading evidence.
+Online requests share one proxy: concurrency one, default 15 seconds between
+request starts, with `Retry-After` cooldown after 429. Requests from other
+applications using the same account are outside this gate.
 
-## Development
+The [evaluation protocol](docs/evaluation.md) defines 24 scenarios, 192 target
+online pairs in two rounds, at most 288 attempted pairs, fixed offline replay,
+and a separate 1,000-pair startup experiment for each workload and observation
+mode. Failed attempts remain in intention-to-treat results. Short validation is
+stored separately from formal samples.
 
 ```bash
-moon check --target native
-moon test --target native
-moon info
-moon fmt
-cargo check --locked --manifest-path adapter/Cargo.toml
+<BUNDLE>/mbtx-eval log <RUN> --follow
+<BUNDLE>/mbtx-eval report <RUN> --format all
+<BUNDLE>/mbtx-eval replay <RUN> --output <NEW-RUN>
 ```
 
-Historical reports and the removed script/job/session runtime are preserved
-under `docs/archive/legacy/` with `docs/archive/SHA256SUMS`.
+Reports include Markdown, JSON, CSV, offline HTML and standard trace JSON. They
+separate external request time, rate waiting, Codex processing, launcher startup,
+child execution and artifact writes. Missing measurements remain unknown. The
+HTML links each pair to raw evidence and shows both timelines and first observed
+differences. A startup advantage is a hypothesis until the paired measurements
+and uncertainty interval support it; previous end-to-end results do not establish
+a launcher startup benefit.
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `launcher/`, `cmd/mbtx/` | Native launcher and command entry |
+| `codex/` | Pinned upstream revision, dependency lock, integration patch and overlays |
+| `evaluation/` | Shared MoonBit scenarios, oracles, classification and statistics |
+| `cmd/evaluation-model/` | Prebuilt JSONL analysis worker |
+| `adapter/` | Real OS, Codex and HTTP collection, CLI and report rendering |
+| `scripts/` | Thin MoonBit automation and bundle preparation |
+| `evidence/{macos,linux}/launcher/` | Platform-specific startup evidence |
+| `evidence/{macos,linux}/codex-replay/` | Fixed-response Codex evidence |
+| `evidence/linux/codex-relay/` | Linux real relay evidence |
+| `docs/archive/` | Unmodified historical experiments and migration index |
+
+The [architecture](docs/architecture.md) and [Codex integration](codex/README.md)
+describe the ownership and configuration boundaries. Linux and macOS artifacts
+are independent; results do not establish universal lossless replacement or
+justify changing the default backend without reviewing the collected evidence.

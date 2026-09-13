@@ -4134,6 +4134,7 @@ dependencies = [
  "clap",
  "codex-process-hardening",
  "ctor 0.6.3",
+ "httpdate",
  "libc",
  "pretty_assertions",
  "reqwest 0.12.28",

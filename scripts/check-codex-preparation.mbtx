@@ -15,6 +15,13 @@ async fn prepare(script : String, cwd : String) -> Unit {
   @shell.Cmd("moon", ["run", script, "prepare"], cwd~).run()
 }
 
+async fn write_patch(upstream : String, fixture : String, content : String) -> Unit {
+  @fs.write_file("\{upstream}/tracked.txt", content)
+  let patch = git(["diff", "--", "tracked.txt"], upstream)
+  @fs.write_file("\{fixture}/codex/integration.patch", patch + "\n")
+  @fs.write_file("\{upstream}/tracked.txt", "original\n")
+}
+
 async fn check(root : String, fixture : String) -> Unit {
   let upstream = "\{fixture}/upstream"
   @fs.mkdir("\{upstream}/codex-rs", recursive=true)
@@ -37,8 +44,24 @@ async fn check(root : String, fixture : String) -> Unit {
   }
   @fs.write_file("\{fixture}/codex/upstream.json", pin.stringify())
   let script = "\{root}/scripts/codex.mbtx"
+  write_patch(upstream, fixture, "first patch\n")
   prepare(script, fixture)
   let checkout = "\{fixture}/checkout"
+  assert_eq(@fs.read_file("\{checkout}/tracked.txt").text(), "first patch\n")
+  write_patch(upstream, fixture, "second patch\n")
+  prepare(script, fixture)
+  assert_eq(@fs.read_file("\{checkout}/tracked.txt").text(), "second patch\n")
+  // Reproduce an older checkout without the applied-patch marker.
+  let _ = git(["init", "--quiet"], fixture)
+  let _ = git(["add", "codex/integration.patch"], fixture)
+  let _ = git(["-c", "user.name=MBTX test", "-c", "user.email=mbtx@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "previous patch"], fixture)
+  @fs.remove("\{checkout}/.mbtx-applied.patch")
+  @fs.mkdir("\{checkout}/codex-rs/target")
+  @fs.write_file("\{checkout}/codex-rs/target/cache-sentinel", "retain cache")
+  write_patch(upstream, fixture, "third patch\n")
+  prepare(script, fixture)
+  assert_eq(@fs.read_file("\{checkout}/tracked.txt").text(), "third patch\n")
+  assert_eq(@fs.read_file("\{checkout}/codex-rs/target/cache-sentinel").text(), "retain cache")
   let lock = "\{checkout}/codex-rs/Cargo.lock"
   assert_eq(@fs.read_file(lock).binary(), pinned)
   let initial_time = @fs.mtime(lock)
@@ -74,5 +97,5 @@ async fn main {
   errdefer println("Preparation test fixture retained at \{fixture}")
   check(root, fixture)
   @fs.rmdir(fixture, recursive=true)
-  println("Codex preparation: clean checkout, lock recovery, reuse and capture passed")
+  println("Codex preparation: patch migration, cache reuse, lock recovery and capture passed")
 }

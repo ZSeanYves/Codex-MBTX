@@ -62,6 +62,47 @@ async fn install_lockfile(root : String, checkout : String) -> Unit {
   println("[codex] installed repository-pinned Cargo.lock")
 }
 
+async fn install_patch(root : String, checkout : String, patch : String) -> Unit {
+  let marker = "\{checkout}/.mbtx-applied.patch"
+  let check = @shell.Cmd("git", ["apply", "--check", patch], cwd=checkout).output()
+  if check.exit_code() == 0 {
+    command(["git", "apply", patch], checkout)
+  } else if @shell.Cmd("git", ["apply", "--reverse", "--check", patch], cwd=checkout).output().exit_code() != 0 {
+    let temporary = @fs.tmpdir(prefix="mbtx-patch-migration")
+    defer @fs.rmdir(temporary, recursive=true)
+    let candidates = []
+    if @fs.exists(marker) { candidates.push(@fs.read_file(marker).text()) }
+    // Older checkouts did not store a marker. Only known repository patches
+    // are eligible for reversal; arbitrary local edits are never reset.
+    let history = @shell.Cmd("git", ["log", "--format=%H", "--", "codex/integration.patch"], cwd=root).output()
+    if history.exit_code() == 0 {
+      for revision in history.stdout().split("\n") {
+        if revision == "" { continue }
+        let previous = @shell.Cmd("git", ["show", "\{revision}:codex/integration.patch"], cwd=root).output()
+        if previous.exit_code() == 0 { candidates.push(previous.stdout()) }
+      }
+    }
+    let mut migrated = false
+    let previous = "\{temporary}/previous.patch"
+    for content in candidates {
+      @fs.write_file(previous, content)
+      if @shell.Cmd("git", ["apply", "--reverse", "--check", previous], cwd=checkout).output().exit_code() != 0 { continue }
+      command(["git", "apply", "--reverse", previous], checkout)
+      let valid = @shell.Cmd("git", ["apply", "--check", patch], cwd=checkout).output()
+      if valid.exit_code() != 0 {
+        command(["git", "apply", previous], checkout)
+        fail("Codex patch conflicts with local edits; previous patch restored")
+      }
+      command(["git", "apply", patch], checkout)
+      migrated = true
+      println("[codex] upgraded a verified previous patch; build cache retained")
+      break
+    }
+    guard migrated else { fail("Codex patch conflicts with local edits; checkout preserved") }
+  }
+  copy_if_changed(patch, marker)
+}
+
 async fn main {
   let root = @fs.realpath(".")
   let pin = @json.parse(@fs.read_file("codex/upstream.json").text())
@@ -110,13 +151,7 @@ async fn main {
   if mode != "prepare" { fail("usage: moon run scripts/codex.mbtx [prepare|capture]") }
   let patch = "\{root}/codex/integration.patch"
   if @fs.exists(patch) {
-    let check = @shell.Cmd("git", ["apply", "--check", patch], cwd=checkout).output()
-    if check.exit_code() == 0 {
-      command(["git", "apply", patch], checkout)
-    } else {
-      let applied = @shell.Cmd("git", ["apply", "--reverse", "--check", patch], cwd=checkout).output()
-      if applied.exit_code() != 0 { fail("Codex patch conflicts with local edits") }
-    }
+    install_patch(root, checkout, patch)
   }
   copy_overlay_to_checkout(root, checkout)
   install_lockfile(root, checkout)

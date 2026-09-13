@@ -1,0 +1,90 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/async@0.21.3/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn capture(program : String, args : Array[String], cwd : String) -> String {
+  let result = @shell.Cmd(program, args, cwd~).output(timeout_ms=3_600_000)
+  if result.exit_code() != 0 { fail("\{program} failed:\n\{result.stdout()}\n\{result.stderr()}") }
+  result.stdout().trim().to_owned()
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  let mode = @env.args().get(1).unwrap_or("launcher")
+  guard mode == "launcher" || mode == "codex" else { fail("build-evaluation.mbtx [launcher|codex]") }
+  let system = capture("uname", ["-s"], root)
+  let profile = @env.get_env_var("MBTX_BUILD_PROFILE").unwrap_or("release")
+  guard profile == "release" || profile == "dev" else { fail("MBTX_BUILD_PROFILE must be release or dev") }
+  guard @env.get_env_var("CARGO_BUILD_TARGET").unwrap_or("") == "" else { fail("evaluation bundles execute on the build host; unset CARGO_BUILD_TARGET") }
+  let sha_program = if system == "Darwin" { "shasum" } else { "sha256sum" }
+  let sha_args = if system == "Darwin" { ["-a", "256"] } else { [] }
+  let listed = capture("git", ["ls-files", "--cached", "--others", "--exclude-standard", "launcher", "cmd/mbtx", "cmd/evaluation-model", "evaluation", "adapter/src", "adapter/Cargo.toml", "adapter/Cargo.lock", "codex", "moon.mod", "moon.mod.json", "moon.lock", "moon.lock.json", "rust-toolchain.toml", "scripts/build-evaluation.mbtx", "scripts/codex.mbtx", "scripts/prepare-codex-v8.mbtx", ":(exclude)**/*.md"], root)
+  let files : Array[String] = []
+  for line in listed.split("\n") {
+    let path = line.to_owned()
+    if path != "" && @fs.exists(path) { files.push(path) }
+  }
+  files.sort()
+  let flags = ["RUSTFLAGS", "CFLAGS", "CXXFLAGS", "CARGO_BUILD_TARGET", "CARGO_PROFILE_DEV_DEBUG", "CARGO_PROFILE_RELEASE_DEBUG", "CARGO_PROFILE_RELEASE_OPT_LEVEL", "CARGO_PROFILE_RELEASE_LTO", "CARGO_INCREMENTAL"].map(key => key + "=" + @env.get_env_var(key).unwrap_or("")).join("\n")
+  let inputs = capture(sha_program, sha_args + files, root) + "\n" + capture("rustc", ["-vV"], root) + "\n" + capture("moon", ["--version"], root) + "\n" + capture("moonc", ["-v"], root) + "\nmode=\{mode}\nprofile=\{profile}\nplatform=\{system}\n\{flags}\n"
+  if !@fs.exists("\{root}/_build/bundles") { @fs.mkdir("\{root}/_build/bundles", recursive=true) }
+  let key_file = "\{root}/_build/bundles/key-\{@async.now()}.txt"
+  @fs.write_file(key_file, inputs, create_mode=@fs.CreateMode::CreateNew)
+  let key = capture(sha_program, sha_args + [key_file], root).split(" ").to_array()[0].to_owned()
+  @fs.remove(key_file)
+  let bundle = "\{root}/_build/bundles/\{key}"
+  if @fs.exists("\{bundle}/bundle.json") {
+    let check = @shell.Cmd(sha_program, sha_args + ["--check", "binaries.sha256"], cwd=bundle).output()
+    if check.exit_code() == 0 {
+      @stdio.stderr.write("[bundle] verified cache hit \{key}; no compiler started\n")
+      println(@fs.read_file("\{bundle}/bundle.json").text())
+      return
+    }
+    fail("bundle hash mismatch; remove only the damaged generated bundle before rebuilding: \{bundle}")
+  }
+  let started = @async.now()
+  @stdio.stderr.write("[bundle] building \{mode} / \{profile}\n")
+  let cargo_profile = if profile == "release" { ["--release"] } else { [] }
+  let target_profile = if profile == "release" { "release" } else { "debug" }
+  if mode == "codex" {
+    let _ = capture("moon", ["run", "scripts/codex.mbtx", "prepare"], root)
+    let v8 = @json.parse(capture("moon", ["run", "scripts/prepare-codex-v8.mbtx"], root))
+    guard v8 is {"archive": String(archive), "binding": String(binding), ..} else { fail("invalid V8 build inputs") }
+    let _ = capture("env", ["RUSTY_V8_ARCHIVE=\{archive}", "RUSTY_V8_SRC_BINDING_PATH=\{binding}", "cargo", "build", "--locked"] + cargo_profile + ["--manifest-path", "_build/codex-upstream/codex-rs/Cargo.toml", "--target-dir", "_build/codex-upstream/codex-rs/target", "-p", "codex-exec", "--bin", "codex-exec", "-p", "codex-code-mode-host", "--bin", "codex-code-mode-host", "-p", "codex-responses-api-proxy", "--bin", "codex-responses-api-proxy"], root)
+  }
+  let _ = capture("moon", ["run", "--release", "--build-only", "--target", "native", "cmd/mbtx"], root)
+  // The analysis worker is outside every measured interval.
+  let _ = capture("moon", ["run", "--build-only", "--target", "native", "cmd/evaluation-model"], root)
+  let _ = capture("cargo", ["build", "--locked", "--manifest-path", "adapter/Cargo.toml", "--target-dir", "adapter/target", "--bins"] + cargo_profile, root)
+  let temporary = "\{bundle}.building-\{@async.now()}"
+  @fs.mkdir(temporary)
+  let copies = [
+    ("_build/native/release/build/cmd/mbtx/mbtx.exe", "mbtx"),
+    ("_build/native/debug/build/cmd/evaluation-model/evaluation-model.exe", "evaluation-model"),
+    ("adapter/target/\{target_profile}/mbtx-eval", "mbtx-eval"),
+    ("adapter/target/\{target_profile}/mbtx-startup", "mbtx-startup"),
+    ("adapter/target/\{target_profile}/mbtx-fixture", "mbtx-fixture"),
+    ("adapter/target/\{target_profile}/mbtx-observe", "mbtx-observe"),
+  ]
+  if mode == "codex" {
+    for name in ["codex-exec", "codex-code-mode-host", "codex-responses-api-proxy"] {
+      copies.push(("_build/codex-upstream/codex-rs/target/\{target_profile}/\{name}", name))
+    }
+  }
+  for (source, name) in copies {
+    let _ = capture("cp", ["\{root}/\{source}", "\{temporary}/\{name}"], root)
+    let _ = capture("chmod", ["555", "\{temporary}/\{name}"], root)
+  }
+  let hashes = capture(sha_program, sha_args + copies.map(p => p.1), temporary)
+  @fs.write_file("\{temporary}/binaries.sha256", hashes + "\n")
+  @fs.write_file("\{temporary}/inputs.txt", inputs)
+  let result : Json = {"schema_version":2, "bundle":bundle, "key":key, "mode":mode, "profile":profile, "launcher_profile":"release", "analysis_worker_profile":"debug", "platform":system, "build_elapsed_ms":(@async.now()-started).to_double().to_json()}
+  @fs.write_file("\{temporary}/bundle.json", result.stringify())
+  @fs.rename(temporary, bundle)
+  println(result.stringify())
+}

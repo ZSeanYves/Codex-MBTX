@@ -1,0 +1,22 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let mode = @env.args().get(1).unwrap_or("fast")
+  guard mode == "fast" || mode == "full" else { fail("verify-offline.mbtx fast|full") }
+  let built = @shell.Cmd("moon", ["run", "scripts/build-evaluation.mbtx", if mode == "full" { "codex" } else { "launcher" }]).output(timeout_ms=3_600_000)
+  built.check()
+  guard @json.parse(built.stdout()) is { "bundle": String(bundle), .. } else { fail("invalid bundle") }
+  let variables = ["MBTX_TEST_LAUNCHER=\{bundle}/mbtx", "MBTX_TEST_MODEL=\{bundle}/evaluation-model"]
+  if mode == "full" {
+    variables.append(["MBTX_TEST_CODEX=\{bundle}/codex-exec", "MBTX_TEST_PROXY=\{bundle}/codex-responses-api-proxy"])
+  }
+  let cargo = ["cargo", "test", "--locked", "--manifest-path", "adapter/Cargo.toml"]
+  @shell.Cmd("env", variables + cargo).run()
+  @shell.Cmd("env", variables + cargo + ["--test", "real_execution", if mode == "full" { "" } else { "launcher_" }, "--", "--ignored", "--test-threads=1", "--nocapture"]).run()
+  println("Verified \{mode} offline checks with \{bundle}")
+}

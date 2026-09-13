@@ -12,11 +12,35 @@ script runtime. Codex keeps the original command for approval and policy
 decisions; the trusted launcher is inserted only after those decisions and only
 for local transparent execution.
 
-The launcher returns ordinary exit codes and re-raises negative signal results.
-The host remains responsible for process-group scope and cancellation policy:
-request cancellation, select scope, signal, wait, reap, drain both output
-streams, and publish the terminal event.
+The native launcher returns ordinary exit codes and re-raises negative signal
+results after unblocking that signal. Numeric 143 and an actual SIGTERM therefore
+remain distinct in the parent's Unix wait status. The launcher observes incoming
+INT/TERM/HUP, forwards PID-scoped signals to its child, and escalates to SIGKILL
+after 500 ms if that child has not exited. Its existing wait owns child reaping.
+
+Codex owns the process group and stream readers. For transparent launches it
+sets the internal `MBTX_CANCEL_SCOPE=caller-process-group` marker, which MBTX
+consumes before spawning the child. This avoids sending a group-delivered signal
+to the child twice. The collector's controlled TERM test sends group SIGTERM,
+then SIGKILL after 500 ms when the recorded PID identity still matches. Native
+Ctrl-C is tested separately through the real unified_exec session.
+
+The terminal result must follow wait and IO drain. A wait-return timestamp is
+the parent's observation, not a kernel exit timestamp. Residual fixture processes
+are recorded before fallback cleanup; detached or unobserved descendants are not
+assumed reaped. Cleanup never targets an entire UID.
 
 Rust observes OS and Codex boundaries; the report renderer consumes immutable
 JSONL events. Missing values remain null or unknown. Relay, provider, harness,
 timeout, censored, and backend failures remain distinct.
+
+The shared MoonBit `evaluation` package owns scenarios, input equality, behavior
+oracles, classification and paired bootstrap statistics. A single prebuilt
+JSONL worker serves an entire collection or report. Rust owns process execution,
+the fixed Responses server, HTTP transport observation, evidence sealing and
+rendering. Measurement loops do not invoke compilers or start new proxies.
+
+Both arms enable the same Codex and fixture observation. Actual Direct/ZshFork
+execution is recorded after fallback selection. The common Unix PTY status fix
+preserves real signals in both arms, so its benefit cannot be attributed to MBTX.
+Separate minimal/full startup observations quantify trace perturbation.

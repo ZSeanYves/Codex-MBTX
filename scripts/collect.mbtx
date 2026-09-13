@@ -1,0 +1,63 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn capture(program : String, args : Array[String]) -> String {
+  let result = @shell.Cmd(program, args).output(timeout_ms=3_600_000)
+  result.check()
+  result.stdout()
+}
+
+async fn main {
+  let root = @fs.realpath(".")
+  let args = @env.args()
+  let suite = args.get(1).unwrap_or("launcher")
+  guard suite == "launcher" || suite == "codex-replay" || suite == "codex-relay" else { fail("collect.mbtx launcher|codex-replay|codex-relay [OUTPUT]") }
+  let system = capture("uname", ["-s"]).trim()
+  let platform = if system == "Linux" { "linux" } else if system == "Darwin" { "macos" } else { fail("Linux or macOS is required") }
+  if suite == "codex-relay" {
+    guard platform == "linux" else { fail("primary relay collection runs on Linux") }
+    guard @env.get_env_var("OPENAI_API_KEY") is Some(key) && key != "" else { fail("export OPENAI_API_KEY before online collection") }
+  }
+  let bundle = match @env.get_env_var("MBTX_BUNDLE") {
+    Some(path) => @fs.realpath(path)
+    None => {
+      let text = capture("moon", ["run", "scripts/build-evaluation.mbtx", if suite == "launcher" { "launcher" } else { "codex" }])
+      guard @json.parse(text) is {"bundle": String(path), ..} else { fail("invalid build bundle") }
+      path
+    }
+  }
+  let stamp = capture("date", ["+%Y%m%dT%H%M%S"]).trim().to_owned()
+  let sha = if system == "Darwin" { "shasum" } else { "sha256sum" }
+  let sha_args = if system == "Darwin" { ["-a", "256", "--check", "binaries.sha256"] } else { ["--check", "binaries.sha256"] }
+  @shell.Cmd(sha, sha_args, cwd=bundle).run()
+  let output = @env.get_env_var("MBTX_RESUME_RUN").unwrap_or(args.get(2).unwrap_or("\{root}/evidence/\{platform}/\{suite}/\{stamp}-\{@async.now()}"))
+  @fs.mkdir(output, recursive=true)
+  let evaluator = "\{bundle}/mbtx-eval"
+  let command = ["run", "--suite", suite, "--mbtx", "\{bundle}/mbtx", "--fixture", "\{bundle}/mbtx-fixture", "--evaluation-model", "\{bundle}/evaluation-model", "--output", output]
+  if suite == "launcher" {
+    command.append(["--samples", @env.get_env_var("MBTX_STARTUP_SAMPLES").unwrap_or("1000")])
+  } else {
+    command.append(["--codex", "\{bundle}/codex-exec", "--proxy", "\{bundle}/codex-responses-api-proxy", "--pairs", @env.get_env_var("MBTX_PAIRS").unwrap_or(if suite == "codex-relay" { "8" } else { "10" }), "--model", @env.get_env_var("MBTX_MODEL").unwrap_or("gpt-5.6-terra"), "--relay-base-url", @env.get_env_var("MBTX_RELAY_BASE_URL").unwrap_or("https://tokenadvent.com/v1"), "--min-interval-ms", @env.get_env_var("MBTX_MIN_INTERVAL_MS").unwrap_or("15000"), "--tool-mode", @env.get_env_var("MBTX_TOOL_MODE").unwrap_or("code")])
+    if @env.get_env_var("MBTX_TASKS") is Some(tasks) { command.append(["--tasks", tasks]) }
+    if @env.get_env_var("MBTX_DIRECT_SHELL") == Some("1") { command.push("--direct-shell") }
+    if @env.get_env_var("MBTX_BOUNDARIES") == Some("1") { command.push("--boundaries") }
+    if @env.get_env_var("MBTX_RESUME_RUN") is Some(_) { command.push("--resume") }
+  }
+  println("[collect] output=\{output}")
+  println("[collect] bundle=\{bundle}")
+  println("[collect] follow: \{evaluator} log \{output} --follow")
+  try @shell.Cmd(evaluator, command).run() catch { error => println("[collect] interrupted or failed: \{error}; generating partial report") }
+  if !@fs.exists("\{output}/bundle.json") {
+    @fs.write_file("\{output}/bundle.json", @fs.read_file("\{bundle}/bundle.json"))
+    @fs.write_file("\{output}/binaries.sha256", @fs.read_file("\{bundle}/binaries.sha256"))
+    @fs.write_file("\{output}/build-inputs.txt", @fs.read_file("\{bundle}/inputs.txt"))
+  }
+  @shell.Cmd(evaluator, ["report", output, "--format", "all", "--evaluation-model", "\{bundle}/evaluation-model"]).run()
+  if !@fs.exists("\{output}/seal.json") { @shell.Cmd(evaluator, ["seal", output]).run() }
+  println("[collect] evidence and reports: \{output}")
+}

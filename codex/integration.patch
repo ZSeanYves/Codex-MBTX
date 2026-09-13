@@ -100,17 +100,54 @@ index dca329a..568fa09 100644
              model,
              service_tier,
              review_model,
+diff --git a/codex-rs/core/src/exec_policy.rs b/codex-rs/core/src/exec_policy.rs
+index 21e414e..5803763 100644
+--- a/codex-rs/core/src/exec_policy.rs
++++ b/codex-rs/core/src/exec_policy.rs
+@@ -377,6 +377,15 @@ impl ExecPolicyManager {
+             &exec_policy_fallback,
+             &match_options,
+         );
++        codex_utils_pty::trace::emit(
++            "policy",
++            "decision",
++            &serde_json::json!({
++                "commands": commands, "decision": format!("{:?}", evaluation.decision),
++                "matched_rules": format!("{:?}", evaluation.matched_rules)
++            })
++            .to_string(),
++        );
+ 
+         let requested_amendment = if auto_amendment_allowed {
+             derive_requested_execpolicy_amendment_from_prefix_rule(
 diff --git a/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs b/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
-index 8b97ff0..401f026 100644
+index 8b97ff0..6c03369 100644
 --- a/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
 +++ b/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
-@@ -242,8 +242,20 @@ impl ExecCommandHandler {
+@@ -219,6 +219,8 @@ impl ExecCommandHandler {
+                 )));
+             }
+         };
++        let tool_started = std::time::Instant::now();
++        codex_utils_pty::trace::emit("tool", "arguments", &serde_json::json!({"tool":"exec_command", "arguments":serde_json::from_str::<serde_json::Value>(&arguments).ok(), "call_id":context.call_id}).to_string());
+         let mut args: ExecCommandArgs = match native_cwd.as_ref() {
+             Some(native_cwd) => {
+                 // The base path only resolves paths nested in the permissions config types.
+@@ -242,8 +244,28 @@ impl ExecCommandHandler {
              &turn_environment.selection.environment_id,
          )
          .await;
 -        let shell_mode =
 -            shell_mode_for_environment(&turn.unified_exec_shell_mode, environment.as_ref());
-+        let transparent_mbtx = turn.config.mbtx_backend.as_deref() == Some("transparent");
++        let transparent_mbtx = match turn.config.mbtx_backend.as_deref() {
++            None => false,
++            Some("transparent") => true,
++            Some(value) => {
++                return Err(FunctionCallError::RespondToModel(format!(
++                    "unsupported mbtx_backend {value:?}; expected transparent or an absent setting"
++                )));
++            }
++        };
 +        if transparent_mbtx && environment.is_remote() {
 +            return Err(FunctionCallError::RespondToModel(
 +                "transparent MBTX backend requires a local execution environment".to_string(),
@@ -127,7 +164,7 @@ index 8b97ff0..401f026 100644
          // Remote environments may use a different OS and must build commands with their native
          // shell; fall back to the session shell when the environment did not report one.
          let shell = turn_environment
-@@ -270,7 +282,6 @@ impl ExecCommandHandler {
+@@ -270,7 +292,6 @@ impl ExecCommandHandler {
                  )));
              }
          }
@@ -135,10 +172,11 @@ index 8b97ff0..401f026 100644
          let resolved_command = get_command(
              &args,
              shell,
-@@ -280,6 +291,26 @@ impl ExecCommandHandler {
+@@ -280,6 +301,27 @@ impl ExecCommandHandler {
          .map_err(FunctionCallError::RespondToModel)?;
          let command = resolved_command.command;
          let shell_type = resolved_command.shell_type;
++        codex_utils_pty::trace::emit("tool", "resolved", &serde_json::json!({"argv":command,"shell_mode":format!("{shell_mode:?}"),"shell_type":format!("{shell_type:?}"),"cwd":cwd.to_string(),"call_id":context.call_id}).to_string());
 +        let mbtx_launcher = if transparent_mbtx {
 +            let launcher = turn.config.mbtx_command.clone().ok_or_else(|| {
 +                FunctionCallError::RespondToModel(
@@ -162,7 +200,7 @@ index 8b97ff0..401f026 100644
          let ExecCommandArgs {
              mut tty,
              yield_time_ms,
-@@ -404,6 +435,7 @@ impl ExecCommandHandler {
+@@ -404,6 +446,7 @@ impl ExecCommandHandler {
          emit_unified_exec_tty_metric(&turn.session_telemetry, tty);
          let request = ExecCommandRequest {
              command,
@@ -170,8 +208,79 @@ index 8b97ff0..401f026 100644
              shell_type,
              hook_command: hook_command.clone(),
              process_id,
+@@ -430,20 +473,25 @@ impl ExecCommandHandler {
+             None => manager.exec_command(request, &context).await,
+         };
+         match result {
+-            Ok(response) => Ok(boxed_tool_output(response)),
++            Ok(mut response) => {
++                response.wall_time = tool_started.elapsed();
++                codex_utils_pty::trace::emit("tool", "result_ready", &serde_json::json!({"tool":"exec_command","call_id":context.call_id,"process_id":response.process_id,"exit_code":response.exit_code,"output_bytes":response.raw_output.len()}).to_string());
++                Ok(boxed_tool_output(response))
++            }
+             Err(UnifiedExecError::SandboxDenied {
+                 output,
+                 original_token_count,
+                 output_omitted_bytes,
+                 ..
+             }) => {
++                codex_utils_pty::trace::emit("tool", "result_ready", &serde_json::json!({"tool":"exec_command","call_id":context.call_id,"process_id":null,"exit_code":output.exit_code,"sandbox_denied":true}).to_string());
+                 let output_text = output.aggregated_output.text;
+                 let original_token_count =
+                     original_token_count.unwrap_or_else(|| approx_token_count(&output_text));
+                 Ok(boxed_tool_output(ExecCommandToolOutput {
+                     event_call_id: context.call_id.clone(),
+                     chunk_id: generate_chunk_id(),
+-                    wall_time: output.duration,
++                    wall_time: tool_started.elapsed(),
+                     raw_output: output_text.into_bytes(),
+                     truncation_policy: turn.model_info().truncation_policy.into(),
+                     max_output_tokens,
+diff --git a/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs b/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs
+index 657da46..55e8656 100644
+--- a/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs
++++ b/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs
+@@ -78,6 +78,7 @@ impl WriteStdinHandler {
+             }
+         };
+ 
++        codex_utils_pty::trace::emit("tool", "arguments", &serde_json::json!({"tool":"write_stdin", "arguments":serde_json::from_str::<serde_json::Value>(&arguments).ok(), "call_id":call_id}).to_string());
+         let args: WriteStdinArgs = parse_arguments(&arguments)?;
+         let context =
+             UnifiedExecContext::new(session.clone(), step_context, cancellation_token, call_id);
+@@ -112,6 +113,7 @@ impl WriteStdinHandler {
+                 FunctionCallError::RespondToModel(message)
+             })?;
+ 
++        codex_utils_pty::trace::emit("tool", "result_ready", &serde_json::json!({"tool":"write_stdin","process_id":args.session_id,"call_id":context.call_id,"exit_code":response.exit_code,"output_bytes":response.raw_output.len()}).to_string());
+         Ok(boxed_tool_output(response))
+     }
+ }
+diff --git a/codex-rs/core/src/tools/orchestrator.rs b/codex-rs/core/src/tools/orchestrator.rs
+index 3b37571..0215dc0 100644
+--- a/codex-rs/core/src/tools/orchestrator.rs
++++ b/codex-rs/core/src/tools/orchestrator.rs
+@@ -170,6 +170,10 @@ impl ToolOrchestrator {
+         let requirement = tool.exec_approval_requirement(req).unwrap_or_else(|| {
+             default_exec_approval_requirement(approval_policy, &file_system_sandbox_policy)
+         });
++        let approval_trace = codex_utils_pty::trace::span(
++            "approval",
++            serde_json::json!({"call_id":tool_ctx.call_id}).to_string(),
++        );
+         match &requirement {
+             ExecApprovalRequirement::Skip { .. } => {
+                 if strict_auto_review {
+@@ -229,6 +233,7 @@ impl ToolOrchestrator {
+             }
+         }
+ 
++        drop(approval_trace);
+         // 2) First attempt under the selected sandbox.
+         let unsandboxed_allowed =
+             !owner_network_policy && unsandboxed_execution_allowed(&file_system_sandbox_policy);
 diff --git a/codex-rs/core/src/tools/runtimes/unified_exec.rs b/codex-rs/core/src/tools/runtimes/unified_exec.rs
-index aea36d9..e7072f9 100644
+index aea36d9..3e9a4eb 100644
 --- a/codex-rs/core/src/tools/runtimes/unified_exec.rs
 +++ b/codex-rs/core/src/tools/runtimes/unified_exec.rs
 @@ -65,6 +65,8 @@ const REMOTE_NETWORK_POLICY_DECISION_MARGIN: Duration = Duration::from_secs(10);
@@ -218,7 +327,32 @@ index aea36d9..e7072f9 100644
  impl<'a> UnifiedExecRuntime<'a> {
      /// Creates a runtime bound to the shared unified-exec process manager.
      pub fn new(manager: &'a UnifiedExecProcessManager, shell_mode: UnifiedExecShellMode) -> Self {
-@@ -413,6 +443,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+@@ -258,6 +288,10 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+         attempt: &SandboxAttempt<'_>,
+         ctx: &ToolCtx,
+     ) -> Result<UnifiedExecAttempt, ToolError> {
++        let _trace = codex_utils_pty::trace::span(
++            "sandbox_setup_spawn",
++            serde_json::json!({"call_id":ctx.call_id}).to_string(),
++        );
+         let base_command = &req.command;
+         let windows_sandbox_proxy_settings_mode = ctx.session.windows_sandbox_proxy_settings_mode;
+         let session_shell = ctx.session.user_shell();
+@@ -286,7 +320,12 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+             req.network.as_ref(),
+             launch_sandbox_permissions,
+         ));
+-        let env = exec_env_for_sandbox_permissions(&req.env, launch_sandbox_permissions);
++        let mut env = exec_env_for_sandbox_permissions(&req.env, launch_sandbox_permissions);
++        if req.mbtx_launcher.is_some() {
++            // Codex sends cancellation to the whole process group. Do not deliver
++            // the same signal to the child a second time through the launcher.
++            env.insert("MBTX_CANCEL_SCOPE".into(), "caller-process-group".into());
++        }
+         let (mut env, managed_network_context, network_proxy_launch) = match managed_network {
+             Some(network) if environment_is_remote => {
+                 let mut launch = network.remote_launch_config().await.map_err(|err| {
+@@ -413,6 +452,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
          } else {
              command
          };
@@ -226,7 +360,23 @@ index aea36d9..e7072f9 100644
          let sidecar_permissions = metrics_sidecar
              .as_ref()
              .map(PluginMetricsSidecar::additional_permissions);
-@@ -617,6 +648,45 @@ mod tests {
+@@ -465,6 +505,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+                 .await?
+             {
+                 Some(prepared) => {
++                    codex_utils_pty::trace::emit("tool", "execution_path", &serde_json::json!({"call_id":ctx.call_id,"shell_mode":"ZshFork","process_id":req.process_id}).to_string());
+                     if req.turn_environment.environment.is_remote() {
+                         return Err(ToolError::Rejected(
+                             "unified_exec zsh-fork is not supported for remote environments"
+@@ -519,6 +560,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+             error @ ToolError::Codex(_) => error,
+         })?;
+         let options = unified_exec_options(attempt.network_denial_cancellation_token.clone());
++        codex_utils_pty::trace::emit("tool", "execution_path", &serde_json::json!({"call_id":ctx.call_id,"shell_mode":"Direct","process_id":req.process_id,"argv":command.args,"program":command.program}).to_string());
+         let process = self
+             .manager
+             .open_session_with_exec_env(
+@@ -617,6 +659,45 @@ mod tests {
          }
      }
  
@@ -272,7 +422,7 @@ index aea36d9..e7072f9 100644
      #[tokio::test]
      async fn approval_key_includes_environment_id() {
          let manager = UnifiedExecProcessManager::default();
-@@ -654,6 +724,7 @@ mod tests {
+@@ -654,6 +735,7 @@ mod tests {
          let runtime = UnifiedExecRuntime::new(&manager, UnifiedExecShellMode::Direct);
          let request = UnifiedExecRequest {
              command: vec!["pwd".to_string()],
@@ -280,7 +430,7 @@ index aea36d9..e7072f9 100644
              shell_type: ShellType::Sh,
              hook_command: "pwd".to_string(),
              process_id: 1000,
-@@ -757,6 +828,7 @@ mod tests {
+@@ -757,6 +839,7 @@ mod tests {
              .expect("current dir is absolute");
          UnifiedExecRequest {
              command: vec!["zsh".to_string(), "-c".to_string(), "echo hi".to_string()],
@@ -288,6 +438,48 @@ index aea36d9..e7072f9 100644
              shell_type: ShellType::Zsh,
              hook_command: "echo hi".to_string(),
              process_id: 1000,
+diff --git a/codex-rs/core/src/unified_exec/async_watcher.rs b/codex-rs/core/src/unified_exec/async_watcher.rs
+index 366f631..3baa109 100644
+--- a/codex-rs/core/src/unified_exec/async_watcher.rs
++++ b/codex-rs/core/src/unified_exec/async_watcher.rs
+@@ -30,7 +30,7 @@ use codex_protocol::protocol::ExecCommandSource;
+ use codex_protocol::protocol::ExecOutputStream;
+ use codex_utils_path_uri::PathUri;
+ 
+-pub(crate) const TRAILING_OUTPUT_GRACE: Duration = Duration::from_millis(100);
++pub(crate) const TRAILING_OUTPUT_GRACE: Duration = Duration::from_millis(500);
+ 
+ /// Upper bound for a single ExecCommandOutputDelta chunk emitted by unified exec.
+ ///
+@@ -56,12 +56,13 @@ struct Buffer<const MAX_BYTES: usize = UNIFIED_EXEC_OUTPUT_DELTA_MAX_BYTES> {
+ /// Spawn a background task that continuously reads from the PTY, appends to the
+ /// shared transcript, and emits ExecCommandOutputDelta events on UTF‑8
+ /// boundaries.
+-pub(crate) fn start_streaming_output(
++pub(crate) async fn start_streaming_output(
+     process: &UnifiedExecProcess,
+     context: &UnifiedExecContext,
+     transcript: Arc<Mutex<HeadTailBuffer>>,
+ ) {
+-    let mut receiver = process.output_receiver();
++    let (initial, mut receiver) = process.output_receiver().await;
++    *transcript.lock().await = initial;
+     let output_drained = process.output_drained_notify();
+     let exit_token = process.cancellation_token();
+     let OutputHandles {
+diff --git a/codex-rs/core/src/unified_exec/head_tail_buffer.rs b/codex-rs/core/src/unified_exec/head_tail_buffer.rs
+index 0c9df7c..afe3713 100644
+--- a/codex-rs/core/src/unified_exec/head_tail_buffer.rs
++++ b/codex-rs/core/src/unified_exec/head_tail_buffer.rs
+@@ -6,7 +6,7 @@ use std::collections::VecDeque;
+ /// dropping the middle once it exceeds the configured maximum. The buffer is
+ /// symmetric meaning 50% of the capacity is allocated to the head and 50% is
+ /// allocated to the tail.
+-#[derive(Debug, Default)]
++#[derive(Clone, Debug, Default)]
+ #[cfg_attr(test, derive(Eq, PartialEq))]
+ pub(crate) struct HeadTailBuffer<const MAX_BYTES: usize = UNIFIED_EXEC_OUTPUT_MAX_BYTES> {
+     head: Vec<u8>,
 diff --git a/codex-rs/core/src/unified_exec/mod.rs b/codex-rs/core/src/unified_exec/mod.rs
 index 8dc8f35..701da1f 100644
 --- a/codex-rs/core/src/unified_exec/mod.rs
@@ -302,11 +494,101 @@ index 8dc8f35..701da1f 100644
      pub shell_type: ShellType,
      pub hook_command: String,
      pub process_id: i32,
+diff --git a/codex-rs/core/src/unified_exec/process.rs b/codex-rs/core/src/unified_exec/process.rs
+index 81946e4..392c429 100644
+--- a/codex-rs/core/src/unified_exec/process.rs
++++ b/codex-rs/core/src/unified_exec/process.rs
+@@ -172,8 +172,13 @@ impl UnifiedExecProcess {
+         &self.output
+     }
+ 
+-    pub(super) fn output_receiver(&self) -> tokio::sync::broadcast::Receiver<Vec<u8>> {
+-        self.output_tx.subscribe()
++    pub(super) async fn output_receiver(
++        &self,
++    ) -> (HeadTailBuffer, tokio::sync::broadcast::Receiver<Vec<u8>>) {
++        // Snapshot and subscribe under the producer lock so early bytes are
++        // neither lost nor delivered twice to the event transcript.
++        let buffer = self.output.output_buffer.lock().await;
++        (buffer.clone(), self.output_tx.subscribe())
+     }
+ 
+     pub(super) fn cancellation_token(&self) -> CancellationToken {
+@@ -515,8 +520,8 @@ impl UnifiedExecProcess {
+                         let bytes = chunk.chunk.into_inner();
+                         let mut guard = output_buffer.lock().await;
+                         guard.push_chunk(&bytes);
+-                        drop(guard);
+                         let _ = output_tx.send(bytes);
++                        drop(guard);
+                         output_notify.notify_waiters();
+                     }
+                     last_seq = last_seq.max(next_seq.saturating_sub(1));
+@@ -558,8 +563,8 @@ impl UnifiedExecProcess {
+                         let bytes = chunk.chunk.into_inner();
+                         let mut guard = output_buffer.lock().await;
+                         guard.push_chunk(&bytes);
+-                        drop(guard);
+                         let _ = output_tx.send(bytes);
++                        drop(guard);
+                         output_notify.notify_waiters();
+                     }
+                     ExecProcessEvent::Exited {
+@@ -619,8 +624,8 @@ impl UnifiedExecProcess {
+                     Ok(chunk) => {
+                         let mut guard = output_buffer.lock().await;
+                         guard.push_chunk(&chunk);
+-                        drop(guard);
+                         let _ = output_tx.send(chunk);
++                        drop(guard);
+                         output_notify.notify_waiters();
+                     }
+                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
 diff --git a/codex-rs/core/src/unified_exec/process_manager.rs b/codex-rs/core/src/unified_exec/process_manager.rs
-index 2121857..3e450cb 100644
+index 2121857..6104faf 100644
 --- a/codex-rs/core/src/unified_exec/process_manager.rs
 +++ b/codex-rs/core/src/unified_exec/process_manager.rs
-@@ -1407,6 +1407,7 @@ impl UnifiedExecProcessManager {
+@@ -490,10 +490,21 @@ impl UnifiedExecProcessManager {
+         mut completion: Option<&mut Completion<'_>>,
+     ) -> Result<ExecCommandToolOutput, UnifiedExecError> {
+         let cwd = request.cwd.clone();
++        codex_utils_pty::trace::emit(
++            "policy_sandbox",
++            "begin",
++            &serde_json::json!({"call_id":context.call_id}).to_string(),
++        );
+         let process = self
+             .open_session_with_sandbox(&request, cwd.clone(), context)
+             .await;
+ 
++        codex_utils_pty::trace::emit(
++            "policy_sandbox",
++            "return",
++            &serde_json::json!({"call_id":context.call_id,"success":process.is_ok()}).to_string(),
++        );
++
+         let (attempt, mut deferred_network_approval) = match process {
+             Ok((attempt, deferred_network_approval)) => (attempt, deferred_network_approval),
+             Err(err) => {
+@@ -553,7 +564,7 @@ impl UnifiedExecProcessManager {
+         );
+         emitter.emit(event_ctx, ToolEventStage::Begin).await;
+ 
+-        start_streaming_output(&process, context, Arc::clone(&transcript));
++        start_streaming_output(&process, context, Arc::clone(&transcript)).await;
+         let start = Instant::now();
+         // Persist live sessions before the initial yield wait so interrupting the
+         // turn cannot drop the last Arc and terminate the background process.
+@@ -617,6 +628,8 @@ impl UnifiedExecProcessManager {
+             }
+         }
+         let wall_time = Instant::now().saturating_duration_since(start);
++        codex_utils_pty::trace::emit("tool", "process_ready", &serde_json::json!({"tool":"exec_command","call_id":context.call_id,"process_id":request.process_id}).to_string());
++        codex_utils_pty::trace::resources(&context.call_id);
+ 
+         let original_token_count = usize::try_from(approx_tokens_from_byte_count(
+             collected_output.total_bytes(),
+@@ -1407,6 +1420,7 @@ impl UnifiedExecProcessManager {
              .await;
          let req = UnifiedExecToolRequest {
              command: request.command.clone(),
@@ -314,6 +596,35 @@ index 2121857..3e450cb 100644
              shell_type: request.shell_type,
              hook_command: request.hook_command.clone(),
              process_id: request.process_id,
+@@ -1460,7 +1474,7 @@ impl UnifiedExecProcessManager {
+         mut pause_state: Option<watch::Receiver<bool>>,
+         mut deadline: Instant,
+     ) -> HeadTailBuffer<MAX_BYTES> {
+-        const POST_EXIT_CLOSE_WAIT_CAP: Duration = Duration::from_millis(50);
++        const POST_EXIT_CLOSE_WAIT_CAP: Duration = Duration::from_millis(500);
+ 
+         let OutputHandles {
+             output_buffer,
+@@ -1509,6 +1523,7 @@ impl UnifiedExecProcessManager {
+                         .get_or_insert_with(|| now + remaining.min(POST_EXIT_CLOSE_WAIT_CAP));
+                     let close_wait_remaining = close_wait_deadline.saturating_duration_since(now);
+                     if close_wait_remaining == Duration::ZERO {
++                        codex_utils_pty::trace::emit("io", "drain_censored", "{}");
+                         break;
+                     }
+                     let notified = wait_for_output.unwrap_or_else(|| output_notify.notified());
+@@ -1518,7 +1533,10 @@ impl UnifiedExecProcessManager {
+                     tokio::select! {
+                         _ = &mut notified => {}
+                         _ = &mut closed => {}
+-                        _ = tokio::time::sleep(close_wait_remaining) => break,
++                        _ = tokio::time::sleep(close_wait_remaining) => {
++                            codex_utils_pty::trace::emit("io", "drain_censored", "{}");
++                            break;
++                        },
+                         _ = Self::wait_for_pause_change(pause_state.as_ref()) => {}
+                     }
+                     continue;
 diff --git a/codex-rs/core/src/unified_exec/process_manager_tests.rs b/codex-rs/core/src/unified_exec/process_manager_tests.rs
 index 523e7eb..eb74a4c 100644
 --- a/codex-rs/core/src/unified_exec/process_manager_tests.rs
@@ -326,3 +637,695 @@ index 523e7eb..eb74a4c 100644
          shell_type: crate::shell::ShellType::Sh,
          hook_command: "echo before".to_string(),
          process_id: 123,
+diff --git a/codex-rs/responses-api-proxy/Cargo.toml b/codex-rs/responses-api-proxy/Cargo.toml
+index 05d6388..fa94702 100644
+--- a/codex-rs/responses-api-proxy/Cargo.toml
++++ b/codex-rs/responses-api-proxy/Cargo.toml
+@@ -22,6 +22,7 @@ clap = { workspace = true, features = ["derive"] }
+ codex-process-hardening = { workspace = true }
+ ctor = { workspace = true }
+ libc = { workspace = true }
++httpdate = { workspace = true }
+ reqwest = { workspace = true, features = ["blocking", "json", "rustls-tls"] }
+ serde = { workspace = true, features = ["derive"] }
+ serde_json = { workspace = true }
+diff --git a/codex-rs/responses-api-proxy/src/lib.rs b/codex-rs/responses-api-proxy/src/lib.rs
+index 307fa05..14574e8 100644
+--- a/codex-rs/responses-api-proxy/src/lib.rs
++++ b/codex-rs/responses-api-proxy/src/lib.rs
+@@ -6,8 +6,8 @@ use std::net::SocketAddr;
+ use std::net::TcpListener;
+ use std::path::Path;
+ use std::path::PathBuf;
+-use std::sync::Arc;
+-use std::time::Duration;
++use std::sync::{Arc, Mutex};
++use std::time::{Duration, Instant, SystemTime};
+ 
+ use anyhow::Context;
+ use anyhow::Result;
+@@ -29,6 +29,7 @@ use tiny_http::Server;
+ use tiny_http::StatusCode;
+ 
+ mod dump;
++mod observation;
+ mod read_api_key;
+ use dump::ExchangeDumper;
+ use read_api_key::read_auth_header_from_stdin;
+@@ -56,6 +57,14 @@ pub struct Args {
+     /// Directory where request/response dumps should be written as JSON.
+     #[arg(long, value_name = "DIR")]
+     pub dump_dir: Option<PathBuf>,
++
++    /// Minimum interval between upstream request starts.
++    #[arg(long, default_value_t = 0)]
++    pub min_request_interval_ms: u64,
++
++    /// Timeout for a complete upstream response, including its stream. Zero disables it.
++    #[arg(long, default_value_t = 0)]
++    pub request_timeout_ms: u64,
+ }
+ 
+ #[derive(Serialize)]
+@@ -86,6 +95,11 @@ pub fn run_main(args: Args) -> Result<()> {
+         upstream_url,
+         host_header,
+     });
++    let observer = args
++        .dump_dir
++        .as_ref()
++        .map(|directory| observation::Observer::new(directory.clone()).map(Arc::new))
++        .transpose()?;
+     let dump_dir = args
+         .dump_dir
+         .map(ExchangeDumper::new)
+@@ -102,10 +116,14 @@ pub fn run_main(args: Args) -> Result<()> {
+     let client = Arc::new(
+         Client::builder()
+             // Disable reqwest's 30s default so long-lived response streams keep flowing.
+-            .timeout(None::<Duration>)
++            .timeout(
++                (args.request_timeout_ms > 0)
++                    .then(|| Duration::from_millis(args.request_timeout_ms)),
++            )
+             .build()
+             .context("building reqwest client")?,
+     );
++    let request_gate = Arc::new(Mutex::new(Instant::now()));
+ 
+     eprintln!("responses-api-proxy listening on {bound_addr}");
+ 
+@@ -114,6 +132,9 @@ pub fn run_main(args: Args) -> Result<()> {
+         let client = client.clone();
+         let forward_config = forward_config.clone();
+         let dump_dir = dump_dir.clone();
++        let request_gate = request_gate.clone();
++        let request_interval = Duration::from_millis(args.min_request_interval_ms);
++        let observer = observer.clone();
+         std::thread::spawn(move || {
+             if http_shutdown && request.method() == &Method::Get && request.url() == "/shutdown" {
+                 let _ = request.respond(Response::new_empty(StatusCode(200)));
+@@ -126,6 +147,9 @@ pub fn run_main(args: Args) -> Result<()> {
+                 &forward_config,
+                 dump_dir.as_deref(),
+                 request,
++                &request_gate,
++                request_interval,
++                observer.as_ref(),
+             ) {
+                 eprintln!("forwarding error: {e}");
+             }
+@@ -166,6 +190,9 @@ fn forward_request(
+     config: &ForwardConfig,
+     dump_dir: Option<&ExchangeDumper>,
+     mut req: Request,
++    request_gate: &Mutex<Instant>,
++    request_interval: Duration,
++    observer: Option<&Arc<observation::Observer>>,
+ ) -> Result<()> {
+     // Only allow POST /v1/responses exactly, no query string.
+     let method = req.method().clone();
+@@ -182,6 +209,10 @@ fn forward_request(
+     let mut body = Vec::new();
+     let reader = req.as_reader();
+     reader.read_to_end(&mut body)?;
++    let trace = observer.map(|observer| Arc::new(observer.request()));
++    if let Some(trace) = &trace {
++        trace.emit("request_received", serde_json::json!({"bytes":body.len()}));
++    }
+ 
+     let exchange_dump = dump_dir.and_then(|dump_dir| {
+         dump_dir
+@@ -220,12 +251,75 @@ fn forward_request(
+ 
+     headers.insert(HOST, config.host_header.clone());
+ 
++    if let Some(trace) = &trace {
++        trace.emit("gate_queued", serde_json::json!({}));
++    }
++    let mut gate = request_gate
++        .lock()
++        .map_err(|_| anyhow!("request gate poisoned"))?;
++    if let Some(trace) = &trace {
++        trace.emit("gate_acquired", serde_json::json!({}));
++    }
++    let next = *gate;
++    let now = Instant::now();
++    if now < next {
++        if let Some(trace) = &trace {
++            trace.emit("rate_wait_begin", serde_json::json!({}));
++        }
++        std::thread::sleep(next - now);
++        if let Some(trace) = &trace {
++            trace.emit("rate_wait_end", serde_json::json!({}));
++        }
++    }
++    *gate = Instant::now() + request_interval;
++    if let Some(trace) = &trace {
++        trace.emit("request_send", serde_json::json!({}));
++    }
+     let upstream_resp = client
+         .post(config.upstream_url.clone())
+         .headers(headers)
+         .body(body)
+-        .send()
+-        .context("forwarding request to upstream")?;
++        .send();
++    let upstream_resp = match upstream_resp {
++        Ok(response) => response,
++        Err(error) => {
++            if let Some(trace) = &trace {
++                trace.emit(
++                    "transport_error",
++                    serde_json::json!({"error":error.to_string()}),
++                );
++            }
++            return Err(error).context("forwarding request to upstream");
++        }
++    };
++    let retry_after = upstream_resp
++        .headers()
++        .get("retry-after")
++        .and_then(|value| value.to_str().ok());
++    if upstream_resp.status().as_u16() == 429 {
++        let wait = retry_after
++            .and_then(|value| {
++                value
++                    .parse::<u64>()
++                    .ok()
++                    .map(Duration::from_secs)
++                    .or_else(|| {
++                        httpdate::parse_http_date(value).ok().map(|deadline| {
++                            deadline
++                                .duration_since(SystemTime::now())
++                                .unwrap_or_default()
++                        })
++                    })
++            })
++            .unwrap_or(Duration::from_secs(30));
++        *gate = (*gate).max(Instant::now() + wait);
++    }
++    if let Some(trace) = &trace {
++        trace.emit(
++            "response_headers",
++            serde_json::json!({"status":upstream_resp.status().as_u16(),"retry_after":retry_after}),
++        );
++    }
+ 
+     // We have to create an adapter between a `reqwest::blocking::Response`
+     // and a `tiny_http::Response`. Fortunately, `reqwest::blocking::Response`
+@@ -255,13 +349,22 @@ fn forward_request(
+         }
+     });
+ 
++    let headers = upstream_resp.headers().clone();
++    let observed_body: Box<dyn Read + Send> = match trace.clone() {
++        Some(trace) => Box::new(observation::ObservedBody {
++            body: upstream_resp,
++            trace,
++            first: false,
++            finished: false,
++            pending: Vec::new(),
++        }),
++        None => Box::new(upstream_resp),
++    };
+     let response_body: Box<dyn Read + Send> = if let Some(exchange_dump) = exchange_dump {
+-        let headers = upstream_resp.headers().clone();
+-        Box::new(exchange_dump.tee_response_body(status.as_u16(), &headers, upstream_resp))
++        Box::new(exchange_dump.tee_response_body(status.as_u16(), &headers, observed_body))
+     } else {
+-        Box::new(upstream_resp)
++        observed_body
+     };
+-
+     let response = Response::new(
+         StatusCode(status.as_u16()),
+         response_headers,
+@@ -270,6 +373,12 @@ fn forward_request(
+         None,
+     );
+ 
+-    let _ = req.respond(response);
++    let forwarded = req.respond(response);
++    if let Some(trace) = &trace {
++        trace.emit(
++            "request_finished",
++            serde_json::json!({"forwarded":forwarded.is_ok()}),
++        );
++    }
+     Ok(())
+ }
+diff --git a/codex-rs/shell-command/src/bash.rs b/codex-rs/shell-command/src/bash.rs
+index ddd5807..074a6bb 100644
+--- a/codex-rs/shell-command/src/bash.rs
++++ b/codex-rs/shell-command/src/bash.rs
+@@ -169,10 +169,7 @@ fn parse_plain_command_from_node(cmd: tree_sitter::Node, src: &str) -> Option<Ve
+         match child.kind() {
+             "command_name" => {
+                 let word_node = child.named_child(0)?;
+-                if word_node.kind() != "word" {
+-                    return None;
+-                }
+-                words.push(word_node.utf8_text(src.as_bytes()).ok()?.to_owned());
++                words.push(parse_literal_shell_word(word_node, src)?);
+             }
+             "word" | "number" => {
+                 words.push(child.utf8_text(src.as_bytes()).ok()?.to_owned());
+@@ -327,6 +324,21 @@ mod tests {
+         assert_eq!(cmds, vec![vec!["ls".to_string(), "-1".to_string()]]);
+     }
+ 
++    #[test]
++    fn quoted_programs_keep_literal_identity_for_policy() {
++        for script in [
++            "'/path with space/tool' arg",
++            "\"/path with space/tool\" arg",
++        ] {
++            assert_eq!(
++                parse_seq(script),
++                Some(vec![vec!["/path with space/tool".into(), "arg".into()]])
++            );
++        }
++        assert_eq!(parse_seq("\"$TOOL\" arg"), None);
++        assert_eq!(parse_seq("\"$(tool)\" arg"), None);
++    }
++
+     #[test]
+     fn accepts_multiple_commands_with_allowed_operators() {
+         let src = "ls && pwd; echo 'hi there' | wc -l";
+diff --git a/codex-rs/utils/pty/src/lib.rs b/codex-rs/utils/pty/src/lib.rs
+index 1200c11..6852bb0 100644
+--- a/codex-rs/utils/pty/src/lib.rs
++++ b/codex-rs/utils/pty/src/lib.rs
+@@ -4,6 +4,7 @@ pub mod process_group;
+ pub mod pty;
+ #[cfg(test)]
+ mod tests;
++pub mod trace;
+ #[cfg(unix)]
+ mod unix_io;
+ #[cfg(windows)]
+diff --git a/codex-rs/utils/pty/src/pipe.rs b/codex-rs/utils/pty/src/pipe.rs
+index e189c13..abb3c4d 100644
+--- a/codex-rs/utils/pty/src/pipe.rs
++++ b/codex-rs/utils/pty/src/pipe.rs
+@@ -106,19 +106,37 @@ fn kill_process(pid: u32) -> io::Result<()> {
+     }
+ }
+ 
+-async fn read_output_stream<R>(mut reader: R, output_tx: mpsc::Sender<Vec<u8>>)
+-where
++async fn read_output_stream<R>(
++    mut reader: R,
++    output_tx: mpsc::Sender<Vec<u8>>,
++    trace_id: u64,
++    stream: &str,
++) where
+     R: AsyncRead + Unpin,
+ {
+     let mut buf = vec![0u8; 8_192];
+     loop {
+         match reader.read(&mut buf).await {
+-            Ok(0) => break,
++            Ok(0) => {
++                crate::trace::stream(trace_id, stream, &[]);
++                break;
++            }
+             Ok(n) => {
++                crate::trace::stream(trace_id, stream, &buf[..n]);
+                 let _ = output_tx.send(buf[..n].to_vec()).await;
+             }
+             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+-            Err(_) => break,
++            Err(error) => {
++                crate::trace::emit(
++                    "io",
++                    "read_error",
++                    &format!(
++                        "{{\"stream_id\":{trace_id},\"errno\":{}}}",
++                        error.raw_os_error().unwrap_or(-1)
++                    ),
++                );
++                break;
++            }
+         }
+     }
+ }
+@@ -189,7 +207,21 @@ async fn spawn_process_with_stdin_mode(
+ 
+     #[cfg(windows)]
+     let job = crate::win::JobObject::create().map(Arc::new);
++    let trace_id = crate::trace::next_id();
++    crate::trace::emit(
++        "spawn",
++        "begin",
++        &format!("{{\"stream_id\":{trace_id},\"tty\":false}}"),
++    );
+     let mut child = command.spawn()?;
++    crate::trace::emit(
++        "spawn",
++        "return",
++        &format!(
++            "{{\"stream_id\":{trace_id},\"child_pid\":{}}}",
++            child.id().unwrap_or(0)
++        ),
++    );
+     #[cfg(windows)]
+     let windows_terminator = {
+         // Accept the small race: a descendant created between spawn and
+@@ -242,13 +274,13 @@ async fn spawn_process_with_stdin_mode(
+     let stdout_handle = stdout.map(|stdout| {
+         let stdout_tx = stdout_tx.clone();
+         tokio::spawn(async move {
+-            read_output_stream(BufReader::new(stdout), stdout_tx).await;
++            read_output_stream(BufReader::new(stdout), stdout_tx, trace_id, "stdout").await;
+         })
+     });
+     let stderr_handle = stderr.map(|stderr| {
+         let stderr_tx = stderr_tx.clone();
+         tokio::spawn(async move {
+-            read_output_stream(BufReader::new(stderr), stderr_tx).await;
++            read_output_stream(BufReader::new(stderr), stderr_tx, trace_id, "stderr").await;
+         })
+     });
+     let mut reader_abort_handles = Vec::new();
+@@ -280,6 +312,19 @@ async fn spawn_process_with_stdin_mode(
+     let wait_handle: JoinHandle<()> = tokio::spawn(async move {
+         let code = match child.wait().await {
+             Ok(status) => {
++                #[cfg(unix)]
++                {
++                    use std::os::unix::process::ExitStatusExt;
++                    crate::trace::emit(
++                        "child",
++                        "wait_return",
++                        &format!(
++                            "{{\"stream_id\":{trace_id},\"exit_code\":{},\"signal\":{}}}",
++                            status.code().map_or("null".into(), |x| x.to_string()),
++                            status.signal().map_or("null".into(), |x| x.to_string())
++                        ),
++                    );
++                }
+                 #[cfg(windows)]
+                 if let Some(job) = wait_job
+                     && let Err(err) = job.preserve_descendants()
+diff --git a/codex-rs/utils/pty/src/process.rs b/codex-rs/utils/pty/src/process.rs
+index 5593450..d445853 100644
+--- a/codex-rs/utils/pty/src/process.rs
++++ b/codex-rs/utils/pty/src/process.rs
+@@ -8,6 +8,7 @@ use std::sync::Mutex as StdMutex;
+ use std::sync::atomic::AtomicBool;
+ 
+ use anyhow::anyhow;
++#[cfg(not(unix))]
+ use portable_pty::MasterPty;
+ use portable_pty::PtySize;
+ use portable_pty::SlavePty;
+@@ -84,6 +85,7 @@ pub(crate) trait PtyHandleKeepAlive: Send {}
+ impl<T: Send + ?Sized> PtyHandleKeepAlive for T {}
+ 
+ pub(crate) enum PtyMasterHandle {
++    #[cfg(not(unix))]
+     Resizable(Box<dyn MasterPty + Send>),
+     #[cfg(unix)]
+     Opaque {
+@@ -191,6 +193,7 @@ impl ProcessHandle {
+                 .map_err(|_| anyhow!("failed to lock PTY handles"))?;
+             if let Some(handles) = handles.as_ref() {
+                 return match &handles._master {
++                    #[cfg(not(unix))]
+                     PtyMasterHandle::Resizable(master) => master.resize(size.into()),
+                     #[cfg(unix)]
+                     PtyMasterHandle::Opaque { raw_fd, .. } => resize_raw_pty(*raw_fd, size),
+@@ -219,6 +222,7 @@ impl ProcessHandle {
+     /// Attempts to kill the child while leaving the reader/writer tasks alive
+     /// so callers can still drain output until EOF.
+     pub fn request_terminate(&self) {
++        crate::trace::emit("cancellation", "request_terminate", "{}");
+         if let Ok(mut killer_opt) = self.killer.lock()
+             && let Some(mut killer) = killer_opt.take()
+         {
+@@ -227,6 +231,7 @@ impl ProcessHandle {
+     }
+ 
+     pub fn signal(&self, signal: ProcessSignal) -> io::Result<()> {
++        crate::trace::emit("cancellation", "interrupt", "{}");
+         let Ok(mut killer_opt) = self.killer.lock() else {
+             return Ok(());
+         };
+@@ -244,6 +249,7 @@ impl ProcessHandle {
+ 
+     /// Attempts to kill the child and abort I/O helper tasks.
+     pub fn terminate(&self) {
++        crate::trace::emit("cancellation", "terminate", "{}");
+         self.request_terminate();
+ 
+         if let Ok(mut h) = self.reader_handle.lock()
+@@ -330,6 +336,7 @@ pub fn combine_output_receivers(
+             tokio::select! {
+                 stdout = stdout_rx.recv(), if stdout_open => match stdout {
+                     Some(chunk) => {
++                        crate::trace::emit("io", "merge", &format!("{{\"stream\":\"stdout\",\"bytes\":{}}}", chunk.len()));
+                         let _ = combined_tx.send(chunk);
+                     }
+                     None => {
+@@ -338,6 +345,7 @@ pub fn combine_output_receivers(
+                 },
+                 stderr = stderr_rx.recv(), if stderr_open => match stderr {
+                     Some(chunk) => {
++                        crate::trace::emit("io", "merge", &format!("{{\"stream\":\"stderr\",\"bytes\":{}}}", chunk.len()));
+                         let _ = combined_tx.send(chunk);
+                     }
+                     None => {
+diff --git a/codex-rs/utils/pty/src/pty.rs b/codex-rs/utils/pty/src/pty.rs
+index 1b848b3..1bea19c 100644
+--- a/codex-rs/utils/pty/src/pty.rs
++++ b/codex-rs/utils/pty/src/pty.rs
+@@ -1,6 +1,7 @@
+ use std::collections::HashMap;
+ #[cfg(unix)]
+ use std::fs::File;
++#[cfg(not(unix))]
+ use std::io::ErrorKind;
+ #[cfg(unix)]
+ use std::os::fd::AsRawFd;
+@@ -22,8 +23,9 @@ use std::sync::atomic::AtomicBool;
+ use std::time::Duration;
+ 
+ use anyhow::Result;
++#[cfg(not(unix))]
+ use portable_pty::CommandBuilder;
+-#[cfg(not(windows))]
++#[cfg(all(not(unix), not(windows)))]
+ use portable_pty::native_pty_system;
+ use tokio::sync::mpsc;
+ use tokio::sync::oneshot;
+@@ -51,12 +53,14 @@ pub fn conpty_supported() -> bool {
+     true
+ }
+ 
++#[cfg(not(unix))]
+ struct PtyChildTerminator {
+     killer: Box<dyn portable_pty::ChildKiller + Send + Sync>,
+     #[cfg(unix)]
+     process_group_id: Option<u32>,
+ }
+ 
++#[cfg(not(unix))]
+ impl ChildTerminator for PtyChildTerminator {
+     fn signal(&mut self, signal: ProcessSignal) -> std::io::Result<()> {
+         match signal {
+@@ -111,6 +115,7 @@ impl ChildTerminator for RawPidTerminator {
+     }
+ }
+ 
++#[cfg(not(unix))]
+ fn platform_native_pty_system() -> Box<dyn portable_pty::PtySystem + Send> {
+     #[cfg(windows)]
+     {
+@@ -142,14 +147,18 @@ pub async fn spawn_process(
+     let _ = inherited_fds;
+ 
+     #[cfg(unix)]
+-    if !inherited_fds.is_empty() {
+-        return spawn_process_preserving_fds(program, args, cwd, env, arg0, size, inherited_fds)
+-            .await;
++    {
++        // portable-pty reduces signal exits to code 1. The native wait status
++        // preserves signal numbers and also handles an empty inherited-FD list.
++        spawn_process_preserving_fds(program, args, cwd, env, arg0, size, inherited_fds).await
++    }
++    #[cfg(not(unix))]
++    {
++        spawn_process_portable(program, args, cwd, env, arg0, size).await
+     }
+-
+-    spawn_process_portable(program, args, cwd, env, arg0, size).await
+ }
+ 
++#[cfg(not(unix))]
+ async fn spawn_process_portable(
+     program: &str,
+     args: &[String],
+@@ -177,7 +186,23 @@ async fn spawn_process_portable(
+         command_builder.env(key, value);
+     }
+ 
++    let trace_id = crate::trace::next_id();
++    crate::trace::emit(
++        "spawn",
++        "begin",
++        &format!("{{\"stream_id\":{trace_id},\"tty\":true}}"),
++    );
+     let mut child = pair.slave.spawn_command(command_builder)?;
++    crate::trace::emit(
++        "spawn",
++        "return",
++        &format!(
++            "{{\"stream_id\":{trace_id},\"child_pid\":{}}}",
++            child
++                .process_id()
++                .map_or("null".into(), |pid| pid.to_string())
++        ),
++    );
+     #[cfg(unix)]
+     // portable-pty establishes the spawned PTY child as a new session leader on
+     // Unix, so PID == PGID and we can reuse the pipe backend's process-group
+@@ -193,6 +218,7 @@ async fn spawn_process_portable(
+         stdout_tx,
+         writer_rx,
+         crate::unix_io::StdinCloseBehavior::SendEof,
++        trace_id,
+     );
+     #[cfg(not(unix))]
+     let (reader_handle, writer_handle) = {
+@@ -243,7 +269,17 @@ async fn spawn_process_portable(
+     let wait_exit_code = Arc::clone(&exit_code);
+     let wait_handle: JoinHandle<()> = tokio::task::spawn_blocking(move || {
+         let code = match child.wait() {
+-            Ok(status) => status.exit_code() as i32,
++            Ok(status) => {
++                crate::trace::emit(
++                    "child",
++                    "wait_return",
++                    &format!(
++                        "{{\"stream_id\":{trace_id},\"reported_code\":{},\"signal\":null,\"signal_evidence\":\"portable_pty_status\"}}",
++                        status.exit_code()
++                    ),
++                );
++                status.exit_code() as i32
++            }
+             Err(_) => -1,
+         };
+         wait_exit_status.store(true, std::sync::atomic::Ordering::SeqCst);
+@@ -318,6 +354,11 @@ async fn spawn_process_preserving_fds(
+     let stdin = slave.try_clone()?;
+     let stdout = slave.try_clone()?;
+     let stderr = slave.try_clone()?;
++    let close_behavior = if inherited_fds.is_empty() {
++        crate::unix_io::StdinCloseBehavior::SendEof
++    } else {
++        crate::unix_io::StdinCloseBehavior::NoEof
++    };
+     let inherited_fds = inherited_fds.to_vec();
+ 
+     unsafe {
+@@ -357,18 +398,25 @@ async fn spawn_process_preserving_fds(
+             });
+     }
+ 
++    let trace_id = crate::trace::next_id();
++    crate::trace::emit(
++        "spawn",
++        "begin",
++        &format!("{{\"stream_id\":{trace_id},\"tty\":true}}"),
++    );
+     let mut child = command.spawn()?;
++    crate::trace::emit(
++        "spawn",
++        "return",
++        &format!("{{\"stream_id\":{trace_id},\"child_pid\":{}}}", child.id()),
++    );
+     drop(slave);
+     let process_group_id = child.id();
+ 
+     let (writer_tx, writer_rx) = mpsc::channel::<Vec<u8>>(128);
+     let (stdout_tx, stdout_rx) = mpsc::channel::<Vec<u8>>(128);
+     let (_stderr_tx, stderr_rx) = mpsc::channel::<Vec<u8>>(1);
+-    let (reader_handle, writer_handle) = io.spawn(
+-        stdout_tx,
+-        writer_rx,
+-        crate::unix_io::StdinCloseBehavior::NoEof,
+-    );
++    let (reader_handle, writer_handle) = io.spawn(stdout_tx, writer_rx, close_behavior, trace_id);
+ 
+     let (exit_tx, exit_rx) = oneshot::channel::<i32>();
+     let exit_status = Arc::new(AtomicBool::new(false));
+@@ -377,7 +425,19 @@ async fn spawn_process_preserving_fds(
+     let wait_exit_code = Arc::clone(&exit_code);
+     let wait_handle: JoinHandle<()> = tokio::task::spawn_blocking(move || {
+         let code = match child.wait() {
+-            Ok(status) => exit_code_from_status(status),
++            Ok(status) => {
++                use std::os::unix::process::ExitStatusExt;
++                crate::trace::emit(
++                    "child",
++                    "wait_return",
++                    &format!(
++                        "{{\"stream_id\":{trace_id},\"exit_code\":{},\"signal\":{}}}",
++                        status.code().map_or("null".into(), |v| v.to_string()),
++                        status.signal().map_or("null".into(), |v| v.to_string())
++                    ),
++                );
++                exit_code_from_status(status)
++            }
+             Err(_) => -1,
+         };
+         wait_exit_status.store(true, std::sync::atomic::Ordering::SeqCst);
+diff --git a/codex-rs/utils/pty/src/unix_io.rs b/codex-rs/utils/pty/src/unix_io.rs
+index 315c2b6..ef3b6be 100644
+--- a/codex-rs/utils/pty/src/unix_io.rs
++++ b/codex-rs/utils/pty/src/unix_io.rs
+@@ -45,6 +45,7 @@ impl PtyIo {
+         stdout_tx: mpsc::Sender<Vec<u8>>,
+         mut writer_rx: mpsc::Receiver<Vec<u8>>,
+         stdin_close: StdinCloseBehavior,
++        trace_id: u64,
+     ) -> (JoinHandle<()>, JoinHandle<()>) {
+         let fd = self.fd;
+         let reader = Arc::clone(&fd);
+@@ -55,14 +56,32 @@ impl PtyIo {
+                     .async_io(Interest::READABLE, |mut file| file.read(&mut buf))
+                     .await
+                 {
+-                    Ok(0) => break,
++                    Ok(0) => {
++                        crate::trace::stream(trace_id, "pty", &[]);
++                        break;
++                    }
+                     Ok(count) => {
++                        crate::trace::stream(trace_id, "pty", &buf[..count]);
+                         // Output caps may close the receiver before the child exits.
+                         let _ = stdout_tx.send(buf[..count].to_vec()).await;
+                     }
+                     Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+                     // Unix PTYs may report EIO rather than EOF when the slave closes.
+-                    Err(_) => break,
++                    Err(err) => {
++                        if err.raw_os_error() == Some(libc::EIO) {
++                            crate::trace::stream(trace_id, "pty", &[]);
++                        } else {
++                            crate::trace::emit(
++                                "io",
++                                "read_error",
++                                &format!(
++                                    "{{\"stream_id\":{trace_id},\"errno\":{}}}",
++                                    err.raw_os_error().map_or("null".into(), |v| v.to_string())
++                                ),
++                            );
++                        }
++                        break;
++                    }
+                 }
+             }
+         });

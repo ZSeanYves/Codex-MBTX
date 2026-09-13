@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MBTX execution comparison</title>
+<style>
+*{box-sizing:border-box}body{margin:0;color:#222;background:#fff;font:14px system-ui,sans-serif;letter-spacing:0}
+header,main{padding:20px;max-width:1440px;margin:auto}header{border-bottom:1px solid #ccc}
+h1{font-size:24px;margin:0 0 12px}h2{font-size:18px}select{padding:7px;max-width:100%;margin:0 10px 8px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{text-align:left;vertical-align:top;padding:9px;border-bottom:1px solid #ddd;overflow-wrap:anywhere}th{background:#f3f4f4}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f4f4;padding:12px;max-height:400px;overflow:auto}
+summary{cursor:pointer;padding:10px 0;overflow-wrap:anywhere}canvas{width:100%;height:220px;display:block}a{color:#167750}
+.tablescroll{overflow-x:auto}.timeline{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+section{padding:8px 0;border-bottom:1px solid #ddd}#totals{white-space:pre-wrap;line-height:1.7}.failed{color:#b02035}
+@media(max-width:700px){header,main{padding:12px}.timeline{grid-template-columns:minmax(0,1fr)}td,th{padding:6px}h1{font-size:22px}}
+</style>
+<header><h1>MBTX execution comparison</h1><div id="totals"></div></header>
+<main>
+<nav aria-label="Evidence filters">
+<select id="task" aria-label="Scenario"></select>
+<select id="category" aria-label="Category"></select>
+<select id="platform" aria-label="Platform"></select>
+<select id="failure" aria-label="Arm status"></select>
+<select id="subset" aria-label="Comparison subset"><option value="all">All attempted pairs</option><option value="strict">Strict comparable pairs</option><option value="failed">Non-comparable pairs</option></select>
+</nav>
+<div id="pairs"></div>
+<h2>Paired statistics</h2><div id="statistics" class="tablescroll"></div>
+<h2>Evidence limits</h2><pre id="limits"></pre>
+</main>

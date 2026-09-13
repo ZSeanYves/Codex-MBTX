@@ -43,10 +43,50 @@ fn emit(event: Event<'_>) {
     println!("{}", serde_json::to_string(&event).unwrap());
 }
 
+fn emit_trace(
+    job: &Job,
+    phase: &'static str,
+    event: &'static str,
+    started: u128,
+    extra: serde_json::Value,
+) {
+    let mut row = serde_json::json!({
+        "schema_version": 2,
+        "experiment_id": job.experiment_id,
+        "pair_id": job.pair_id,
+        "attempt_id": job.attempt_id,
+        "task_id": job.task_id,
+        "backend": job.backend,
+        "phase": phase,
+        "event": event,
+        "parent_id": serde_json::Value::Null,
+        "monotonic_ns": started,
+        "clock_domain": "observer-monotonic",
+        "status": "unknown",
+        "failure_class": serde_json::Value::Null,
+        "confidence": "observed",
+        "pid": std::process::id(),
+    });
+    if let (Some(target), Some(fields)) = (row.as_object_mut(), extra.as_object()) {
+        target.extend(fields.clone());
+    }
+    println!("{}", serde_json::to_string(&row).unwrap());
+}
+
 fn run(job: &Job, origin: Instant) {
     let start = origin.elapsed().as_nanos();
+    emit_trace(
+        job,
+        "observer",
+        "spawn_begin",
+        start,
+        serde_json::json!({
+            "command": job.command,
+            "cwd": job.cwd,
+        }),
+    );
     emit(Event {
-        schema_version: 1,
+        schema_version: 2,
         experiment_id: &job.experiment_id,
         pair_id: &job.pair_id,
         attempt_id: &job.attempt_id,
@@ -67,7 +107,7 @@ fn run(job: &Job, origin: Instant) {
     });
     let Some((program, args)) = job.command.split_first() else {
         emit(Event {
-            schema_version: 1,
+            schema_version: 2,
             experiment_id: &job.experiment_id,
             pair_id: &job.pair_id,
             attempt_id: &job.attempt_id,
@@ -94,6 +134,16 @@ fn run(job: &Job, origin: Instant) {
         command.current_dir(cwd);
     }
     let result = command.output();
+    let after_wait = origin.elapsed().as_nanos();
+    emit_trace(
+        job,
+        "observer",
+        "wait_return",
+        after_wait,
+        serde_json::json!({
+            "wait_ns": after_wait.saturating_sub(start),
+        }),
+    );
     match result {
         Ok(output) => {
             let code = output.status.code();
@@ -112,8 +162,20 @@ fn run(job: &Job, origin: Instant) {
             let _ = fs::create_dir_all(&job.artifact_dir);
             let _ = fs::write(format!("{}/stdout", job.artifact_dir), &output.stdout);
             let _ = fs::write(format!("{}/stderr", job.artifact_dir), &output.stderr);
+            let artifact_end = origin.elapsed().as_nanos();
+            emit_trace(
+                job,
+                "observer",
+                "artifact_write",
+                artifact_end,
+                serde_json::json!({
+                    "artifact_write_ns": artifact_end.saturating_sub(after_wait),
+                    "stdout_bytes": output.stdout.len(),
+                    "stderr_bytes": output.stderr.len(),
+                }),
+            );
             emit(Event {
-                schema_version: 1,
+                schema_version: 2,
                 experiment_id: &job.experiment_id,
                 pair_id: &job.pair_id,
                 attempt_id: &job.attempt_id,
@@ -134,7 +196,7 @@ fn run(job: &Job, origin: Instant) {
             });
         }
         Err(_) => emit(Event {
-            schema_version: 1,
+            schema_version: 2,
             experiment_id: &job.experiment_id,
             pair_id: &job.pair_id,
             attempt_id: &job.attempt_id,

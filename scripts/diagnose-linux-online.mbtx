@@ -6,104 +6,35 @@ import {
   "moonbitlang/core/json",
 }
 
-struct CommandResult {
-  command : String
-  exit_code : Int
-  output : String
-} derive(ToJson)
-
-async fn command(program : String, args : Array[String], cwd : String) -> CommandResult {
-  let result = @shell.Cmd(program, args, cwd~).output(timeout_ms=120_000)
-  {
-    command: "\{program} \{args.join(" ")}",
-    exit_code: result.exit_code(),
-    output: "\{result.stdout()}\{result.stderr()}".trim().to_owned(),
-  }
+async fn inspect_command(program : String, arguments : Array[String], cwd : String) -> Json {
+  try {
+    let result = @shell.Cmd(program, arguments, cwd~).output(timeout_ms=120000)
+    {"command":program.to_json(), "arguments":arguments.to_json(), "exit_code":result.exit_code().to_json(), "stdout":result.stdout().to_json(), "stderr":result.stderr().to_json()}
+  } catch { error => {"command":program.to_json(), "exit_code":Json::null(), "error":error.to_string().to_json()} }
 }
 
 async fn main {
   let root = @fs.realpath(".")
-  let output = @env.args().get(1).unwrap_or("diagnostics/linux-online")
-  let output = if output.has_prefix("/") { output } else { "\{root}/\{output}" }
-  if !@fs.exists(output) { @fs.mkdir(output, recursive=true) }
-  let relay = @env.get_env_var("MBTX_RELAY_BASE_URL").unwrap_or("https://tokenadvent.com/v1")
-  let model = @env.get_env_var("MBTX_MODEL").unwrap_or("gpt-5.6-terra")
-  let key = @env.get_env_var("OPENAI_API_KEY")
-  let codex = "\{root}/_build/codex-upstream/codex-rs/target/release/codex"
-  let host = "\{root}/_build/codex-upstream/codex-rs/target/release/codex-code-mode-host"
-  let mbtx = "\{root}/_build/native/release/build/cmd/mbtx/mbtx.exe"
-  let online = "\{root}/adapter/target/release/mbtx-online"
-  let run_dir = @env.args().get(2)
-  let results : Array[CommandResult] = []
-  results.push(command("uname", ["-a"], root))
-  let rust_result = command("rustc", ["-vV"], root)
-  results.push(rust_result)
-  let mut target = "unknown"
-  for line in rust_result.output.split("\n") {
-    if line.has_prefix("host: ") { target = line[6:].trim().to_owned() }
+  let output = @env.args().get(1).unwrap_or("diagnostics/linux-online-\{@async.now()}")
+  @fs.mkdir(output, recursive=true)
+  let results = [
+    inspect_command("uname", ["-a"], root),
+    inspect_command("moon", ["--version"], root),
+    inspect_command("rustc", ["-vV"], root),
+    inspect_command("cargo", ["--version"], root),
+  ]
+  let bundle = @env.get_env_var("MBTX_BUNDLE")
+  if bundle is Some(path) {
+    let path = @fs.realpath(path)
+    results.push(inspect_command("sha256sum", ["--check", "binaries.sha256"], path))
+    results.push(inspect_command(path + "/codex-exec", ["--version"], root))
   }
-  let v8 = "\{root}/_build/codex-v8/150.4.0/\{target}"
-  let manifest = "rusty_v8_ptrcomp_sandbox_release_\{target}.sha256"
-  results.push(command("cargo", ["--version"], root))
-  results.push(command("moon", ["--version"], root))
-  results.push(command(codex, ["--version"], root))
-  results.push(command(host, ["--help"], root))
-  results.push(command(mbtx, ["--version"], root))
-  results.push(command(online, ["--help"], root))
-  results.push(command("python3", ["_build/codex-upstream/.github/scripts/rusty_v8_bazel.py", "resolved-v8-crate-version"], root))
-  results.push(command("sha256sum", [codex, host, mbtx, online], root))
-  results.push(command("sha256sum", ["--check", manifest], v8))
-  if run_dir is Some(directory) {
-    let path = if directory.has_prefix("/") { directory } else { "\{root}/\{directory}" }
-    results.push(command("find", [path, "-maxdepth", "3", "-type", "f", "-name", "codex.stdout.jsonl", "-print"], root))
-    results.push(command("find", [path, "-maxdepth", "3", "-type", "f", "-name", "codex.stderr.log", "-print"], root))
-    results.push(command("rg", ["-n", "429|401|API_KEY_REQUIRED|Code Mode|host executable|retry limit", path], root))
+  if @env.args().get(2) is Some(run) && bundle is Some(path) {
+    results.push(inspect_command(path + "/mbtx-eval", ["report", run, "--format", "json", "--evaluation-model", path + "/evaluation-model"], root))
   }
-  let probe_enabled = @env.get_env_var("MBTX_DIAGNOSTIC_PROBE").unwrap_or("") == "1"
-  let probe = if probe_enabled {
-    match key {
-      Some(value) if !value.is_empty() => command(
-        "curl",
-        ["--silent", "--show-error", "--location", "--max-time", "30", "--write-out", "\\nHTTP_STATUS:%{http_code}\\n", "--header", "Authorization: Bearer \{value}", "\{relay}/models"],
-        root,
-      )
-      _ => CommandResult::{ command: "curl relay probe skipped".to_string(), exit_code: 2, output: "OPENAI_API_KEY is absent".to_string() }
-    }
-  } else {
-    CommandResult::{ command: "curl relay probe disabled".to_string(), exit_code: 0, output: "set MBTX_DIAGNOSTIC_PROBE=1 to make one authenticated GET /models request".to_string() }
-  }
-  let probe_output = match key {
-    Some(value) => probe.output.replace(old=value, new="[REDACTED]")
-    None => probe.output
-  }
-  results.push(CommandResult::{
-    command: "curl authenticated GET /models (credential redacted)".to_string(),
-    exit_code: probe.exit_code,
-    output: probe_output,
-  })
-  let key_present = match key { Some(value) => !value.is_empty(); None => false }
-  let key_length = match key { Some(value) => value.length(); None => 0 }
-  let report : Json = {
-    "schema_version": 1,
-    "root": root,
-    "relay": relay,
-    "model": model,
-    "api_key_present": key_present,
-    "api_key_length": key_length,
-    "probe_enabled": probe_enabled,
-    "artifacts": {
-      "codex": codex,
-      "code_mode_host": host,
-      "mbtx": mbtx,
-      "mbtx_online": online,
-      "v8_directory": v8,
-    },
-    "commands": results,
-  }
-  @fs.write_file("\{output}/diagnostic.json", report.stringify())
-  @fs.write_file(
-    "\{output}/README.txt",
-    "This directory contains tool versions, artifact hashes, V8 checksum status, and redacted relay diagnostics. The API key value is never written. If MBTX_DIAGNOSTIC_PROBE=1 was used, inspect only the returned status/body and delete this directory after sharing the report if it contains provider metadata.\n",
-  )
-  println("[diagnostic] wrote \{output}/diagnostic.json")
+  let key_present = @env.get_env_var("OPENAI_API_KEY") is Some(key) && key != ""
+  let report : Json = {"schema_version":2, "api_key_present":key_present, "network_requests":0,
+    "bundle":bundle.to_json(), "checks":results.to_json()}
+  @fs.write_file(output + "/diagnostic.json", report.stringify(), create_mode=@fs.CreateMode::CreateNew)
+  println("[diagnostic] \{output}/diagnostic.json; no API request sent")
 }

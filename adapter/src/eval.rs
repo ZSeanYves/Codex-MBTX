@@ -1,23 +1,11 @@
 use codex_mbtx_contract::codex_evidence::{
     CommandOracle, ProcessEvidence, assess, http_error_status, parse_codex_output,
 };
+use codex_mbtx_contract::evidence::seal;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
-use std::{env, fs, process::Command};
-
-#[derive(serde::Serialize)]
-struct Job {
-    experiment_id: String,
-    pair_id: String,
-    attempt_id: String,
-    task_id: String,
-    backend: String,
-    command: Vec<String>,
-    cwd: Option<String>,
-    artifact_dir: String,
-    expected_exit_code: Option<i32>,
-}
+use std::{env, fs, process::Command, thread, time::Duration};
 
 #[derive(Default)]
 struct Arm {
@@ -40,7 +28,7 @@ struct Pair {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: mbtx-eval run|replay|log|report RUN|--events FILE [--format html|md|json|csv]"
+        "usage: mbtx-eval run|replay|log|report|seal RUN [--suite launcher|codex-replay|codex-relay] [--format html|md|json|csv|all]"
     );
     std::process::exit(2)
 }
@@ -62,20 +50,107 @@ fn event_path(args: &[String]) -> String {
 }
 
 fn events(path: &str) -> Vec<Value> {
-    fs::read_to_string(path)
+    codex_mbtx_contract::evidence::lines(Path::new(path))
         .unwrap_or_else(|error| {
             eprintln!("cannot read {path}: {error}");
             std::process::exit(2)
         })
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| {
-            serde_json::from_str(line).unwrap_or_else(|error| {
-                eprintln!("invalid event: {error}");
-                std::process::exit(2)
+        .0
+}
+
+fn log_events(path: &str, follow: bool) {
+    let root = Path::new(path).parent().unwrap_or(Path::new("."));
+    let mut emitted = BTreeMap::new();
+    let mut active = None;
+    let mut last_phase = Value::Null;
+    loop {
+        let mut files: Vec<_> = fs::read_dir(root)
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .filter(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                name == "events.jsonl"
+                    || (name.starts_with("events-resume-") && name.ends_with(".jsonl"))
             })
-        })
-        .collect()
+            .collect();
+        files.sort_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
+        let mut finished = false;
+        for file in files {
+            let (rows, _) = codex_mbtx_contract::evidence::lines(&file.path()).unwrap_or_default();
+            for row in rows.iter().skip(*emitted.get(&file.path()).unwrap_or(&0)) {
+                if row["event"] == "attempt_start" {
+                    active = Some(format!(
+                        "{}-{}",
+                        field(row, "pair_id"),
+                        field(row, "backend")
+                    ));
+                }
+                println!(
+                    "{} {} {}:{} status={} valid={}/{} failures={} remaining={} eta_s={}",
+                    field(row, "pair_id"),
+                    field(row, "backend"),
+                    field(row, "phase"),
+                    field(row, "event"),
+                    field(row, "status"),
+                    text_field(row, "valid_pairs"),
+                    text_field(row, "target_pairs"),
+                    text_field(row, "failed_arms"),
+                    text_field(row, "remaining_target"),
+                    text_field(row, "estimated_remaining_seconds")
+                );
+            }
+            emitted.insert(file.path(), rows.len());
+            finished = rows.last().is_some_and(|r| r["event"] == "finished");
+        }
+        if let Some(id) = &active {
+            if let Some(row) = latest_phase(root, id) {
+                if row != last_phase {
+                    println!(
+                        "{} {}:{} observed_ns={}",
+                        id,
+                        field(&row, "phase"),
+                        field(&row, "event"),
+                        text_field(&row, "monotonic_ns")
+                    );
+                    last_phase = row;
+                }
+            }
+        }
+        if !follow || finished {
+            return;
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
+}
+
+fn latest_phase(root: &Path, attempt: &str) -> Option<Value> {
+    fn scan(path: &Path, files: &mut Vec<std::fs::DirEntry>) {
+        for entry in fs::read_dir(path)
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+        {
+            if entry.file_type().is_ok_and(|t| t.is_dir()) {
+                scan(&entry.path(), files);
+            } else if entry.path().extension().is_some_and(|e| e == "jsonl")
+                && entry.file_name() != "codex.stdout.jsonl"
+            {
+                files.push(entry);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    scan(&root.join("attempts").join(attempt), &mut files);
+    scan(&root.join("relay"), &mut files);
+    files.sort_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
+    for file in files.into_iter().rev().take(8) {
+        let (rows, _) = codex_mbtx_contract::evidence::lines(&file.path()).ok()?;
+        if let Some(row) = rows.into_iter().rev().find(|r| r["attempt_id"] == attempt) {
+            return Some(row);
+        }
+    }
+    None
 }
 
 fn field<'a>(value: &'a Value, name: &str) -> &'a str {
@@ -516,91 +591,81 @@ fn report(path: &str, format: &str) {
 pub fn main() {
     let args: Vec<String> = env::args().collect();
     let command = args.get(1).map(String::as_str).unwrap_or("");
-    match command {
-        "run" => {
-            let mbtx = args
-                .iter()
-                .position(|arg| arg == "--mbtx")
-                .and_then(|index| args.get(index + 1))
-                .cloned()
-                .unwrap_or_else(|| usage());
-            let out = args
-                .iter()
-                .position(|arg| arg == "--output")
-                .and_then(|index| args.get(index + 1))
-                .cloned()
-                .unwrap_or_else(|| "_build/launcher-evidence".to_owned());
-            let pairs: usize = args
-                .iter()
-                .position(|arg| arg == "--pairs")
-                .and_then(|index| args.get(index + 1))
-                .and_then(|value| value.parse().ok())
-                .unwrap_or(4)
-                .clamp(1, 6);
-            fs::create_dir_all(&out).unwrap();
-            let tasks = [
-                (
-                    "literal_argv",
-                    "printf '%s|%s|%s' '$(touch SHOULD_NOT_EXIST)' 'a b' '\"quoted\"'",
-                    0,
-                ),
-                ("stdin_utf8", "printf 'stdin✓\\n'", 0),
-                ("cwd_environment", "printf '%s' \"$PWD\"", 0),
-                ("large_output", "yes x | head -c 65536", 0),
-                ("nonzero_exit", "printf before; exit 7", 7),
-                ("background_cleanup", "(sleep .02; exit 0) & wait", 0),
-                ("signal_exit", "kill -TERM \"$$\"", 143),
-                ("recovery", "printf first; printf second", 0),
-            ];
-            let mut jobs = Vec::new();
-            for pair in 0..pairs {
-                for (index, (task, script, expected_exit_code)) in tasks.iter().enumerate() {
-                    let first_mbtx = (pair + index) % 2 == 1;
-                    for arm in 0..2 {
-                        let is_mbtx = if arm == 0 { first_mbtx } else { !first_mbtx };
-                        let backend = if is_mbtx { "transparent" } else { "shell" };
-                        let command = if is_mbtx {
-                            vec![
-                                mbtx.clone(),
-                                "exec".into(),
-                                "--".into(),
-                                "/bin/sh".into(),
-                                "-c".into(),
-                                (*script).into(),
-                            ]
-                        } else {
-                            vec!["/bin/sh".into(), "-c".into(), (*script).into()]
-                        };
-                        jobs.push(Job {
-                            experiment_id: "launcher-comparison-v1".into(),
-                            pair_id: format!("pair-{pair:02}-{task}"),
-                            attempt_id: format!("attempt-{pair:02}-{index}-{backend}"),
-                            task_id: (*task).into(),
-                            backend: backend.into(),
-                            command,
-                            cwd: None,
-                            artifact_dir: format!("{out}/pair-{pair:02}-{task}/{backend}"),
-                            expected_exit_code: Some(*expected_exit_code),
-                        });
-                    }
+    if command == "run"
+        && codex_mbtx_contract::collection::option(&args, "--suite").as_deref() == Some("launcher")
+    {
+        let bin = env::current_exe().unwrap().with_file_name("mbtx-startup");
+        let status = Command::new(bin)
+            .args(&args[1..])
+            .status()
+            .expect("run prebuilt startup collector");
+        std::process::exit(status.code().unwrap_or(1));
+    }
+    if (command == "run" && args.iter().any(|v| v == "--suite")) || command == "replay" {
+        let mut options = args.clone();
+        if command == "replay" {
+            let source = args.get(2).unwrap_or_else(|| usage());
+            let manifest =
+                codex_mbtx_contract::evidence::read_json(&Path::new(source).join("manifest.json"))
+                    .unwrap_or_else(|e| {
+                        eprintln!("cannot read frozen replay input: {e}");
+                        std::process::exit(2)
+                    });
+            for (key, binary) in [
+                ("--codex", "codex"),
+                ("--mbtx", "launcher"),
+                ("--fixture", "fixture"),
+                ("--evaluation-model", "evaluation_model"),
+            ] {
+                if !options.iter().any(|arg| arg == key) {
+                    let path = manifest["binaries"][binary]["path"]
+                        .as_str()
+                        .unwrap_or_else(|| usage());
+                    options.extend([key.into(), path.into()]);
                 }
             }
-            let jobs_path = format!("{out}/jobs.json");
-            fs::write(&jobs_path, serde_json::to_vec_pretty(&jobs).unwrap()).unwrap();
-            let observer = env::current_exe().unwrap().with_file_name("mbtx-observe");
-            let result = Command::new(observer)
-                .arg("--jobs")
-                .arg(&jobs_path)
-                .output()
-                .unwrap();
-            fs::write(format!("{out}/events.jsonl"), result.stdout).unwrap();
-            eprintln!(
-                "planned {} pairs ({} arm attempts); output {out}",
-                pairs * tasks.len(),
-                jobs.len()
-            );
+            if !options.iter().any(|arg| arg == "--output") {
+                options.extend([
+                    "--output".into(),
+                    format!(
+                        "{source}-replay-{}",
+                        codex_mbtx_contract::evidence::now_ns()
+                    ),
+                ]);
+            }
+            if !options.iter().any(|arg| arg == "--tool-mode") {
+                options.extend([
+                    "--tool-mode".into(),
+                    manifest["tool_mode"].as_str().unwrap_or("code").into(),
+                ]);
+            }
+            for (key, field) in [("--model", "model"), ("--timeout-ms", "timeout_ms")] {
+                if !options.iter().any(|arg| arg == key) && !manifest[field].is_null() {
+                    options.extend([
+                        key.into(),
+                        manifest[field]
+                            .as_str()
+                            .map(str::to_owned)
+                            .unwrap_or_else(|| manifest[field].to_string()),
+                    ]);
+                }
+            }
+            if manifest["direct_control"] == true
+                && !options.iter().any(|arg| arg == "--direct-shell")
+            {
+                options.push("--direct-shell".into());
+            }
+            options.extend(["--frozen-run".into(), source.clone()]);
+            options.extend(["--suite".into(), "codex-replay".into()]);
         }
-        "replay" | "report" => {
+        if let Err(error) = codex_mbtx_contract::collection::run(&options) {
+            eprintln!("collection failed: {error}; existing evidence is preserved");
+            std::process::exit(1);
+        }
+        return;
+    }
+    match command {
+        "report" => {
             let path = event_path(&args);
             let format = args
                 .iter()
@@ -608,19 +673,69 @@ pub fn main() {
                 .and_then(|index| args.get(index + 1))
                 .map(String::as_str)
                 .unwrap_or("md");
-            report(&path, format);
+            let root = Path::new(&path).parent().unwrap_or(Path::new("."));
+            if codex_mbtx_contract::evidence::read_json(&root.join("manifest.json"))
+                .ok()
+                .is_some_and(|v| v["schema_version"] == 2)
+            {
+                let model = codex_mbtx_contract::collection::option(&args, "--evaluation-model")
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| {
+                        env::current_exe()
+                            .unwrap()
+                            .with_file_name("evaluation-model")
+                    });
+                let report =
+                    codex_mbtx_contract::reporting::build(root, &model).and_then(|mut r| {
+                        if format != "all" {
+                            return codex_mbtx_contract::reporting::render(&r, format);
+                        }
+                        let destination = if root.join("report.json").exists() {
+                            root.join("reports")
+                                .join(codex_mbtx_contract::evidence::now_ns().to_string())
+                        } else {
+                            root.to_path_buf()
+                        };
+                        fs::create_dir_all(&destination)?;
+                        r["evidence_base"] =
+                            json!(if destination == root { "." } else { "../../" });
+                        for kind in ["md", "json", "csv", "html", "trace"] {
+                            let text = codex_mbtx_contract::reporting::render(&r, kind)?;
+                            let name = if kind == "trace" {
+                                "trace.json".into()
+                            } else {
+                                format!("report.{kind}")
+                            };
+                            codex_mbtx_contract::evidence::write_new(
+                                &destination.join(name),
+                                text.as_bytes(),
+                            )?;
+                        }
+                        Ok(format!("reports: {}", destination.display()))
+                    });
+                match report {
+                    Ok(text) => println!("{text}"),
+                    Err(error) => {
+                        eprintln!("report failed: {error}");
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                report(&path, format);
+            }
+        }
+        "seal" => {
+            let path = event_path(&args);
+            let directory = Path::new(&path).parent().unwrap_or(Path::new("."));
+            seal(directory).unwrap_or_else(|error| {
+                eprintln!("cannot seal evidence in {}: {error}", directory.display());
+                std::process::exit(2);
+            });
+            println!("sealed {}", directory.display());
         }
         "log" => {
             let path = event_path(&args);
-            for row in events(&path) {
-                println!(
-                    "{} {} {} {}",
-                    field(&row, "pair_id"),
-                    field(&row, "backend"),
-                    field(&row, "event"),
-                    field(&row, "status")
-                );
-            }
+            log_events(&path, args.iter().any(|arg| arg == "--follow"));
         }
         _ => usage(),
     }

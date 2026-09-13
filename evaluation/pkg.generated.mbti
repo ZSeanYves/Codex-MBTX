@@ -6,9 +6,19 @@ import {
 }
 
 // Values
+pub fn assess_facts(Json) -> Json
+
 pub fn comparable(Outcome, Outcome) -> Bool
 
 pub fn count_comparable(Array[PairResult]) -> Int
+
+pub fn dispatch(Json) -> Json
+
+pub fn evaluate(Json) -> Json
+
+pub fn paired_statistics(Array[Json]) -> Json
+
+pub fn suite(String) -> Json
 
 // Errors
 

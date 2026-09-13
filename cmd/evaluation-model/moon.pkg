@@ -1,0 +1,10 @@
+import {
+  "ZSeanYves/Codex-MBTX/evaluation",
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

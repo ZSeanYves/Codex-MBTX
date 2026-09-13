@@ -1,166 +1,138 @@
-# Linux online collection
+# Linux Setup and Collection
 
-This workflow builds the pinned Codex CLI and Code Mode host, the MBTX launcher, and the
-Rust collector once, then runs sequential Shell/Transparent pairs against the
-configured OpenAI-compatible Responses relay.
+Use a local build of the pinned Codex fork, not the globally installed Codex.
+The scripts build Codex, its Code Mode host, the Responses proxy, MBTX and the
+fixture once, then use those binaries throughout collection.
 
-The repository uses the standard stable Rust toolchain. The installer and CI
-track `stable` and record the actual Cargo version in `provenance.txt`.
-Codex dependencies are frozen in `codex/Cargo.lock`.
+## Install
 
-On a clean Linux host, install the MoonBit CLI once, then make it available in
-the current shell:
-
-```bash
-curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-export PATH="$HOME/.moon/bin:$PATH"
-```
-
-From a clean checkout on Linux:
+On a standard Linux host:
 
 ```bash
 git pull --ff-only origin main
+curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+export PATH="$HOME/.moon/bin:$PATH"
 moon update
 moon run scripts/install-linux.mbtx
 . "$HOME/.cargo/env"
-
-export OPENAI_API_KEY='sk-...'
-export MBTX_RELAY_BASE_URL='https://tokenadvent.com/v1'
-export MBTX_MODEL='gpt-5.6-terra'
-moon run scripts/collect-linux-online.mbtx
 ```
 
-`moon update` refreshes the package registry index after installing MoonBit.
-Standalone `.mbtx` scripts resolve their own dependencies, independently of
-the root `moon.mod`. Their imports explicitly select `moonbitlang/async@0.21.3`,
-matching the launcher module, so an older registry default cannot select a
-release without the required `shell` package. CI builds every script without
-running installation or online collection.
+The installer uses the distribution's standard packages, latest MoonBit and
+stable Rust. Host-specific network, package-manager or sandbox restrictions
+must be resolved locally. Codex's Rust dependencies are frozen in
+`codex/Cargo.lock`. The V8 preparation script verifies the matching published
+archive and binding checksums and caches them.
 
-For the JSON credential form, store it outside the checkout with mode `600`
-and export it without copying the key into the repository:
+## Credentials
+
+Keep the real key outside the repository and shell history:
+
+```bash
+read -rsp 'Relay API key: ' OPENAI_API_KEY
+echo
+export OPENAI_API_KEY
+export MBTX_RELAY_BASE_URL='https://tokenadvent.com/v1'
+export MBTX_MODEL='gpt-5.6-terra'
+```
+
+Alternatively, read an existing private JSON credential file:
 
 ```bash
 chmod 600 /private/path/credentials.json
-export OPENAI_API_KEY="$(jq -r '.OPENAI_API_KEY' /private/path/credentials.json)"
+export OPENAI_API_KEY="$(jq -er '.OPENAI_API_KEY' /private/path/credentials.json)"
 ```
 
-The default run target is `evidence/linux/codex-relay/<timestamp>`. Set
-`MBTX_PAIRS=1` for a short smoke, or leave the default `4` for 32 planned
-pairs (64 arms). The collector keeps external relay/provider errors and stops
-only at the registered infrastructure thresholds. It writes `events.jsonl`,
-immutable per-attempt evidence, `online-summary.md`, `summary.json`,
-`provenance.txt`, and Markdown/JSON/CSV/HTML reports.
+No interactive login or global `~/.codex/config.toml` is required. Each arm
+receives an isolated HOME and generated TOML configuration. Codex uses a dummy
+local credential; only the shared proxy receives the real key through stdin.
+The generated configuration selects Responses, disables automatic request and
+stream retries, and retains the workspace sandbox and approval path.
 
-Arms are executed by one sequential loop, with a 6-second pause before the next
-arm. `MBTX_MIN_INTERVAL_MS` controls this pause. It limits arm starts, not API
-requests: Codex normally requests a tool call and then requests a final response,
-and may make more requests within an arm. Sequential collection cannot prevent
-an account-wide RPM limit or requests from other clients. Use `0` only with a
-local mock relay.
+## Run
 
-Each Codex arm has a 300-second deadline. The outer collection script has no
-one-hour total deadline; all 64 arms can finish. `summary.json` and
-`online-summary.md` are atomically checkpointed after every arm. A stopped run
-can be reported from its raw evidence without contacting the relay:
+Build once, then use the printed bundle path:
 
 ```bash
-cargo run --locked --manifest-path adapter/Cargo.toml --bin mbtx-eval -- \
-  report evidence/linux/codex-relay/<timestamp> --format md
+moon run scripts/build-evaluation.mbtx codex
+export MBTX_BUNDLE="$PWD/_build/bundles/<printed-key>"
+
+# Short validation is a separate artifact, not part of formal data:
+MBTX_PAIRS=1 MBTX_TASKS=argv_empty_unicode,cancel_sigkill moon run scripts/collect-linux-online.mbtx
+
+# Full online protocol: 24 scenarios, eight valid pairs each, at most 288 attempts:
+moon run scripts/collect-linux-online.mbtx
+
+# Linux startup attribution: 1,000 pairs per workload and observation mode, no API:
+moon run scripts/collect-linux.mbtx
+
+# Real Codex fixed-response replay: ten pairs per scenario, no API:
+moon run scripts/collect.mbtx codex-replay
 ```
 
-The collector binds `model_providers.OpenrouterICU.env_key` to `OPENAI_API_KEY`
-in every isolated Codex home. A saved interactive Codex login is not required.
-Both arms use `features.unified_exec = true`, `features.code_mode_host = true`,
-and `features.plugins = false`; plugin startup sync is unrelated to the launcher
-comparison and would add an uncontrolled GitHub dependency to every arm.
-The pinned `gpt-5.6-terra` metadata selects `code_mode_only`; the model invokes
-`exec_command` through Code Mode. Both Codex binaries are produced by one Cargo
-build, and their hashes are retained in provenance.
+Without `MBTX_BUNDLE`, collection resolves and verifies the cached bundle
+automatically. macOS launcher collection uses `moon run scripts/collect-macos.mbtx`.
+Use `MBTX_TOOL_MODE=direct` for a separate direct-tool artifact. The default is
+Code Mode, with sequential tools within one program. `MBTX_DIRECT_SHELL=1`
+creates a separate Direct Shell control; inspect actual `shell_modes` first.
+If the default is already Direct, the default artifact is also the control.
 
-Before that Cargo build, `scripts/prepare-codex-v8.mbtx` resolves the `v8`
-version from the pinned lockfile, downloads the matching Codex-published
-sandbox archive and Rust binding, and verifies both against the release
-checksum manifest. The verified pair is cached under `_build/codex-v8/` and
-reused on later runs; it is never mixed across targets or crate versions.
+## Request Budget
 
-Every arm prints its result status, failure class, and observed HTTP error status
-(`unknown` when absent). A `401` is a provider authentication failure even when
-the message includes a relay URL. `partial` means the planned comparison did not
-complete; writing a report successfully is not a successful experiment.
-Keep a failed run intact and start a new timestamped run after fixing its cause.
+Every real outgoing API request, including tool continuations, passes through
+one gate. Concurrency is one for the entire response stream. The default
+`MBTX_MIN_INTERVAL_MS=15000` permits at most about four request starts per
+minute. The minimum accepted interval is 6,000 ms. A 429 is recorded as an
+external failure; subsequent requests respect `Retry-After` (seconds or HTTP
+date), or wait 30 seconds if it is absent. Failed arms are not silently retried.
 
-`status` describes the complete Codex outcome. Success requires both a successful
-command oracle and `turn.completed` with Codex exit code 0. `command_outcome`
-records the command oracle separately: an expected command exit of 7 or 143 can
-pass, while a subsequent API request timeout makes the Codex outcome
-`relay_error/relay_request_timeout`. A collector deadline remains
-`timeout/codex_timeout`, with its cause unknown unless additional evidence exists.
-Missing usage remains `null`. Multiple completed commands are a harness protocol
-failure, rather than selecting the last command as a successful sample.
+At two requests per arm, 192 pairs require about 768 requests and at least
+3.2 hours at the default interval. Model latency, extra calls, cooldown and
+supplementary attempts extend this estimate. Rate waiting is reported separately.
+Other clients using the same account are outside this gate; stop those clients
+or raise `MBTX_MIN_INTERVAL_MS` to reserve account RPM. No local setting can
+guarantee the relay will never return 429.
 
-Reports count each arm once, even though it has both Codex and child exit events.
-`command_oracle_pairs` preserves useful command results from incomplete turns;
-`valid_comparable_pairs` requires complete successful Codex outcomes on both arms.
-The oracle currently checks the expected exit, output marker, and forbidden side
-effect. It is not a proof of byte-exact output, full process cleanup, or recovery.
-Codex elapsed time includes model/relay time and cannot identify launcher cost.
+## Inspect and Resume
 
-The report command reclassifies online results from the saved Codex JSONL,
-stderr, and attempt metadata with the same classifier as live collection.
-It does not modify the run or consult API credentials. `recorded_status` retains
-the original collector classification, and `classification_source` identifies
-the revised interpretation. Original reports from older commits remain historical.
-See the [Linux smoke review](../evidence/linux/codex-relay/20260913T141847943929204/review/README.md).
-
-If the relay returns a new error, run the read-only diagnostic bundle on Linux:
+The script prints the output directory and follow command:
 
 ```bash
-moon run scripts/diagnose-linux-online.mbtx diagnostics/linux-online \
-  evidence/linux/codex-relay/<failed-run>
+"$MBTX_BUNDLE/mbtx-eval" log <RUN> --follow
+"$MBTX_BUNDLE/mbtx-eval" report <RUN> --format all
+MBTX_RESUME_RUN=<RUN> moon run scripts/collect-linux-online.mbtx
 ```
 
-It records versions, artifact hashes, V8 checksum status, and matching error
-lines from the failed run without sending a model request. To make one optional
-authenticated `GET /models` probe, set `MBTX_DIAGNOSTIC_PROBE=1`; the response
-status and body are recorded, never the key itself.
+To include the detached descendant boundary in an offline replay, set
+`MBTX_BOUNDARIES=1`; this never changes the online task quota.
 
-The isolated-home authentication path can be checked without a real API key or
-provider by running the Rust integration test against a local mock relay:
+Resume requires the same binaries, model, protocol, environment PATH and rate
+configuration. Completed attempts are verified and reused. Interrupted attempts
+remain censored; supplementary attempts use new directories. Reports can be
+rebuilt without credentials. Repeated report generation writes a new revision,
+preserving existing reports. `replay <RUN> --output <NEW-RUN>` uses the frozen
+tool trajectory and binary hashes without contacting the relay.
 
-```bash
-MBTX_TEST_CODEX="$PWD/_build/codex-upstream/codex-rs/target/release/codex" \
-MBTX_TEST_LAUNCHER="$PWD/_build/native/release/build/cmd/mbtx/mbtx.exe" \
-  cargo test --locked --manifest-path adapter/Cargo.toml --test online_auth -- --ignored --test-threads=1
-```
+Collection stops at five consecutive infrastructure failures, or eight in the
+last sixteen arms, and still produces a partial report. The initial probe needs
+one success out of three. Expected cancellation does not count as infrastructure
+failure. `moon run scripts/diagnose-linux-online.mbtx <RUN>` records local
+configuration and rebuilds a report without making API requests.
 
-The pinned upstream lock has stale workspace version markers. The repository's
-`codex/Cargo.lock` corrects those markers while preserving all upstream external
-dependencies, including the matching Rama `0.3.0-alpha.4` packages. Preparation
-installs this lock atomically, backing up a differing existing lock alongside
-it as `Cargo.lock.before-mbtx-<git-blob-hash>`. Repeated preparation leaves an
-identical lock untouched. This also repairs locks created by older collectors.
+## Publish Evidence
 
-The collector never runs `cargo generate-lockfile` or updates dependencies.
-Builds use `--locked` and stream their output to the terminal. Each run retains
-a copy of `Cargo.lock`; the successful build's lock hash is also recorded in
-`provenance.txt`. Download failures stop preparation or the build without
-changing the pinned dependency graph.
-
-The collector creates separate `CODEX_HOME` and workspace directories for
-every arm. It uses `approval_policy = "never"` for unattended collection and
-`[sandbox_workspace_write] network_access = true` so the relay-enabled run does
-not turn child network policy into a hidden variable. The local templates are
-in `config/`; the run-local copies are retained under the run directory.
-
-After reviewing the raw attempt stderr and reports, publish the run as data:
+Linux online results are stored in `evidence/linux/codex-relay/`; Linux/macOS
+launcher and replay artifacts remain in their platform-specific directories.
+Review the generated artifact, then publish only the intended run:
 
 ```bash
-git add evidence/linux/codex-relay/<timestamp>
-git commit -m "data: add Linux Codex relay collection"
+git add evidence/linux/codex-relay/<RUN-NAME>
+git add evidence/linux/launcher/<RUN-NAME>
+git commit -m "evidence: record Linux execution comparison"
+git pull --rebase origin main
 git push origin main
 ```
 
-On macOS, `git pull --ff-only origin main` makes the Linux run available for
-inspection. macOS local launcher evidence remains under
-`evidence/macos/launcher/` and is never mixed into the Linux online report.
+On macOS, `git pull --ff-only origin main` makes the raw evidence and offline
+HTML/Markdown reports available to reviewers. Never add private credentials or
+mutable Codex homes. Historical reports remain unchanged; new measurements are
+evaluated under the [current protocol](evaluation.md).

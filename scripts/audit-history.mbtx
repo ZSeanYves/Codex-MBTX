@@ -1,0 +1,42 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 3 else { fail("audit-history.mbtx ARCHIVED-REPORT.json NEW-AUDIT.json") }
+  let source = @fs.realpath(args[1])
+  let raw = @fs.read_file(source).text()
+  let report = @json.parse(raw)
+  let system = @shell.Cmd("uname", ["-s"]).output()
+  let hash = if system.stdout().trim() == "Darwin" {
+    @shell.Cmd("shasum", ["-a", "256", source]).output()
+  } else { @shell.Cmd("sha256sum", [source]).output() }
+  hash.check()
+  let metadata = match report {
+    Object(fields) => {
+      let selected : Map[String, Json] = Map([])
+      for name in ["schema_version", "implementation_sha", "binary_source", "provenance", "toolchain", "toolchains", "profile", "workflow_run_id", "commit", "revision"] {
+        selected[name] = fields.get(name).unwrap_or(Json::null())
+      }
+      selected.to_json()
+    }
+    _ => Json::null()
+  }
+  let audit : Json = {
+    "schema_version": 2,
+    "source": source,
+    "sha256": hash.stdout().split(" ").to_array()[0].to_owned(),
+    "recorded_metadata": metadata,
+    "startup_claim": "unverified",
+    "reproduction_status": "requires_identified_historical_recipe",
+    "required_inputs": ["original source commit", "exact toolchain and dependency locks", "build profile", "task and input", "paired raw startup boundaries and statistic"],
+    "boundary": "This audit preserves historical metadata. It neither rebuilds an unidentified experiment nor substitutes current measurements for historical reproduction.",
+  }
+  @fs.write_file(args[2], audit.stringify(indent=2), create_mode=@fs.CreateMode::CreateNew)
+  println("Historical audit written; original evidence unchanged: \{args[2]}")
+}
