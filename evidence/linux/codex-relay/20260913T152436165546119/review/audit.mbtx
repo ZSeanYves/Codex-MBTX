@@ -1,0 +1,130 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/core/json",
+}
+
+fn text(value : Json, key : String) -> String raise {
+  guard value is Object(fields) && fields.get(key) is Some(String(result)) else {
+    fail("missing string: \{key}")
+  }
+  result
+}
+
+fn number(value : Json, key : String) -> Double raise {
+  guard value is Object(fields) && fields.get(key) is Some(Number(result, ..)) else {
+    fail("missing number: \{key}")
+  }
+  result
+}
+
+fn mean(values : Array[Double]) -> Double {
+  values.fold(init=0.0, (total, value) => total + value) / values.length().to_double()
+}
+
+async fn capture(program : String, args : Array[String]) -> String {
+  let output = @shell.Cmd(program, args).output(timeout_ms=30_000)
+  guard output.exit_code() == 0 else { fail(output.stderr()) }
+  output.stdout()
+}
+
+async fn main {
+  let run = "evidence/linux/codex-relay/20260913T152436165546119"
+  let summary = @fs.read_file("\{run}/summary.json").json()
+  guard summary is { "records": Array(records), .. } else { fail("missing records") }
+  assert_eq(records.length(), 64)
+  let recorded_report = @fs.read_file("\{run}/report.json").json()
+  let replayed_report = @json.parse(capture("adapter/target/debug/mbtx-eval", ["report", run, "--format", "json"]))
+  assert_eq(recorded_report, replayed_report)
+  let by_pair : Map[String, Array[Json]] = Map([])
+  let command_text : Map[String, String] = Map([])
+  let command_output : Map[String, String] = Map([])
+  let checks : Array[Json] = []
+  let source_files = ["\{run}/events.jsonl", "\{run}/summary.json", "\{run}/report.json", "\{run}/provenance.txt"]
+  for record in records {
+    let pair = text(record, "pair_id")
+    let backend = text(record, "backend")
+    let task = text(record, "task_id")
+    let attempt = text(record, "attempt_id")
+    let dir = "\{run}/\{text(record, "artifact_dir")}"
+    let metadata = @fs.read_file("\{dir}/metadata.json").json()
+    let raw = @fs.read_file("\{dir}/codex.stdout.jsonl").text()
+    let events : Array[Json] = []
+    for line in raw.split("\n") {
+      if !line.trim().is_empty() { events.push(@json.parse(line)) }
+    }
+    let commands = events.filter(event => event is { "type": "item.completed", "item": { "type": "command_execution", .. }, .. })
+    assert_eq(commands.length(), 1)
+    assert_eq(events.filter(event => event is { "type": "turn.completed", .. }).length(), 1)
+    assert_eq(events.filter(event => event is { "type": "error" | "turn.failed", .. }).length(), 0)
+    guard commands[0] is { "item": item, .. } else { fail("missing item") }
+    let output = text(item, "aggregated_output")
+    let expected_exit = match task { "nonzero_exit" => 7.0; "signal_exit" => 143.0; _ => 0.0 }
+    assert_eq(number(item, "exit_code"), expected_exit)
+    assert_eq(number(metadata, "codex_exit_code"), 0.0)
+    assert_eq(text(record, "status"), "success")
+    let expected = match task {
+      "literal_argv" => "['alpha beta', 'quote\"double', 'dollar$', '$(touch SHOULD_NOT_EXIST)']\n"
+      "stdin_utf8" => "第一行\n\n最后一行\n"
+      "cwd_environment" => "\{text(metadata, "workspace")}|online-fixture\n"
+      "nonzero_exit" => "expected failure\n"
+      "background_cleanup" => "child-started\nchild-clean\n"
+      "signal_exit" => "term-start\n"
+      "repeated_recovery" => "recovery-ok\n"
+      "large_output" => output
+      _ => fail("unknown task")
+    }
+    assert_eq(output, expected)
+    if task == "large_output" {
+      assert_eq(output.length(), 69632)
+      assert_eq(output.iter().filter(c => c == 'x').count(), 65536)
+      assert_eq(output.iter().filter(c => c == 'e').count(), 4096)
+    }
+    guard metadata is { "forbidden_path_exists": false, .. } else { fail("side effect") }
+    let trust_record = "\n[projects.\"/home/zseanyves/Moonbit/Codex-MBTX\"]\ntrust_level = \"trusted\"\n"
+    assert_eq(@fs.read_file("\{run}/homes/\{attempt}/config.toml").text(), @fs.read_file("\{run}/config/\{backend}/config.toml").text() + trust_record)
+    source_files.append(["\{dir}/metadata.json", "\{dir}/codex.stdout.jsonl", "\{dir}/codex.stderr.log", "\{dir}/prompt.txt", "\{run}/homes/\{attempt}/config.toml"])
+    let arms = by_pair.get_or_init(pair, () => [])
+    arms.push(record)
+    command_text["\{pair}/\{backend}"] = text(item, "command")
+    command_output["\{pair}/\{backend}"] = if task == "cwd_environment" { "<workspace>|online-fixture\n" } else { output }
+    checks.push({ "pair_id": pair, "backend": backend, "task_id": task, "raw_command_events": 1, "raw_turn_completed": true, "exact_output_or_character_counts_pass": true, "expected_exit": expected_exit })
+  }
+  let comparisons : Array[Json] = []
+  let deltas : Array[Double] = []
+  let shell_times : Array[Double] = []
+  let mbtx_times : Array[Double] = []
+  for pair, arms in by_pair {
+    assert_eq(arms.length(), 2)
+    let shell = arms.filter(arm => arm is { "backend": "shell", .. })[0]
+    let mbtx = arms.filter(arm => arm is { "backend": "transparent", .. })[0]
+    let s = number(shell, "elapsed_ms")
+    let m = number(mbtx, "elapsed_ms")
+    shell_times.push(s)
+    mbtx_times.push(m)
+    deltas.push(m - s)
+    let same_command = command_text["\{pair}/shell"] == command_text["\{pair}/transparent"]
+    let same_output = command_output["\{pair}/shell"] == command_output["\{pair}/transparent"]
+    comparisons.push({ "pair_id": pair, "task_id": text(shell, "task_id"), "shell_ms": s, "mbtx_ms": m, "delta_ms": m - s, "displayed_command_identical": same_command, "merged_output_identical_after_workspace_normalization": same_output })
+  }
+  deltas.sort()
+  let result : Json = {
+    "source_run": run, "source_commit": "6da3b57", "implementation_sha": "c3479b685a120905e065ea3057cd56d97c959aae",
+    "raw_replay_matches_saved_report": true,
+    "arms_checked": checks.length(), "pairs_checked": comparisons.length(),
+    "shell_mean_ms": mean(shell_times), "mbtx_mean_ms": mean(mbtx_times),
+    "paired_mean_delta_ms": mean(deltas), "paired_median_delta_ms": (deltas[15] + deltas[16]) / 2.0,
+    "relative_mean_difference_percent": (mean(mbtx_times) / mean(shell_times) - 1.0) * 100.0,
+    "mbtx_faster_pairs": deltas.filter(value => value < 0.0).length(),
+    "mbtx_slower_pairs": deltas.filter(value => value > 0.0).length(),
+    "checks": checks, "pairs": comparisons,
+  }
+  let review = "\{run}/review"
+  if !@fs.exists(review) { @fs.mkdir(review, recursive=true) }
+  @fs.write_file("\{review}/audit.json", result.stringify(indent=2))
+  source_files.push("\{review}/audit.mbtx")
+  @fs.write_file("\{review}/source.sha256", capture("shasum", ["-a", "256"] + source_files))
+  println("64 raw arm records and exact outputs checked; report replay agrees.")
+  println("Shell mean ms: \{mean(shell_times)}, MBTX mean ms: \{mean(mbtx_times)}, paired delta ms: \{mean(deltas)}")
+}

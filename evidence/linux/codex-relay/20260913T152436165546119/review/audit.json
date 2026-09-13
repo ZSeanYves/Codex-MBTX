@@ -1,0 +1,883 @@
+{
+  "source_run": "evidence/linux/codex-relay/20260913T152436165546119",
+  "source_commit": "6da3b57",
+  "implementation_sha": "c3479b685a120905e065ea3057cd56d97c959aae",
+  "raw_replay_matches_saved_report": true,
+  "arms_checked": 64,
+  "pairs_checked": 32,
+  "shell_mean_ms": 19673.78125,
+  "mbtx_mean_ms": 19816.625,
+  "paired_mean_delta_ms": 142.84375,
+  "paired_median_delta_ms": -375.5,
+  "relative_mean_difference_percent": 0.7260614936439813,
+  "mbtx_faster_pairs": 17,
+  "mbtx_slower_pairs": 15,
+  "checks": [
+    {
+      "pair_id": "pair-00-literal_argv",
+      "backend": "shell",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-literal_argv",
+      "backend": "transparent",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-stdin_utf8",
+      "backend": "transparent",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-stdin_utf8",
+      "backend": "shell",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-cwd_environment",
+      "backend": "shell",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-cwd_environment",
+      "backend": "transparent",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-large_output",
+      "backend": "transparent",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-large_output",
+      "backend": "shell",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-nonzero_exit",
+      "backend": "shell",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-00-nonzero_exit",
+      "backend": "transparent",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-00-background_cleanup",
+      "backend": "transparent",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-background_cleanup",
+      "backend": "shell",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-signal_exit",
+      "backend": "shell",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-00-signal_exit",
+      "backend": "transparent",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-00-repeated_recovery",
+      "backend": "transparent",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-00-repeated_recovery",
+      "backend": "shell",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-literal_argv",
+      "backend": "transparent",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-literal_argv",
+      "backend": "shell",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-stdin_utf8",
+      "backend": "shell",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-stdin_utf8",
+      "backend": "transparent",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-cwd_environment",
+      "backend": "transparent",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-cwd_environment",
+      "backend": "shell",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-large_output",
+      "backend": "shell",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-large_output",
+      "backend": "transparent",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-nonzero_exit",
+      "backend": "transparent",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-01-nonzero_exit",
+      "backend": "shell",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-01-background_cleanup",
+      "backend": "shell",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-background_cleanup",
+      "backend": "transparent",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-signal_exit",
+      "backend": "transparent",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-01-signal_exit",
+      "backend": "shell",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-01-repeated_recovery",
+      "backend": "shell",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-01-repeated_recovery",
+      "backend": "transparent",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-literal_argv",
+      "backend": "shell",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-literal_argv",
+      "backend": "transparent",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-stdin_utf8",
+      "backend": "transparent",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-stdin_utf8",
+      "backend": "shell",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-cwd_environment",
+      "backend": "shell",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-cwd_environment",
+      "backend": "transparent",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-large_output",
+      "backend": "transparent",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-large_output",
+      "backend": "shell",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-nonzero_exit",
+      "backend": "shell",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-02-nonzero_exit",
+      "backend": "transparent",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-02-background_cleanup",
+      "backend": "transparent",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-background_cleanup",
+      "backend": "shell",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-signal_exit",
+      "backend": "shell",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-02-signal_exit",
+      "backend": "transparent",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-02-repeated_recovery",
+      "backend": "transparent",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-02-repeated_recovery",
+      "backend": "shell",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-literal_argv",
+      "backend": "transparent",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-literal_argv",
+      "backend": "shell",
+      "task_id": "literal_argv",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-stdin_utf8",
+      "backend": "shell",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-stdin_utf8",
+      "backend": "transparent",
+      "task_id": "stdin_utf8",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-cwd_environment",
+      "backend": "transparent",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-cwd_environment",
+      "backend": "shell",
+      "task_id": "cwd_environment",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-large_output",
+      "backend": "shell",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-large_output",
+      "backend": "transparent",
+      "task_id": "large_output",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-nonzero_exit",
+      "backend": "transparent",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-03-nonzero_exit",
+      "backend": "shell",
+      "task_id": "nonzero_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 7
+    },
+    {
+      "pair_id": "pair-03-background_cleanup",
+      "backend": "shell",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-background_cleanup",
+      "backend": "transparent",
+      "task_id": "background_cleanup",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-signal_exit",
+      "backend": "transparent",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-03-signal_exit",
+      "backend": "shell",
+      "task_id": "signal_exit",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 143
+    },
+    {
+      "pair_id": "pair-03-repeated_recovery",
+      "backend": "shell",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    },
+    {
+      "pair_id": "pair-03-repeated_recovery",
+      "backend": "transparent",
+      "task_id": "repeated_recovery",
+      "raw_command_events": 1,
+      "raw_turn_completed": true,
+      "exact_output_or_character_counts_pass": true,
+      "expected_exit": 0
+    }
+  ],
+  "pairs": [
+    {
+      "pair_id": "pair-00-literal_argv",
+      "task_id": "literal_argv",
+      "shell_ms": 17812,
+      "mbtx_ms": 18350,
+      "delta_ms": 538,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-stdin_utf8",
+      "task_id": "stdin_utf8",
+      "shell_ms": 20441,
+      "mbtx_ms": 18674,
+      "delta_ms": -1767,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-cwd_environment",
+      "task_id": "cwd_environment",
+      "shell_ms": 20046,
+      "mbtx_ms": 17220,
+      "delta_ms": -2826,
+      "displayed_command_identical": false,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-large_output",
+      "task_id": "large_output",
+      "shell_ms": 17933,
+      "mbtx_ms": 20286,
+      "delta_ms": 2353,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-nonzero_exit",
+      "task_id": "nonzero_exit",
+      "shell_ms": 18787,
+      "mbtx_ms": 22236,
+      "delta_ms": 3449,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-background_cleanup",
+      "task_id": "background_cleanup",
+      "shell_ms": 18779,
+      "mbtx_ms": 16860,
+      "delta_ms": -1919,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-signal_exit",
+      "task_id": "signal_exit",
+      "shell_ms": 18123,
+      "mbtx_ms": 18552,
+      "delta_ms": 429,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-00-repeated_recovery",
+      "task_id": "repeated_recovery",
+      "shell_ms": 17389,
+      "mbtx_ms": 16979,
+      "delta_ms": -410,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-literal_argv",
+      "task_id": "literal_argv",
+      "shell_ms": 18219,
+      "mbtx_ms": 19021,
+      "delta_ms": 802,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-stdin_utf8",
+      "task_id": "stdin_utf8",
+      "shell_ms": 18110,
+      "mbtx_ms": 19543,
+      "delta_ms": 1433,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-cwd_environment",
+      "task_id": "cwd_environment",
+      "shell_ms": 18461,
+      "mbtx_ms": 18036,
+      "delta_ms": -425,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-large_output",
+      "task_id": "large_output",
+      "shell_ms": 21143,
+      "mbtx_ms": 28934,
+      "delta_ms": 7791,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": false
+    },
+    {
+      "pair_id": "pair-01-nonzero_exit",
+      "task_id": "nonzero_exit",
+      "shell_ms": 20230,
+      "mbtx_ms": 20431,
+      "delta_ms": 201,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-background_cleanup",
+      "task_id": "background_cleanup",
+      "shell_ms": 20395,
+      "mbtx_ms": 19436,
+      "delta_ms": -959,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-signal_exit",
+      "task_id": "signal_exit",
+      "shell_ms": 18759,
+      "mbtx_ms": 18194,
+      "delta_ms": -565,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-01-repeated_recovery",
+      "task_id": "repeated_recovery",
+      "shell_ms": 18909,
+      "mbtx_ms": 16691,
+      "delta_ms": -2218,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-literal_argv",
+      "task_id": "literal_argv",
+      "shell_ms": 19312,
+      "mbtx_ms": 18354,
+      "delta_ms": -958,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-stdin_utf8",
+      "task_id": "stdin_utf8",
+      "shell_ms": 22156,
+      "mbtx_ms": 18055,
+      "delta_ms": -4101,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-cwd_environment",
+      "task_id": "cwd_environment",
+      "shell_ms": 17403,
+      "mbtx_ms": 17062,
+      "delta_ms": -341,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-large_output",
+      "task_id": "large_output",
+      "shell_ms": 17089,
+      "mbtx_ms": 22025,
+      "delta_ms": 4936,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-nonzero_exit",
+      "task_id": "nonzero_exit",
+      "shell_ms": 31238,
+      "mbtx_ms": 18190,
+      "delta_ms": -13048,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-background_cleanup",
+      "task_id": "background_cleanup",
+      "shell_ms": 17202,
+      "mbtx_ms": 23429,
+      "delta_ms": 6227,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-signal_exit",
+      "task_id": "signal_exit",
+      "shell_ms": 20197,
+      "mbtx_ms": 19365,
+      "delta_ms": -832,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-02-repeated_recovery",
+      "task_id": "repeated_recovery",
+      "shell_ms": 17799,
+      "mbtx_ms": 22582,
+      "delta_ms": 4783,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-literal_argv",
+      "task_id": "literal_argv",
+      "shell_ms": 20053,
+      "mbtx_ms": 22207,
+      "delta_ms": 2154,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-stdin_utf8",
+      "task_id": "stdin_utf8",
+      "shell_ms": 20894,
+      "mbtx_ms": 18518,
+      "delta_ms": -2376,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-cwd_environment",
+      "task_id": "cwd_environment",
+      "shell_ms": 22721,
+      "mbtx_ms": 17707,
+      "delta_ms": -5014,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-large_output",
+      "task_id": "large_output",
+      "shell_ms": 22868,
+      "mbtx_ms": 19684,
+      "delta_ms": -3184,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-nonzero_exit",
+      "task_id": "nonzero_exit",
+      "shell_ms": 18843,
+      "mbtx_ms": 28308,
+      "delta_ms": 9465,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-background_cleanup",
+      "task_id": "background_cleanup",
+      "shell_ms": 18523,
+      "mbtx_ms": 20784,
+      "delta_ms": 2261,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-signal_exit",
+      "task_id": "signal_exit",
+      "shell_ms": 18211,
+      "mbtx_ms": 19092,
+      "delta_ms": 881,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    },
+    {
+      "pair_id": "pair-03-repeated_recovery",
+      "task_id": "repeated_recovery",
+      "shell_ms": 21516,
+      "mbtx_ms": 19327,
+      "delta_ms": -2189,
+      "displayed_command_identical": true,
+      "merged_output_identical_after_workspace_normalization": true
+    }
+  ]
+}
