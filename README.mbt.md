@@ -84,3 +84,5 @@ The [architecture](docs/architecture.md) and [Codex integration](codex/README.md
 describe the ownership and configuration boundaries. Linux and macOS artifacts
 are independent; results do not establish universal lossless replacement or
 justify changing the default backend without reviewing the collected evidence.
+The [code verification record](docs/code-validation.md) separates implementation
+checks from the formal measurements that remain to be collected.
