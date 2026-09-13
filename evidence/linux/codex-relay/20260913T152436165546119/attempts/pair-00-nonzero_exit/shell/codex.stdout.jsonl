@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a099aa-6b1b-7510-87bb-96f53324a192"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(\\\"expected failure\\\", file=sys.stderr); sys.exit(7)'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(\\\"expected failure\\\", file=sys.stderr); sys.exit(7)'\"","aggregated_output":"expected failure\n","exit_code":7,"status":"failed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":28437,"cached_input_tokens":24064,"cache_write_input_tokens":0,"output_tokens":217,"reasoning_output_tokens":159}}

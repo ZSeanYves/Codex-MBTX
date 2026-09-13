@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a099b9-3d6e-7e90-98d6-1c4ee0ec681b"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'print(\\\"recovery-ok\\\")'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'print(\\\"recovery-ok\\\")'\"","aggregated_output":"recovery-ok\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":28420,"cached_input_tokens":24064,"cache_write_input_tokens":0,"output_tokens":208,"reasoning_output_tokens":150}}

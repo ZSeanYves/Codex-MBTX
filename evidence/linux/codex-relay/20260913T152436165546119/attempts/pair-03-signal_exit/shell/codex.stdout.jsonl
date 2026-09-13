@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a099bf-5a56-7923-9ea6-41ba875d060c"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Running the specified command and waiting for it to exit."}}
+{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import os,signal; print(\\\"term-start\\\", flush=True); os.kill(os.getpid(), signal.SIGTERM)'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import os,signal; print(\\\"term-start\\\", flush=True); os.kill(os.getpid(), signal.SIGTERM)'\"","aggregated_output":"term-start\n","exit_code":143,"status":"failed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":28408,"cached_input_tokens":24064,"cache_write_input_tokens":0,"output_tokens":148,"reasoning_output_tokens":54}}
