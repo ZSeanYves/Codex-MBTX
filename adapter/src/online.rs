@@ -1,3 +1,6 @@
+use codex_mbtx_contract::codex_evidence::{
+    Assessment, CommandOracle, ProcessEvidence, assess, http_error_status, parse_codex_output,
+};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::env;
@@ -107,6 +110,10 @@ struct AttemptRecord {
     codex_signal: Option<i32>,
     command_exit_code: Option<i32>,
     command_status: Option<String>,
+    command_outcome: String,
+    command_failure_class: Option<String>,
+    turn_completed: bool,
+    usage: Option<Value>,
     http_status: Option<u16>,
     elapsed_ms: u128,
     stdout_bytes: usize,
@@ -114,17 +121,6 @@ struct AttemptRecord {
     json_lines: usize,
     parse_errors: usize,
     artifact_dir: String,
-}
-
-#[derive(Debug)]
-struct ParsedCodex {
-    command: Option<String>,
-    aggregated_output: String,
-    command_exit_code: Option<i32>,
-    command_status: Option<String>,
-    messages: Vec<String>,
-    json_lines: usize,
-    parse_errors: usize,
 }
 
 #[derive(Debug)]
@@ -262,153 +258,6 @@ fn write_event(file: &mut File, event: Value) -> std::io::Result<()> {
     file.flush()
 }
 
-fn parse_codex_output(stdout: &[u8]) -> ParsedCodex {
-    let mut parsed = ParsedCodex {
-        command: None,
-        aggregated_output: String::new(),
-        command_exit_code: None,
-        command_status: None,
-        messages: Vec::new(),
-        json_lines: 0,
-        parse_errors: 0,
-    };
-    for line in String::from_utf8_lossy(stdout).lines() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        let value: Value = match serde_json::from_str(line) {
-            Ok(value) => {
-                parsed.json_lines += 1;
-                value
-            }
-            Err(_) => {
-                parsed.parse_errors += 1;
-                continue;
-            }
-        };
-        let event_type = value.get("type").and_then(Value::as_str).unwrap_or("");
-        if event_type == "error" {
-            if let Some(message) = value.get("message").and_then(Value::as_str) {
-                parsed.messages.push(message.to_string());
-            }
-        }
-        if event_type == "turn.failed" {
-            if let Some(message) = value
-                .get("error")
-                .and_then(|error| error.get("message"))
-                .and_then(Value::as_str)
-            {
-                parsed.messages.push(message.to_string());
-            }
-        }
-        if event_type != "item.completed" {
-            continue;
-        }
-        let Some(item) = value.get("item") else {
-            continue;
-        };
-        let item_type = item.get("type").and_then(Value::as_str).unwrap_or("");
-        if item_type == "error" {
-            if let Some(message) = item.get("message").and_then(Value::as_str) {
-                parsed.messages.push(message.to_string());
-            }
-        }
-        if item_type != "command_execution" && item_type != "commandExecution" {
-            continue;
-        }
-        parsed.command = item
-            .get("command")
-            .and_then(Value::as_str)
-            .map(str::to_string);
-        parsed.aggregated_output = item
-            .get("aggregated_output")
-            .or_else(|| item.get("aggregatedOutput"))
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_string();
-        parsed.command_exit_code = item
-            .get("exit_code")
-            .or_else(|| item.get("exitCode"))
-            .and_then(Value::as_i64)
-            .and_then(|code| i32::try_from(code).ok());
-        parsed.command_status = item
-            .get("status")
-            .and_then(Value::as_str)
-            .map(str::to_string);
-    }
-    parsed
-}
-
-fn text_has_any(text: &str, needles: &[&str]) -> bool {
-    let lower = text.to_ascii_lowercase();
-    needles.iter().any(|needle| lower.contains(needle))
-}
-
-fn http_error_status(parsed: &ParsedCodex, stderr: &str) -> Option<u16> {
-    parsed
-        .messages
-        .iter()
-        .map(String::as_str)
-        .chain([stderr])
-        .find_map(|message| {
-            ["unexpected status ", "last status: ", "HTTP "]
-                .iter()
-                .find_map(|prefix| {
-                    let (_, tail) = message.split_once(prefix)?;
-                    let status = tail.split_whitespace().next()?.parse::<u16>().ok()?;
-                    (400..=599).contains(&status).then_some(status)
-                })
-        })
-}
-
-fn classify_external_failure(parsed: &ParsedCodex, stderr: &str) -> (String, String) {
-    let messages = parsed.messages.join(" ");
-    let combined = format!("{messages} {stderr}");
-    // Codex includes the relay URL and request ID in HTTP errors. Neither is
-    // evidence of a transport failure; classify the reported status first.
-    match http_error_status(parsed, stderr) {
-        Some(401) => return ("provider_error".into(), "provider_authentication".into()),
-        Some(429 | 500..=599) => return ("relay_error".into(), "relay_or_transport".into()),
-        Some(_) => return ("provider_error".into(), "provider_response".into()),
-        None => {}
-    }
-    if text_has_any(
-        &combined,
-        &["api_key_required", "invalid api key", "unauthorized"],
-    ) {
-        return ("provider_error".into(), "provider_authentication".into());
-    }
-    if text_has_any(
-        &combined,
-        &[
-            "disconnect",
-            "connection reset",
-            "connection refused",
-            "upstream",
-            "gateway",
-        ],
-    ) {
-        ("relay_error".to_string(), "relay_or_transport".to_string())
-    } else if text_has_any(&combined, &["quota", "model not found"]) {
-        (
-            "provider_error".to_string(),
-            "provider_response".to_string(),
-        )
-    } else if text_has_any(
-        &combined,
-        &["code mode is unavailable", "host executable was not found"],
-    ) {
-        ("harness_error".into(), "codex_tool_configuration".into())
-    } else if parsed.parse_errors > 0 {
-        (
-            "harness_error".to_string(),
-            "invalid_codex_jsonl".to_string(),
-        )
-    } else {
-        ("unknown".to_string(), "missing_command_event".to_string())
-    }
-}
-
 fn kill_process_group(child: &mut std::process::Child) {
     #[cfg(unix)]
     {
@@ -450,6 +299,7 @@ fn run_process(
         .current_dir(cwd)
         .env("CODEX_HOME", codex_home)
         .env("MBTX_EVAL_MARKER", env_marker)
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     #[cfg(unix)]
@@ -624,31 +474,25 @@ fn run_attempt(
         .forbidden_path
         .map(|path| workspace.join(path).exists())
         .unwrap_or(false);
-    let (status, failure_class) = if process.spawn_error.is_some() {
-        ("harness_error".to_string(), Some("codex_spawn".to_string()))
-    } else if process.timed_out {
-        ("timeout".to_string(), Some("codex_timeout".to_string()))
-    } else if parsed.command_exit_code.is_none() {
-        let (status, class) = classify_external_failure(&parsed, &stderr);
-        (status, Some(class))
-    } else if parsed.command_exit_code != Some(task.expected_exit) {
-        (
-            "backend_failure".to_string(),
-            Some("command_exit_mismatch".to_string()),
-        )
-    } else if forbidden_path_exists {
-        (
-            "backend_failure".to_string(),
-            Some("unexpected_side_effect".to_string()),
-        )
-    } else if !task.marker.is_empty() && !parsed.aggregated_output.contains(task.marker) {
-        (
-            "backend_failure".to_string(),
-            Some("command_output_mismatch".to_string()),
-        )
-    } else {
-        ("success".to_string(), None)
-    };
+    let Assessment {
+        status,
+        failure_class,
+        command_outcome,
+        command_failure_class,
+    } = assess(
+        &parsed,
+        &stderr,
+        ProcessEvidence {
+            exit_code: codex_exit_code,
+            timed_out: process.timed_out,
+            spawn_failed: process.spawn_error.is_some(),
+        },
+        CommandOracle {
+            expected_exit: Some(task.expected_exit),
+            expected_marker: Some(task.marker),
+            forbidden_path_exists: Some(forbidden_path_exists),
+        },
+    );
     let mut exit_event = event_base(
         pair_id,
         &attempt_id,
@@ -669,6 +513,13 @@ fn run_attempt(
     exit_event["artifact_dir"] = json!(artifact_relative);
     exit_event["elapsed_ms"] = json!(process.elapsed_ms);
     exit_event["http_status"] = json!(http_status);
+    exit_event["command_outcome"] = json!(command_outcome);
+    exit_event["command_failure_class"] = json!(command_failure_class);
+    exit_event["command_events"] = json!(parsed.command_events);
+    exit_event["turn_completed"] = json!(parsed.turn_completed);
+    exit_event["usage"] = json!(parsed.usage);
+    exit_event["timed_out"] = json!(process.timed_out);
+    exit_event["spawn_error"] = json!(process.spawn_error);
     exit_event["command"] = json!(parsed.command);
     exit_event["command_exit_code"] = parsed
         .command_exit_code
@@ -726,9 +577,8 @@ fn run_attempt(
         child_event["exit_code"] = parsed
             .command_exit_code
             .map_or(Value::Null, |code| json!(code));
-        child_event["stdout_bytes"] = json!(parsed.aggregated_output.len());
-        child_event["status"] = json!(status);
-        child_event["failure_class"] = failure_class
+        child_event["status"] = json!(command_outcome);
+        child_event["failure_class"] = command_failure_class
             .clone()
             .map_or(Value::Null, |class| json!(class));
         child_event["artifact_dir"] = json!(artifact_relative);
@@ -765,7 +615,9 @@ fn run_attempt(
         "expected_marker": task.marker,
         "forbidden_path": task.forbidden_path,
         "forbidden_path_exists": forbidden_path_exists,
-        "timeout_ms": task.timeout_ms,
+        "timeout_ms": timeout.as_millis(),
+        "timed_out": process.timed_out,
+        "spawn_error": process.spawn_error,
         "model": model,
         "codex_home": home,
         "workspace": workspace,
@@ -777,6 +629,11 @@ fn run_attempt(
         "command": parsed.command,
         "command_exit_code": parsed.command_exit_code,
         "command_status": parsed.command_status,
+        "command_outcome": command_outcome,
+        "command_failure_class": command_failure_class,
+        "command_events": parsed.command_events,
+        "turn_completed": parsed.turn_completed,
+        "usage": parsed.usage,
         "http_status": http_status,
         "aggregated_output": parsed.aggregated_output,
         "json_lines": parsed.json_lines,
@@ -799,6 +656,10 @@ fn run_attempt(
         codex_signal,
         command_exit_code: parsed.command_exit_code,
         command_status: parsed.command_status,
+        command_outcome,
+        command_failure_class,
+        turn_completed: parsed.turn_completed,
+        usage: parsed.usage,
         http_status,
         elapsed_ms: process.elapsed_ms,
         stdout_bytes: process.stdout.len(),
@@ -807,6 +668,12 @@ fn run_attempt(
         parse_errors: parsed.parse_errors,
         artifact_dir: artifact_relative,
     }
+}
+
+fn write_report_file(output: &Path, name: &str, content: impl AsRef<[u8]>) {
+    let temporary = output.join(format!(".{name}.tmp"));
+    fs::write(&temporary, content).expect("write report checkpoint");
+    fs::rename(temporary, output.join(name)).expect("publish report checkpoint");
 }
 
 fn write_summary(
@@ -823,6 +690,19 @@ fn write_summary(
         .chunks(2)
         .filter(|pair| pair.len() == 2 && pair.iter().all(|record| record.status == "success"))
         .count();
+    let command_oracle_successful_arms = records
+        .iter()
+        .filter(|record| record.command_outcome == "success")
+        .count();
+    let command_oracle_pairs = records
+        .chunks(2)
+        .filter(|pair| {
+            pair.len() == 2
+                && pair
+                    .iter()
+                    .all(|record| record.command_outcome == "success")
+        })
+        .count();
     let summary = json!({
         "schema_version": 1,
         "experiment_id": EXPERIMENT_ID,
@@ -830,15 +710,17 @@ fn write_summary(
         "attempts": records.len(),
         "successful_arms": successful_arms,
         "complete_pairs": complete_pairs,
+        "command_oracle_successful_arms": command_oracle_successful_arms,
+        "command_oracle_pairs": command_oracle_pairs,
         "partial": complete_pairs < planned_pairs,
         "stop_reason": stop_reason,
         "records": records,
     });
-    fs::write(
-        output.join("summary.json"),
+    write_report_file(
+        output,
+        "summary.json",
         serde_json::to_vec_pretty(&summary).expect("serialize summary"),
-    )
-    .expect("write summary");
+    );
     let mut markdown = String::from("# Codex relay online collection\n\n");
     markdown.push_str(&format!(
         "- Planned pairs: {}\n- Recorded arms: {}\n- Successful arms: {}\n- Complete pairs: {}\n- Partial: {}\n",
@@ -848,28 +730,30 @@ fn write_summary(
         complete_pairs,
         complete_pairs < planned_pairs
     ));
+    markdown.push_str(&format!("- Command oracle successful arms: {command_oracle_successful_arms}\n- Command oracle pairs: {command_oracle_pairs}\n"));
     if let Some(reason) = stop_reason {
         markdown.push_str(&format!("- Stop reason: `{reason}`\n"));
     }
-    markdown.push_str("\n| Pair | Task | Backend | Status | Failure | Command exit | Evidence |\n|---|---|---|---|---|---:|---|\n");
+    markdown.push_str("\n| Pair | Task | Backend | Codex outcome | Failure | Command oracle | Command exit | Evidence |\n|---|---|---|---|---|---|---:|---|\n");
     for record in records {
         let relative = Path::new(&record.artifact_dir)
             .strip_prefix(output)
             .unwrap_or_else(|_| Path::new(&record.artifact_dir));
         markdown.push_str(&format!(
-            "| `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | `{}` |\n",
+            "| `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | `{}` |\n",
             record.pair_id,
             record.task_id,
             record.backend,
             record.status,
             record.failure_class.as_deref().unwrap_or(""),
+            record.command_outcome,
             record
                 .command_exit_code
                 .map_or_else(|| "".to_string(), |code| code.to_string()),
             relative.display()
         ));
     }
-    fs::write(output.join("online-summary.md"), markdown).expect("write markdown summary");
+    write_report_file(output, "online-summary.md", markdown);
     complete_pairs
 }
 
@@ -886,9 +770,7 @@ fn run(args: &[String]) {
         option(args, "--relay-base-url").unwrap_or_else(|| DEFAULT_RELAY_BASE_URL.to_string());
     let pairs = parse_positive(args, "--pairs", 4).clamp(1, 6) as usize;
     let timeout = Duration::from_millis(parse_positive(args, "--timeout-ms", DEFAULT_TIMEOUT_MS));
-    // The arms are sequential, but an RPM limit also requires spacing starts.
-    // Six seconds is at most ten arm starts per minute. Set to zero only for
-    // a local mock relay.
+    // Space sequential arms; one Codex turn can still make multiple API requests.
     let min_interval = Duration::from_millis(parse_nonnegative(args, "--min-interval-ms", 6_000));
     if !codex.is_file() || !mbtx.is_file() {
         eprintln!("codex and mbtx must be existing files");
@@ -937,6 +819,12 @@ fn run(args: &[String]) {
     let mut consecutive_infra_failures = 0_usize;
     let mut recent_statuses: Vec<String> = Vec::new();
     let mut stop_reason = None;
+    write_summary(
+        &output,
+        &records,
+        planned_pairs,
+        Some("collection in progress"),
+    );
     'rounds: for pair_index in 0..pairs {
         for (task_index, task) in task_list.iter().copied().enumerate() {
             let pair_id = format!("pair-{pair_index:02}-{}", task.id);
@@ -967,20 +855,14 @@ fn run(args: &[String]) {
                     "relay_error" | "provider_error" | "harness_error" | "timeout"
                 );
                 println!(
-                    "[online] result pair={pair_id} backend={backend} status={} failure={} http_status={}",
+                    "[online] result pair={pair_id} backend={backend} status={} command_oracle={} failure={} http_status={}",
                     record.status,
+                    record.command_outcome,
                     record.failure_class.as_deref().unwrap_or("none"),
                     record
                         .http_status
                         .map_or_else(|| "unknown".to_string(), |status| status.to_string()),
                 );
-                if !min_interval.is_zero() {
-                    println!(
-                        "[online] throttle sleeping {} ms before next arm",
-                        min_interval.as_millis()
-                    );
-                    thread::sleep(min_interval);
-                }
                 if infrastructure {
                     consecutive_infra_failures += 1;
                 } else {
@@ -991,9 +873,22 @@ fn run(args: &[String]) {
                     recent_statuses.remove(0);
                 }
                 records.push(record);
+                write_summary(
+                    &output,
+                    &records,
+                    planned_pairs,
+                    Some("collection in progress"),
+                );
                 if consecutive_infra_failures >= 5 {
                     stop_reason = Some("five consecutive infrastructure failures");
                     break 'rounds;
+                }
+                if records.len() < planned_pairs * 2 && !min_interval.is_zero() {
+                    println!(
+                        "[online] throttle sleeping {} ms before next arm",
+                        min_interval.as_millis()
+                    );
+                    thread::sleep(min_interval);
                 }
                 if recent_statuses.len() == 16
                     && recent_statuses
@@ -1041,7 +936,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{classify_external_failure, config_text, http_error_status, parse_codex_output};
+    use super::{config_text, http_error_status, parse_codex_output};
+    use codex_mbtx_contract::codex_evidence::classify_external_failure;
     use std::path::Path;
 
     #[test]

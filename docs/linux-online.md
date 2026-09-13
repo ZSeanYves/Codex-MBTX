@@ -52,10 +52,22 @@ only at the registered infrastructure thresholds. It writes `events.jsonl`,
 immutable per-attempt evidence, `online-summary.md`, `summary.json`,
 `provenance.txt`, and Markdown/JSON/CSV/HTML reports.
 
-Arms are executed by one sequential loop. To also stay below the relay's RPM
-window, the collector waits 6 seconds after each arm before starting the next
-(at most 10 arm starts per minute). Set `MBTX_MIN_INTERVAL_MS` to a larger
-value for a lower account limit; use `0` only with a local mock relay.
+Arms are executed by one sequential loop, with a 6-second pause before the next
+arm. `MBTX_MIN_INTERVAL_MS` controls this pause. It limits arm starts, not API
+requests: Codex normally requests a tool call and then requests a final response,
+and may make more requests within an arm. Sequential collection cannot prevent
+an account-wide RPM limit or requests from other clients. Use `0` only with a
+local mock relay.
+
+Each Codex arm has a 300-second deadline. The outer collection script has no
+one-hour total deadline; all 64 arms can finish. `summary.json` and
+`online-summary.md` are atomically checkpointed after every arm. A stopped run
+can be reported from its raw evidence without contacting the relay:
+
+```bash
+cargo run --locked --manifest-path adapter/Cargo.toml --bin mbtx-eval -- \
+  report evidence/linux/codex-relay/<timestamp> --format md
+```
 
 The collector binds `model_providers.OpenrouterICU.env_key` to `OPENAI_API_KEY`
 in every isolated Codex home. A saved interactive Codex login is not required.
@@ -78,6 +90,29 @@ the message includes a relay URL. `partial` means the planned comparison did not
 complete; writing a report successfully is not a successful experiment.
 Keep a failed run intact and start a new timestamped run after fixing its cause.
 
+`status` describes the complete Codex outcome. Success requires both a successful
+command oracle and `turn.completed` with Codex exit code 0. `command_outcome`
+records the command oracle separately: an expected command exit of 7 or 143 can
+pass, while a subsequent API request timeout makes the Codex outcome
+`relay_error/relay_request_timeout`. A collector deadline remains
+`timeout/codex_timeout`, with its cause unknown unless additional evidence exists.
+Missing usage remains `null`. Multiple completed commands are a harness protocol
+failure, rather than selecting the last command as a successful sample.
+
+Reports count each arm once, even though it has both Codex and child exit events.
+`command_oracle_pairs` preserves useful command results from incomplete turns;
+`valid_comparable_pairs` requires complete successful Codex outcomes on both arms.
+The oracle currently checks the expected exit, output marker, and forbidden side
+effect. It is not a proof of byte-exact output, full process cleanup, or recovery.
+Codex elapsed time includes model/relay time and cannot identify launcher cost.
+
+The report command reclassifies online results from the saved Codex JSONL,
+stderr, and attempt metadata with the same classifier as live collection.
+It does not modify the run or consult API credentials. `recorded_status` retains
+the original collector classification, and `classification_source` identifies
+the revised interpretation. Original reports from older commits remain historical.
+See the [Linux smoke review](../evidence/linux/codex-relay/20260913T141847943929204/review/README.md).
+
 If the relay returns a new error, run the read-only diagnostic bundle on Linux:
 
 ```bash
@@ -95,7 +130,8 @@ provider by running the Rust integration test against a local mock relay:
 
 ```bash
 MBTX_TEST_CODEX="$PWD/_build/codex-upstream/codex-rs/target/release/codex" \
-  cargo test --locked --manifest-path adapter/Cargo.toml --test online_auth -- --ignored
+MBTX_TEST_LAUNCHER="$PWD/_build/native/release/build/cmd/mbtx/mbtx.exe" \
+  cargo test --locked --manifest-path adapter/Cargo.toml --test online_auth -- --ignored --test-threads=1
 ```
 
 The pinned upstream lock has stale workspace version markers. The repository's

@@ -102,7 +102,7 @@ async fn main {
     fail("release artifacts were not produced")
   }
   println("[online] running sequential Shell/Transparent arms; relay failures remain in evidence")
-  run(
+  @shell.Cmd(
     online,
     [
       "run",
@@ -121,8 +121,8 @@ async fn main {
       "--min-interval-ms",
       min_interval,
     ],
-    root,
-  )
+    cwd=root,
+  ).run()
   let events = "\{output}/events.jsonl"
   let md = capture(evaluator, ["report", "--events", events, "--format", "md"], root)
   let json = capture(evaluator, ["report", "--events", events, "--format", "json"], root)
@@ -143,7 +143,7 @@ async fn main {
   )
   @fs.write_file(
     "\{output}/provenance.txt",
-    "implementation_sha=\{provenance.trim()}\nsystem=\{system_info.trim()}\n\{rust.trim()}\n\{moon.trim()}\nrequest_min_interval_ms=\{min_interval}\n\{hashes}",
+    "implementation_sha=\{provenance.trim()}\nsystem=\{system_info.trim()}\n\{rust.trim()}\n\{moon.trim()}\narm_min_interval_ms=\{min_interval}\n\{hashes}",
   )
   println("[online] reports: \{output}/report.{md,json,csv,html}")
   println("[online] upload \{output} and inspect online-summary.md before committing")

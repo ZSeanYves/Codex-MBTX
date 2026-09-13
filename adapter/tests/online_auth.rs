@@ -65,13 +65,27 @@ fn reject_request(mut stream: TcpStream) -> Request {
     request
 }
 
-fn execute_task(mut stream: TcpStream) -> Request {
+fn execute_task(stream: TcpStream) -> Request {
+    respond_to_task(stream, false)
+}
+
+fn fail_after_command(stream: TcpStream) -> Request {
+    respond_to_task(stream, true)
+}
+
+fn respond_to_task(mut stream: TcpStream, fail_after_command: bool) -> Request {
     let request = read_request(&stream);
     let input = request.body["input"].as_array().expect("Responses input");
-    let item = if input
+    let command_finished = input
         .iter()
-        .any(|item| item["type"] == "custom_tool_call_output")
-    {
+        .any(|item| item["type"] == "custom_tool_call_output");
+    if command_finished && fail_after_command {
+        let event = json!({"type": "response.failed", "response": {"error": {"code": "server_error", "message": "Our servers are currently overloaded. Please try again later."}}});
+        let response = format!("event: response.failed\ndata: {event}\n\n");
+        write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}", response.len()).unwrap();
+        return request;
+    }
+    let item = if command_finished {
         json!({"type": "message", "role": "assistant", "id": "fixture-done", "content": [{"type": "output_text", "text": "DONE"}]})
     } else {
         let prompt = input
@@ -290,6 +304,8 @@ fn code_mode_executes_all_tasks_through_both_backends() {
     assert_exec_is_advertised(&requests);
     for record in summary["records"].as_array().unwrap() {
         assert_eq!(record["status"], "success");
+        assert_eq!(record["command_outcome"], "success");
+        assert_eq!(record["turn_completed"], true);
         assert_eq!(record["http_status"], Value::Null);
         let evidence = fs::read_to_string(
             output
@@ -304,5 +320,52 @@ fn code_mode_executes_all_tasks_through_both_backends() {
         !contains_key_on_disk(&output),
         "credential leaked into evidence"
     );
+    fs::remove_dir_all(output).unwrap();
+}
+
+#[test]
+#[ignore = "requires MBTX_TEST_CODEX and MBTX_TEST_LAUNCHER; fails the local relay after real command execution"]
+fn post_command_disconnect_preserves_command_evidence_without_counting_turn_success() {
+    let launcher = std::env::var("MBTX_TEST_LAUNCHER").expect("built launcher path");
+    let (output, result, requests) = collect(fail_after_command, &launcher);
+    assert!(
+        result.status.success(),
+        "evidence at {}: {}",
+        output.display(),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let summary: Value =
+        serde_json::from_slice(&fs::read(output.join("summary.json")).unwrap()).unwrap();
+    assert_eq!(
+        summary["attempts"],
+        5,
+        "evidence at {}: {summary}",
+        output.display()
+    );
+    assert_eq!(summary["successful_arms"], 0);
+    assert_eq!(summary["complete_pairs"], 0);
+    assert_eq!(summary["command_oracle_successful_arms"], 5);
+    assert_eq!(summary["command_oracle_pairs"], 2);
+    assert_eq!(requests.len(), 10);
+    for record in summary["records"].as_array().unwrap() {
+        assert_eq!(record["status"], "relay_error");
+        assert_eq!(record["command_outcome"], "success");
+        assert_eq!(record["codex_exit_code"], 1);
+        assert_eq!(record["turn_completed"], false);
+        assert_eq!(record["usage"], Value::Null);
+    }
+    let report = Command::new(env!("CARGO_BIN_EXE_mbtx-eval"))
+        .arg("report")
+        .arg(&output)
+        .args(["--format", "json"])
+        .output()
+        .unwrap();
+    assert!(report.status.success());
+    let report: Value = serde_json::from_slice(&report.stdout).unwrap();
+    assert_eq!(report["summary"]["observed_arms"], 5);
+    assert_eq!(report["summary"]["external_failures"], 5);
+    assert_eq!(report["summary"]["command_oracle_successful_arms"], 5);
+    assert_eq!(report["summary"]["valid_comparable_pairs"], 0);
+    assert!(!contains_key_on_disk(&output));
     fs::remove_dir_all(output).unwrap();
 }

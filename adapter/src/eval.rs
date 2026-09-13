@@ -1,5 +1,9 @@
+use codex_mbtx_contract::codex_evidence::{
+    CommandOracle, ProcessEvidence, assess, http_error_status, parse_codex_output,
+};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Component, Path};
 use std::{env, fs, process::Command};
 
 #[derive(serde::Serialize)]
@@ -21,6 +25,9 @@ struct Arm {
     failure_class: String,
     elapsed_ms: Option<Value>,
     command_exit_code: Option<Value>,
+    command_outcome: Option<Value>,
+    command_failure_class: Option<Value>,
+    turn_completed: Option<Value>,
     artifact_dir: String,
 }
 
@@ -96,9 +103,102 @@ fn csv_field(value: String) -> String {
 }
 
 fn exit_rows<'a>(rows: &'a [Value]) -> impl Iterator<Item = &'a Value> {
-    rows.iter().filter(|row| {
-        field(row, "event") == "exit" && matches!(field(row, "phase"), "child" | "codex")
+    let codex_attempts: BTreeSet<&str> = rows
+        .iter()
+        .filter(|row| field(row, "phase") == "codex" && field(row, "event") == "exit")
+        .map(|row| field(row, "attempt_id"))
+        .collect();
+    rows.iter().filter(move |row| {
+        field(row, "event") == "exit"
+            && (field(row, "phase") == "codex"
+                || (field(row, "phase") == "child"
+                    && !codex_attempts.contains(field(row, "attempt_id"))))
     })
+}
+
+fn reassess_online_events(rows: &mut [Value], run: &Path) {
+    let mut assessments = BTreeMap::new();
+    for row in rows
+        .iter_mut()
+        .filter(|row| field(row, "phase") == "codex" && field(row, "event") == "exit")
+    {
+        if field(row, "experiment_id") != "codex-relay-online-v1" {
+            continue;
+        }
+        row["recorded_status"] = row["status"].clone();
+        row["recorded_failure_class"] = row["failure_class"].clone();
+        let relative = Path::new(field(row, "artifact_dir"));
+        let evidence = if relative
+            .components()
+            .all(|part| matches!(part, Component::Normal(_)))
+        {
+            let dir = run.join(relative);
+            (|| -> Option<_> {
+                let metadata: Value =
+                    serde_json::from_slice(&fs::read(dir.join("metadata.json")).ok()?).ok()?;
+                Some((
+                    metadata,
+                    fs::read(dir.join("codex.stdout.jsonl")).ok()?,
+                    fs::read_to_string(dir.join("codex.stderr.log")).ok()?,
+                ))
+            })()
+        } else {
+            None
+        };
+        let Some((metadata, stdout, stderr)) = evidence else {
+            row["status"] = json!("harness_error");
+            row["failure_class"] = json!("missing_raw_codex_evidence");
+            row["command_outcome"] = json!("unknown");
+            row["command_failure_class"] = json!("missing_raw_codex_evidence");
+            row["classification_source"] = json!("raw_evidence_unavailable");
+            continue;
+        };
+        let parsed = parse_codex_output(&stdout);
+        let assessment = assess(
+            &parsed,
+            &stderr,
+            ProcessEvidence {
+                exit_code: metadata["codex_exit_code"]
+                    .as_i64()
+                    .and_then(|code| i32::try_from(code).ok()),
+                timed_out: metadata["timed_out"]
+                    .as_bool()
+                    .unwrap_or(metadata["failure_class"] == "codex_timeout"),
+                spawn_failed: metadata["spawn_error"].is_string()
+                    || metadata["failure_class"] == "codex_spawn",
+            },
+            CommandOracle {
+                expected_exit: metadata["expected_command_exit"]
+                    .as_i64()
+                    .and_then(|code| i32::try_from(code).ok()),
+                expected_marker: metadata["expected_marker"].as_str(),
+                forbidden_path_exists: metadata["forbidden_path_exists"].as_bool(),
+            },
+        );
+        row["status"] = json!(assessment.status);
+        row["failure_class"] = json!(assessment.failure_class);
+        row["command_outcome"] = json!(assessment.command_outcome);
+        row["command_failure_class"] = json!(assessment.command_failure_class);
+        row["command_events"] = json!(parsed.command_events);
+        row["command_exit_code"] = json!(parsed.command_exit_code);
+        row["http_status"] = json!(http_error_status(&parsed, &stderr));
+        row["turn_completed"] = json!(parsed.turn_completed);
+        row["usage"] = json!(parsed.usage);
+        row["error_messages"] = json!(parsed.messages);
+        row["classification_source"] = json!("raw_codex_evidence_v2");
+        assessments.insert(field(row, "attempt_id").to_string(), assessment);
+    }
+    for row in rows
+        .iter_mut()
+        .filter(|row| field(row, "phase") == "child" && field(row, "event") == "exit")
+    {
+        if let Some(assessment) = assessments.get(field(row, "attempt_id")) {
+            row["recorded_status"] = row["status"].clone();
+            row["status"] = json!(assessment.command_outcome);
+            row["failure_class"] = json!(assessment.command_failure_class);
+            row["classification_source"] = json!("raw_codex_evidence_v2");
+        }
+    }
 }
 
 fn as_optional_value(row: &Value, name: &str) -> Option<Value> {
@@ -107,15 +207,7 @@ fn as_optional_value(row: &Value, name: &str) -> Option<Value> {
 
 fn pair_map(rows: &[Value]) -> BTreeMap<String, Pair> {
     let mut pairs = BTreeMap::new();
-    let codex_attempts: BTreeSet<String> = rows
-        .iter()
-        .filter(|row| field(row, "phase") == "codex" && field(row, "event") == "exit")
-        .map(|row| field(row, "attempt_id").to_string())
-        .collect();
     for row in exit_rows(rows) {
-        if field(row, "phase") == "child" && codex_attempts.contains(field(row, "attempt_id")) {
-            continue;
-        }
         let pair_id = field(row, "pair_id").to_string();
         let backend = field(row, "backend");
         if !matches!(backend, "shell" | "transparent") {
@@ -130,6 +222,9 @@ fn pair_map(rows: &[Value]) -> BTreeMap<String, Pair> {
             failure_class: text_field(row, "failure_class"),
             elapsed_ms: as_optional_value(row, "elapsed_ms"),
             command_exit_code: as_optional_value(row, "command_exit_code"),
+            command_outcome: as_optional_value(row, "command_outcome"),
+            command_failure_class: as_optional_value(row, "command_failure_class"),
+            turn_completed: as_optional_value(row, "turn_completed"),
             artifact_dir: text_field(row, "artifact_dir"),
         };
         if backend == "shell" {
@@ -150,6 +245,9 @@ fn arm_json(arm: Option<&Arm>) -> Value {
         "failure_class": arm.failure_class,
         "elapsed_ms": arm.elapsed_ms,
         "command_exit_code": arm.command_exit_code,
+        "command_outcome": arm.command_outcome,
+        "command_failure_class": arm.command_failure_class,
+        "turn_completed": arm.turn_completed,
         "artifact_dir": arm.artifact_dir,
     })
 }
@@ -200,6 +298,8 @@ fn pair_json(pair_id: &str, pair: &Pair) -> Value {
         "transparent": arm_json(transparent),
         "complete_pair": complete,
         "valid_comparable": complete,
+        "command_oracle_pair": shell.is_some_and(|arm| arm.command_outcome.as_ref().and_then(Value::as_str) == Some("success"))
+            && transparent.is_some_and(|arm| arm.command_outcome.as_ref().and_then(Value::as_str) == Some("success")),
         "observed_difference": observed_difference,
         "first_difference": first_difference,
     })
@@ -246,6 +346,9 @@ fn report_summary(rows: &[Value], planned_pairs: Option<usize>) -> (Value, Vec<V
         },
         "complete_pairs": complete_pairs,
         "valid_comparable_pairs": complete_pairs,
+        "command_oracle_successful_arms": exits.iter().filter(|row| field(row, "command_outcome") == "success").count(),
+        "command_oracle_pairs": pair_rows.iter().filter(|pair| pair["command_oracle_pair"] == true).count(),
+        "command_oracle_failures": exits.iter().filter(|row| field(row, "command_outcome") == "backend_failure").count(),
         "external_failures": external_failures,
         "backend_failures": backend_failures,
         "status_counts": status_counts,
@@ -255,7 +358,11 @@ fn report_summary(rows: &[Value], planned_pairs: Option<usize>) -> (Value, Vec<V
 }
 
 fn report(path: &str, format: &str) {
-    let rows = events(path);
+    let mut rows = events(path);
+    reassess_online_events(
+        &mut rows,
+        Path::new(path).parent().unwrap_or(Path::new(".")),
+    );
     let planned_pairs = path
         .strip_suffix("/events.jsonl")
         .and_then(|run| fs::read_to_string(format!("{run}/summary.json")).ok())
@@ -276,11 +383,11 @@ fn report(path: &str, format: &str) {
         ),
         "csv" => {
             println!(
-                "pair_id,attempt_id,task_id,backend,phase,event,status,failure_class,monotonic_ns,elapsed_ms,command,artifact_dir"
+                "pair_id,attempt_id,task_id,backend,phase,event,status,failure_class,monotonic_ns,elapsed_ms,command,artifact_dir,command_outcome,command_failure_class,turn_completed,recorded_status"
             );
             for row in &rows {
                 println!(
-                    "{},{},{},{},{},{},{},{},{},{},{},{}",
+                    "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                     csv_field(field(row, "pair_id").to_string()),
                     csv_field(field(row, "attempt_id").to_string()),
                     csv_field(field(row, "task_id").to_string()),
@@ -292,7 +399,11 @@ fn report(path: &str, format: &str) {
                     csv_field(text_field(row, "monotonic_ns")),
                     csv_field(text_field(row, "elapsed_ms")),
                     csv_field(text_field(row, "command")),
-                    csv_field(text_field(row, "artifact_dir"))
+                    csv_field(text_field(row, "artifact_dir")),
+                    csv_field(text_field(row, "command_outcome")),
+                    csv_field(text_field(row, "command_failure_class")),
+                    csv_field(text_field(row, "turn_completed")),
+                    csv_field(text_field(row, "recorded_status"))
                 );
             }
         }
@@ -305,11 +416,11 @@ fn report(path: &str, format: &str) {
             );
             println!("## Pair comparison\n");
             println!(
-                "| pair | task | shell | transparent | comparable | observed timing | first difference |\n|---|---|---|---|---|---|---|"
+                "| pair | task | shell | transparent | complete Codex pair | command oracle pair | observed timing | first difference |\n|---|---|---|---|---|---|---|---|"
             );
             for pair in &pairs {
                 println!(
-                    "| `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | `{}` |",
+                    "| `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | `{}` |",
                     field(pair, "pair_id"),
                     field(pair, "task_id"),
                     pair.get("shell")
@@ -323,6 +434,7 @@ fn report(path: &str, format: &str) {
                     pair.get("valid_comparable")
                         .and_then(Value::as_bool)
                         .unwrap_or(false),
+                    text_field(pair, "command_oracle_pair"),
                     field(pair, "observed_difference"),
                     field(pair, "first_difference")
                 );
@@ -349,12 +461,12 @@ fn report(path: &str, format: &str) {
         }
         "html" => {
             println!(
-                "<!doctype html><meta charset=utf-8><title>MBTX execution report</title><style>body{{font:14px system-ui;margin:2rem}}table{{border-collapse:collapse;width:100%;margin:1rem 0}}td,th{{border:1px solid #ccc;padding:.35rem;text-align:left;vertical-align:top}}code{{white-space:pre-wrap;word-break:break-word}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}</style><h1>MBTX execution report</h1><h2>Evidence summary</h2><pre>{}</pre><h2>Pair comparison</h2><table><tr><th>pair</th><th>task</th><th>shell</th><th>transparent</th><th>comparable</th><th>observed timing</th><th>first difference</th></tr>",
+                "<!doctype html><meta charset=utf-8><title>MBTX execution report</title><style>body{{font:14px system-ui;margin:2rem}}table{{border-collapse:collapse;width:100%;margin:1rem 0}}td,th{{border:1px solid #ccc;padding:.35rem;text-align:left;vertical-align:top}}code{{white-space:pre-wrap;word-break:break-word}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}</style><h1>MBTX execution report</h1><h2>Evidence summary</h2><pre>{}</pre><h2>Pair comparison</h2><table><tr><th>pair</th><th>task</th><th>shell</th><th>transparent</th><th>complete Codex pair</th><th>command oracle pair</th><th>observed timing</th><th>first difference</th></tr>",
                 esc(&serde_json::to_string_pretty(&summary).unwrap())
             );
             for pair in &pairs {
                 println!(
-                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                    "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
                     esc(field(pair, "pair_id")),
                     esc(field(pair, "task_id")),
                     esc(pair
@@ -372,6 +484,7 @@ fn report(path: &str, format: &str) {
                         .and_then(Value::as_bool)
                         .unwrap_or(false)
                         .to_string()),
+                    esc(&text_field(pair, "command_oracle_pair")),
                     esc(field(pair, "observed_difference")),
                     esc(field(pair, "first_difference"))
                 );
