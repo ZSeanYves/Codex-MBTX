@@ -35,7 +35,7 @@ pub fn paired_statistics(rows : Array[Json]) -> Json {
       "ratio_ci95": Json::null(),
       "delta": Json::null(),
       "interpretation": "insufficient_evidence",
-      "at_least_ten_percent_faster": false,
+      "ratio_ci_upper_at_most_0_90": false,
     }
   }
   let deltas = Array::makei(n, i => transparent[i] - shell[i])
@@ -80,7 +80,7 @@ pub fn paired_statistics(rows : Array[Json]) -> Json {
       quantile(delta_means, 975, 1000).to_json(),
     ],
     "transparent_faster": deltas.filter(x => x < 0.0).length().to_json(),
-    "at_least_ten_percent_faster": (n >= 2 && upper <= 0.90).to_json(),
+    "ratio_ci_upper_at_most_0_90": (n >= 2 && upper <= 0.90).to_json(),
     "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
   }
 }

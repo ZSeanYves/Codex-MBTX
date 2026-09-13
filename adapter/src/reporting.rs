@@ -418,9 +418,21 @@ pub fn build(root: &Path, model_path: &Path) -> io::Result<Value> {
         .iter()
         .filter(|p| p["strict_comparable"] == true)
         .count();
+    let boundary_notes: Vec<_> = arms
+        .iter()
+        .flat_map(|arm| {
+            arm["result"]["boundary_notes"]
+                .as_array()
+                .into_iter()
+                .flatten()
+        })
+        .map(|note| (note.to_string(), note.clone()))
+        .collect::<BTreeMap<_, _>>()
+        .into_values()
+        .collect();
     let summary = json!({"intention_to_treat":{"attempted_pairs":pairs.len(),"arm_statuses":statuses},"strict_comparable_pairs":valid,
         "target_pairs":manifest["target_pairs"],"partial":manifest["target_pairs"].as_u64().is_none_or(|target|valid<(target as usize)),
-        "stop":latest_summary(root),"platform":manifest["platform"],"purpose":manifest["purpose"],
+        "stop":latest_summary(root),"platform":manifest["platform"],"purpose":manifest["purpose"],"boundary_observations":boundary_notes,
         "default_shell_is_direct":arms.iter().filter(|a|a["result"]["backend"] == "shell").filter_map(|a|a["result"]["shell_modes"].as_array()).flatten().next().map(|_|arms.iter().filter(|a|a["result"]["backend"] == "shell").filter_map(|a|a["result"]["shell_modes"].as_array()).flatten().all(|v| v == "Direct")),
         "limits":["No universal lossless replacement claim from this sample.","Model compute and relay internal waiting are inseparable without server evidence.",
             "Intervals overlap; local residual and missing stages remain unexplained.","Online scenario samples do not support stable p99 estimates.",
@@ -540,7 +552,7 @@ fn startup(root: &Path, manifest: Value, model: &mut Model) -> io::Result<Value>
         valid += result["pairs"].as_u64().unwrap_or(0);
         let supported = group.ends_with("minimal")
             && result["pairs"].as_u64().is_some_and(|n| n >= 1000)
-            && result["at_least_ten_percent_faster"] == true;
+            && result["ratio_ci_upper_at_most_0_90"] == true;
         statistics.push(json!({"stratum":group,"metric":"spawn_begin_to_fixture_ready","units":"ns","confidence":"inferred","statistics":result,"at_least_ten_percent_supported":supported}));
     }
     let pairs: Vec<_> = pair_index.iter().map(|(id, backends)| {

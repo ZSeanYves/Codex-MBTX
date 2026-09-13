@@ -78,6 +78,19 @@ fn output_stream(facts : Json, stream : String) -> String {
 }
 
 ///|
+fn isolated_pid_namespace(facts : Json) -> Bool {
+  guard field(facts, "collector_pid_namespace") is String(collector) else {
+    return false
+  }
+  array_field(facts, "receipts").any(receipt => {
+    match field(receipt, "pid_namespace") {
+      String(child) => child != collector
+      _ => false
+    }
+  })
+}
+
+///|
 fn behavior_matches(facts : Json, check : String) -> Json {
   let receipt = receipt_for(facts, "argv")
   let stdin = receipt_for(facts, "stdin")
@@ -140,8 +153,21 @@ fn behavior_matches(facts : Json, check : String) -> Json {
       stdout == lines.filter(line => line.has_prefix("stdout:")).join("") &&
       stderr == lines.filter(line => line.has_prefix("stderr:")).join("")
     }
-    "pipe-tail" =>
-      merged.contains("parent-done") && merged.contains("descendant-tail")
+    "pipe-tail" => {
+      let tail_written = stdout.contains("descendant-tail") ||
+        array_field(facts, "trace").any(r => {
+          field(r, "event") == "write" &&
+          field(r, "content_tag") == "descendant_tail"
+        })
+      // PID-namespace teardown may kill the descendant before its delayed write.
+      // Any tail observed at the writer or reader must still reach Codex output.
+      merged.contains("parent-done") &&
+      (if isolated_pid_namespace(facts) && !tail_written {
+        true
+      } else {
+        merged.contains("descendant-tail")
+      })
+    }
     "session" =>
       stdout.contains("session-ready") && stdout.contains("session-done")
     "exit_signal" => {
@@ -149,7 +175,10 @@ fn behavior_matches(facts : Json, check : String) -> Json {
         field(r, "phase") == "child" && field(r, "event") == "wait_return"
       })
       waits.any(r => field(r, "exit_code") == 143 && field(r, "signal") is Null) &&
-      waits.any(r => field(r, "signal") == 15)
+      (
+        isolated_pid_namespace(facts) ||
+        waits.any(r => field(r, "signal") == 15)
+      )
     }
     "sequence" =>
       array_field(facts, "receipts")
@@ -214,6 +243,59 @@ pub fn evaluate(facts : Json) -> Json {
     fields["expected_exits"] = field(task, "expected_exits")
     fields["trajectory_match"] = trajectory_matches(expected, actual).to_json()
     fields["behavior_match"] = behavior
+    // Codex can print zero counters when a provider omitted usage. Keep those
+    // separately from usage actually observed on the Responses stream.
+    let request_usage = array_field(facts, "trace")
+      .filter(r => {
+        field(r, "phase") == "external" &&
+        field(r, "event") == "response_completed"
+      })
+      .map(r => {
+        (
+          {
+            "request_id": field(r, "request_id"),
+            "response_id": field(r, "response_id"),
+            "usage": field(r, "usage"),
+          } : Json)
+      })
+    fields["codex_reported_usage"] = field(facts, "codex_reported_usage")
+    fields["usage"] = if request_usage.is_empty() ||
+      request_usage.all(r => field(r, "usage") is Null) {
+      Json::null()
+    } else {
+      {
+        "source": "responses_proxy",
+        "requests": request_usage.to_json(),
+        "complete": (bool_field(facts, "relay_snapshot_complete") &&
+        request_usage.all(r => !(field(r, "usage") is Null)) &&
+        request_usage.length() ==
+        array_field(facts, "trace")
+        .filter(r => {
+          field(r, "phase") == "external" && field(r, "event") == "request_send"
+        })
+        .length()).to_json(),
+      }
+    }
+    fields["boundary_notes"] = if isolated_pid_namespace(facts) &&
+      check == "exit_signal" {
+      [
+        {
+          "confidence": "unknown",
+          "layer": "sandbox",
+          "message": "The sandbox outer wait normalizes signal termination to an exit code. This Codex sample does not prove inner Shell signal identity; native launcher contracts check real wait status separately.",
+        },
+      ].to_json()
+    } else if isolated_pid_namespace(facts) && check == "pipe-tail" {
+      [
+        {
+          "confidence": "inferred",
+          "layer": "sandbox",
+          "message": "A separate PID namespace is observed. Sandbox teardown may terminate the descendant before its tail write; emitted tail bytes must still be present in Codex output.",
+        },
+      ].to_json()
+    } else {
+      ([] : Array[Json]).to_json()
+    }
   }
   assessment
 }

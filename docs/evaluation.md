@@ -106,6 +106,16 @@ The runtime records the path actually used, including a ZshFork fallback to
 Direct. When default Shell is already Direct, the same evidence is the Direct
 control. Otherwise run an independent offline `MBTX_DIRECT_SHELL=1` artifact.
 
+Two oracles account for the observed sandbox boundary. In a separate Linux PID
+namespace, bubblewrap reports inner signal termination as a numeric exit code;
+the Codex signal scenario checks the observable codes and marks inner Shell signal
+identity unknown. The native launcher contract separately checks real SIGTERM
+and SIGKILL wait status. For a descendant holding a pipe, sandbox teardown can
+prevent the delayed tail from being written. The oracle still requires every
+tail observed at the fixture writer or Codex reader to reach the merged result.
+Outside that namespace boundary, the delayed tail is required. These restrictions
+appear in report summaries and do not erase raw output or merge differences.
+
 ## Evidence and reports
 
 Each attempt is created once, then sealed with SHA-256 hashes. Resume verifies

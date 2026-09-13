@@ -173,6 +173,14 @@ fn main() -> io::Result<()> {
         "delayed-tail" => {
             sleep(150);
             println!("descendant-tail");
+            io::stdout().flush()?;
+            if let Some(trace) = &trace {
+                trace.emit(
+                    "child",
+                    "write",
+                    json!({"stream":"stdout","content_tag":"descendant_tail","bytes":16}),
+                )?;
+            }
         }
         _ => return Err(io::Error::other(format!("unknown fixture mode {mode}"))),
     }

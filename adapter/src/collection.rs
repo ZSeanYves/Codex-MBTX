@@ -706,8 +706,10 @@ impl Engine {
             .filter(|r| r["phase"] == "tool" && r["event"] == "result_ready")
             .cloned()
             .collect();
-        let facts = json!({"task":task,"actual_steps":actual,"commands":commands,"tool_results":tool_results,"receipts":receipts,"streams":streams,
-            "trace":rows,"relay_snapshot_complete":relay_snapshot_complete,"infrastructure":infrastructure,"turn_completed":parsed.turn_completed,
+        let facts = json!({"task":task,"platform":std::env::consts::OS,
+            "collector_pid_namespace":crate::process_identity::fixture_scope()["pid_namespace"],
+            "actual_steps":actual,"commands":commands,"tool_results":tool_results,"receipts":receipts,"streams":streams,
+            "trace":rows,"codex_reported_usage":parsed.usage,"relay_snapshot_complete":relay_snapshot_complete,"infrastructure":infrastructure,"turn_completed":parsed.turn_completed,
             "processes_clean":processes_clean,"cleanup_scope":"observed fixture processes; detached/unobserved descendants are not inferred reaped", "unidentified_live":unidentified_live,"workspace":workspace,"home":home,"fixture":self.fixture});
         let mut assessment = self
             .model
@@ -724,11 +726,6 @@ impl Engine {
         assessment["elapsed_ms"] = json!(end.map(|end| (end - begin) as f64 / 1e6));
         assessment["begin_ns"] = json!(begin);
         assessment["end_ns"] = json!(end);
-        assessment["usage"] = if self.replay.is_some() {
-            Value::Null
-        } else {
-            parsed.usage.unwrap_or(Value::Null)
-        };
         assessment["exit_code"] = json!(exit_code);
         assessment["signal"] = json!(signal);
         assessment["artifact_dir"] = json!(format!("attempts/{id}"));
