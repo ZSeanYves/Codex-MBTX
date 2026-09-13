@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a0996d-480e-7df2-bf96-94e39ce3c519"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(repr(sys.argv[1:]))' 'alpha beta' 'quote\\\"double' 'dollar\"'$'\"' '\"'$(touch SHOULD_NOT_EXIST)'\"'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(repr(sys.argv[1:]))' 'alpha beta' 'quote\\\"double' 'dollar\"'$'\"' '\"'$(touch SHOULD_NOT_EXIST)'\"'\"","aggregated_output":"['alpha beta', 'quote\"double', 'dollar$', '$(touch SHOULD_NOT_EXIST)']\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":28599,"cached_input_tokens":13056,"cache_write_input_tokens":0,"output_tokens":327,"reasoning_output_tokens":252}}

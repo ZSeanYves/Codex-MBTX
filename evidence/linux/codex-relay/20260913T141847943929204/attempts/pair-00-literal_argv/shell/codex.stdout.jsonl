@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a0996b-1ea8-7881-9279-3e8c3876fd7e"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Running the exact command once."}}
+{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(repr(sys.argv[1:]))' 'alpha beta' 'quote\\\"double' 'dollar\"'$'\"' '\"'$(touch SHOULD_NOT_EXIST)'\"'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(repr(sys.argv[1:]))' 'alpha beta' 'quote\\\"double' 'dollar\"'$'\"' '\"'$(touch SHOULD_NOT_EXIST)'\"'\"","aggregated_output":"['alpha beta', 'quote\"double', 'dollar$', '$(touch SHOULD_NOT_EXIST)']\n","exit_code":0,"status":"completed"}}
+{"type":"error","message":"request timed out"}
+{"type":"turn.failed","error":{"message":"request timed out"}}

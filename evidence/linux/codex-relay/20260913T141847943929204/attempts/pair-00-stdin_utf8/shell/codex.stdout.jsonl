@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a09971-2245-70b2-bc75-672fe004305a"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"printf '第一行\\\\n\\\\n最后一行\\\\n' | python3 -c 'import sys; print(sys.stdin.read(), end=\\\"\\\")'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"printf '第一行\\\\n\\\\n最后一行\\\\n' | python3 -c 'import sys; print(sys.stdin.read(), end=\\\"\\\")'\"","aggregated_output":"第一行\n\n最后一行\n","exit_code":0,"status":"completed"}}
+{"type":"error","message":"request timed out"}
+{"type":"turn.failed","error":{"message":"request timed out"}}

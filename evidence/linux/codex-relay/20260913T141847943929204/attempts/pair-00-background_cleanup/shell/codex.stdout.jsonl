@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a0997e-e5c0-7460-bef2-10b0d6a67d60"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import subprocess; p=subprocess.Popen([\\\"sh\\\",\\\"-c\\\",\\\"sleep 0.1\\\"]); print(\\\"child-started\\\", flush=True); p.wait(); print(\\\"child-clean\\\")'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import subprocess; p=subprocess.Popen([\\\"sh\\\",\\\"-c\\\",\\\"sleep 0.1\\\"]); print(\\\"child-started\\\", flush=True); p.wait(); print(\\\"child-clean\\\")'\"","aggregated_output":"child-started\nchild-clean\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":28577,"cached_input_tokens":24064,"cache_write_input_tokens":0,"output_tokens":340,"reasoning_output_tokens":264}}

@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a09977-f53c-78d2-83fa-c88378a02d0f"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(\\\"expected failure\\\", file=sys.stderr); sys.exit(7)'\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc \"python3 -c 'import sys; print(\\\"expected failure\\\", file=sys.stderr); sys.exit(7)'\"","aggregated_output":"expected failure\n","exit_code":7,"status":"failed"}}
+{"type":"error","message":"request timed out"}
+{"type":"turn.failed","error":{"message":"request timed out"}}
