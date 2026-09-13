@@ -11,6 +11,8 @@ pub fn assess_facts(facts : Json) -> Json {
   let (status, reason) = match facts {
     { "infrastructure": String(kind), .. } if kind != "none" =>
       (kind, "external_or_harness_failure")
+    _ if bool_field(facts, "sandbox_denied") =>
+      ("unknown", "codex_sandbox_denied")
     _ if !bool_field(facts, "turn_completed") => ("unknown", "incomplete_turn")
     _ if !bool_field(facts, "trajectory_match") =>
       ("unknown", "model_trajectory_deviation")

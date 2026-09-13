@@ -78,6 +78,29 @@ test "oracle keeps external errors above a completed child and preserves unknown
 }
 
 ///|
+test "a completed turn with sandbox denial identifies the boundary without blaming a backend" {
+  assert_true(
+    @evaluation.evaluate({
+      "task": {
+        "steps": [],
+        "expected_exits": [0],
+        "check": "argv_empty_unicode",
+      },
+      "infrastructure": "none",
+      "turn_completed": true,
+      "tool_results": [{ "exit_code": 1, "sandbox_denied": true }],
+      "receipts": [],
+    })
+    is {
+      "status": "unknown",
+      "failure_class": "codex_sandbox_denied",
+      "strict_comparable": false,
+      ..
+    },
+  )
+}
+
+///|
 test "task arguments are compared without silently normalizing commands" {
   let facts : Json = {
     "task": {

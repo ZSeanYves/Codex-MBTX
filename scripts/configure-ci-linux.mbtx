@@ -1,0 +1,24 @@
+import {
+  "moonbitlang/async@0.21.3",
+  "moonbitlang/async@0.21.3/fs",
+  "moonbitlang/async@0.21.3/shell",
+  "moonbitlang/core/env",
+}
+
+async fn main {
+  // Match the pinned Codex setup-ci action on a disposable hosted runner.
+  // This is deliberately separate from installation on a reader's machine.
+  guard @env.get_env_var("GITHUB_ACTIONS") == Some("true") else {
+    fail("namespace configuration is restricted to GitHub Actions")
+  }
+  let settings = [
+    ("kernel.unprivileged_userns_clone", "1"),
+    ("kernel.apparmor_restrict_unprivileged_userns", "0"),
+  ]
+  for (name, value) in settings {
+    if @fs.exists("/proc/sys/" + name.replace(old=".", new="/")) {
+      @shell.Cmd("sudo", ["sysctl", "-w", "\{name}=\{value}"]).run()
+    }
+  }
+  @shell.Cmd("bwrap", ["--unshare-user", "--unshare-net", "--ro-bind", "/", "/", "/usr/bin/true"]).run()
+}

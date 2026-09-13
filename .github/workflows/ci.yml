@@ -91,8 +91,11 @@ jobs:
         run: |
           moon update
           moon run scripts/codex.mbtx prepare
+      - name: Enable and check sandbox namespaces on the disposable runner
+        run: moon run scripts/configure-ci-linux.mbtx
       - uses: Swatinem/rust-cache@v2
         with:
+          cache-on-failure: true
           workspaces: |
             adapter
             _build/codex-upstream/codex-rs
@@ -107,6 +110,8 @@ jobs:
           path: |
             /tmp/mbtx-replay-*
             /tmp/mbtx-faults-*
+            /tmp/mbtx-interrupted-*
+            /tmp/mbtx-policy-*
             _build/bundles/*/bundle.json
             _build/bundles/*/inputs.txt
             _build/bundles/*/binaries.sha256

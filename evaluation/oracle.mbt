@@ -196,6 +196,9 @@ pub fn evaluate(facts : Json) -> Json {
     )
   let assessment = assess_facts({
     "infrastructure": field(facts, "infrastructure"),
+    "sandbox_denied": array_field(facts, "tool_results")
+    .any(r => bool_field(r, "sandbox_denied"))
+    .to_json(),
     "turn_completed": field(facts, "turn_completed"),
     "trajectory_match": trajectory_matches(expected, actual).to_json(),
     "observation_complete": observation_complete.to_json(),

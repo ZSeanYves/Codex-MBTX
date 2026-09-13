@@ -36,7 +36,7 @@ async fn main {
   let sha_args = if system == "Darwin" { ["-a", "256", "--check", "binaries.sha256"] } else { ["--check", "binaries.sha256"] }
   @shell.Cmd(sha, sha_args, cwd=bundle).run()
   let output = @env.get_env_var("MBTX_RESUME_RUN").unwrap_or(args.get(2).unwrap_or("\{root}/evidence/\{platform}/\{suite}/\{stamp}-\{@async.now()}"))
-  @fs.mkdir(output, recursive=true)
+  if !@fs.exists(output) { @fs.mkdir(output, recursive=true) }
   let evaluator = "\{bundle}/mbtx-eval"
   let command = ["run", "--suite", suite, "--mbtx", "\{bundle}/mbtx", "--fixture", "\{bundle}/mbtx-fixture", "--evaluation-model", "\{bundle}/evaluation-model", "--output", output]
   if suite == "launcher" {
