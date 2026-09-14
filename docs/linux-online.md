@@ -67,6 +67,10 @@ moon run scripts/collect-linux.mbtx
 
 # Real Codex fixed-response replay: ten pairs per scenario, no API:
 moon run scripts/collect.mbtx codex-replay
+
+# One fixed scenario with local OTel and Codex JSONL diagnostic evidence:
+MBTX_PAIRS=1 MBTX_TASKS=argv_empty_unicode MBTX_OBSERVATION_PROFILE=diagnostic \
+  moon run scripts/collect.mbtx codex-replay _build/diagnostic-replay
 ```
 
 Without `MBTX_BUNDLE`, collection resolves and verifies the cached bundle
@@ -75,6 +79,12 @@ Use `MBTX_TOOL_MODE=direct` for a separate direct-tool artifact. The default is
 Code Mode, with sequential tools within one program. `MBTX_DIRECT_SHELL=1`
 creates a separate Direct Shell control; inspect actual `shell_modes` first.
 If the default is already Direct, the default artifact is also the control.
+
+The diagnostic profile starts a loopback OTLP collector and records Codex
+JSONL receipt events. It is intended for a small fixed replay to locate a
+stage-level difference. Use the default `minimal` profile for formal timing;
+diagnostic exports and JSONL parsing are excluded from formal performance
+statistics.
 
 ## Request Budget
 

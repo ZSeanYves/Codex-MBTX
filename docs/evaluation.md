@@ -104,6 +104,21 @@ and internal relay waiting cannot be separated without trustworthy server logs.
 Offline replay supplies the external-response control. Minimal/full startup
 traces expose measurement perturbation separately from startup performance.
 
+Diagnostic replay can additionally set `MBTX_OBSERVATION_PROFILE=diagnostic`.
+This starts a loopback OTLP HTTP collector and enables Codex JSONL receipt
+events. The collector writes immutable `otel/request-*.otlp` payloads and
+metadata inside the run; prompts are disabled in the generated OTel config.
+The report decodes OTLP spans as a diagnostic index, while all primary timing
+statistics continue to use the shared OS-monotonic event trace. Diagnostic
+replay is therefore a causal inspection artifact, never a source of formal
+performance numbers. Formal collection uses the default `minimal` profile so
+the extra HTTP export, JSONL parsing and disk writes cannot enter the measured
+comparison. Any span with a missing or non-monotonic timestamp remains null and
+is excluded from arithmetic. The minimal event trace is deliberately identical
+for Shell and Transparent MBTX; its small observer cost is retained in both
+arms and reported as a symmetric measurement condition, not subtracted or
+silently treated as backend work.
+
 The runtime records the path actually used, including a ZshFork fallback to
 Direct. When default Shell is already Direct, the same evidence is the Direct
 control. Otherwise run an independent offline `MBTX_DIRECT_SHELL=1` artifact.

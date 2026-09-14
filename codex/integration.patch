@@ -1,3 +1,114 @@
+diff --git a/codex-rs/app-server/src/in_process.rs b/codex-rs/app-server/src/in_process.rs
+index d8613e9..371c48d 100644
+--- a/codex-rs/app-server/src/in_process.rs
++++ b/codex-rs/app-server/src/in_process.rs
+@@ -559,6 +559,7 @@ async fn start_uninitialized(args: InProcessStartArgs) -> IoResult<InProcessClie
+                 }
+             }
+ 
++            codex_utils_pty::trace::emit("codex_shutdown", "processor_cleanup_begin", "{}");
+             processor.clear_runtime_references();
+             processor.cancel_active_login().await;
+             processor
+@@ -567,6 +568,7 @@ async fn start_uninitialized(args: InProcessStartArgs) -> IoResult<InProcessClie
+             processor.clear_all_thread_listeners().await;
+             processor.drain_background_tasks().await;
+             processor.shutdown_threads().await;
++            codex_utils_pty::trace::emit("codex_shutdown", "processor_cleanup_return", "{}");
+         });
+         let mut pending_request_responses =
+             HashMap::<RequestId, oneshot::Sender<PendingClientRequestResponse>>::new();
+@@ -760,17 +762,23 @@ async fn start_uninitialized(args: InProcessStartArgs) -> IoResult<InProcessClie
+             )));
+         }
+ 
++        codex_utils_pty::trace::emit("codex_shutdown", "processor_join_begin", "{}");
+         if let Err(_elapsed) = timeout(SHUTDOWN_TIMEOUT, &mut processor_handle).await {
+             processor_handle.abort();
+             let _ = processor_handle.await;
+         }
++        codex_utils_pty::trace::emit("codex_shutdown", "processor_join_return", "{}");
++        codex_utils_pty::trace::emit("codex_shutdown", "outbound_join_begin", "{}");
+         let _ = outbound_shutdown_tx.send(());
+         if let Err(_elapsed) = timeout(SHUTDOWN_TIMEOUT, &mut outbound_handle).await {
+             outbound_handle.abort();
+             let _ = outbound_handle.await;
+         }
++        codex_utils_pty::trace::emit("codex_shutdown", "outbound_join_return", "{}");
+ 
++        codex_utils_pty::trace::emit("codex_shutdown", "analytics_flush_begin", "{}");
+         analytics_events_flush_client.flush().await;
++        codex_utils_pty::trace::emit("codex_shutdown", "analytics_flush_return", "{}");
+ 
+         if let Some(done_tx) = shutdown_ack {
+             let _ = done_tx.send(());
+diff --git a/codex-rs/app-server/src/request_processors/thread_processor.rs b/codex-rs/app-server/src/request_processors/thread_processor.rs
+index 56eb6fd..66a0b1b 100644
+--- a/codex-rs/app-server/src/request_processors/thread_processor.rs
++++ b/codex-rs/app-server/src/request_processors/thread_processor.rs
+@@ -528,6 +528,10 @@ impl ThreadRequestProcessor {
+         request_id: &ConnectionRequestId,
+         params: ThreadUnsubscribeParams,
+     ) -> Result<Option<ClientResponsePayload>, JSONRPCErrorError> {
++        let _trace = codex_utils_pty::trace::span(
++            "codex_shutdown",
++            format!("{{\"thread_id\":\"{}\"}}", params.thread_id),
++        );
+         self.thread_unsubscribe_response_inner(params, request_id.connection_id)
+             .await
+             .map(|response| Some(response.into()))
+@@ -1245,12 +1249,19 @@ impl ThreadRequestProcessor {
+ 
+     pub(crate) async fn drain_background_tasks(&self) {
+         self.background_tasks.close();
+-        if tokio::time::timeout(Duration::from_secs(10), self.background_tasks.wait())
++        codex_utils_pty::trace::emit("codex_shutdown", "background_drain_begin", "{}");
++        let timed_out = tokio::time::timeout(Duration::from_secs(10), self.background_tasks.wait())
+             .await
+-            .is_err()
+-        {
++            .is_err();
++        if timed_out {
+             warn!("timed out waiting for background tasks to shut down; proceeding");
++            codex_utils_pty::trace::emit("codex_shutdown", "background_drain_timeout", "{}");
+         }
++        codex_utils_pty::trace::emit(
++            "codex_shutdown",
++            "background_drain_return",
++            &format!("{{\"timed_out\":{timed_out}}}"),
++        );
+     }
+ 
+     pub(crate) async fn clear_all_thread_listeners(&self) {
+@@ -1258,16 +1269,28 @@ impl ThreadRequestProcessor {
+     }
+ 
+     pub(crate) async fn shutdown_threads(&self) {
++        codex_utils_pty::trace::emit("codex_shutdown", "threads_shutdown_begin", "{}");
+         let report = self
+             .thread_manager
+             .shutdown_all_threads_bounded(Duration::from_secs(10))
+             .await;
++        let submit_failed_count = report.submit_failed.len();
++        let timed_out_count = report.timed_out.len();
+         for thread_id in report.submit_failed {
+             warn!("failed to submit Shutdown to thread {thread_id}");
+         }
+         for thread_id in report.timed_out {
+             warn!("timed out waiting for thread {thread_id} to shut down");
+         }
++        codex_utils_pty::trace::emit(
++            "codex_shutdown",
++            "threads_shutdown_return",
++            &format!(
++                "{{\"submit_failed\":{},\"timed_out\":{}}}",
++                submit_failed_count,
++                timed_out_count
++            ),
++        );
+     }
+ 
+     async fn request_trace_context(
 diff --git a/codex-rs/config/src/config_toml.rs b/codex-rs/config/src/config_toml.rs
 index 5f0cc99..a814bc7 100644
 --- a/codex-rs/config/src/config_toml.rs
@@ -648,6 +759,58 @@ index 523e7eb..eb74a4c 100644
          shell_type: crate::shell::ShellType::Sh,
          hook_command: "echo before".to_string(),
          process_id: 123,
+diff --git a/codex-rs/exec/Cargo.toml b/codex-rs/exec/Cargo.toml
+index 83da982..cb8bc6b 100644
+--- a/codex-rs/exec/Cargo.toml
++++ b/codex-rs/exec/Cargo.toml
+@@ -41,6 +41,7 @@ codex-rollout = { workspace = true }
+ codex-utils-absolute-path = { workspace = true }
+ codex-utils-cli = { workspace = true }
+ codex-utils-oss = { workspace = true }
++codex-utils-pty = { workspace = true }
+ codex-utils-sandbox-summary = { workspace = true }
+ owo-colors = { workspace = true }
+ serde = { workspace = true, features = ["derive"] }
+diff --git a/codex-rs/exec/src/lib.rs b/codex-rs/exec/src/lib.rs
+index 68cde23..018ebe8 100644
+--- a/codex-rs/exec/src/lib.rs
++++ b/codex-rs/exec/src/lib.rs
+@@ -1112,6 +1112,11 @@ async fn run_exec_session(args: ExecRunArgs) -> anyhow::Result<()> {
+                     match event_processor.process_server_notification(notification) {
+                         CodexStatus::Running => {}
+                         CodexStatus::InitiateShutdown => {
++                            codex_utils_pty::trace::emit(
++                                "codex_shutdown",
++                                "unsubscribe_begin",
++                                "{}",
++                            );
+                             if let Err(err) = request_shutdown(
+                                 &client,
+                                 &mut request_ids,
+@@ -1121,6 +1126,11 @@ async fn run_exec_session(args: ExecRunArgs) -> anyhow::Result<()> {
+                             {
+                                 warn!("thread/unsubscribe failed during shutdown: {err}");
+                             }
++                            codex_utils_pty::trace::emit(
++                                "codex_shutdown",
++                                "unsubscribe_return",
++                                "{}",
++                            );
+                             break;
+                         }
+                     }
+@@ -1134,9 +1144,11 @@ async fn run_exec_session(args: ExecRunArgs) -> anyhow::Result<()> {
+         }
+     }
+ 
++    codex_utils_pty::trace::emit("codex_shutdown", "client_shutdown_begin", "{}");
+     if let Err(err) = client.shutdown().await {
+         warn!("in-process app-server shutdown failed: {err}");
+     }
++    codex_utils_pty::trace::emit("codex_shutdown", "client_shutdown_return", "{}");
+     event_processor.print_final_output();
+     if error_seen {
+         std::process::exit(1);
 diff --git a/codex-rs/responses-api-proxy/Cargo.toml b/codex-rs/responses-api-proxy/Cargo.toml
 index 05d6388..fa94702 100644
 --- a/codex-rs/responses-api-proxy/Cargo.toml

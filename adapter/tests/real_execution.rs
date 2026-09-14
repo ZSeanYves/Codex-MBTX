@@ -603,6 +603,8 @@ fn real_codex_policy_and_configuration_boundaries() {
             (case != "shell-denied").then_some(Path::new(&launcher)),
             true,
             "direct",
+            None,
+            None,
         )
         .unwrap();
         if case == "missing-config" || case == "relative-launcher" || case == "invalid-backend" {

@@ -16,7 +16,10 @@ fn event(row: &Value, phase: &str, name: &str) -> bool {
 }
 
 fn span(rows: &[Value], phase: &str, start: &str, end: &str) -> Vec<(u64, u64)> {
-    let mut waiting = BTreeMap::new();
+    // Shutdown contains nested spans with the same phase and identity (for
+    // example unsubscribe -> processor cleanup). Keep a stack per identity so
+    // an inner return cannot overwrite the outer begin timestamp.
+    let mut waiting: BTreeMap<_, Vec<u64>> = BTreeMap::new();
     let mut spans = Vec::new();
     for row in rows {
         let Some(t) = ns(row) else {
@@ -31,10 +34,10 @@ fn span(rows: &[Value], phase: &str, start: &str, end: &str) -> Vec<(u64, u64)> 
             row["call_id"].to_string(),
         );
         if event(row, phase, start) {
-            waiting.insert(key.clone(), t);
+            waiting.entry(key.clone()).or_default().push(t);
         }
         if event(row, phase, end)
-            && let Some(begin) = waiting.remove(&key)
+            && let Some(begin) = waiting.get_mut(&key).and_then(Vec::pop)
             && t >= begin
         {
             spans.push((begin, t));
@@ -76,6 +79,67 @@ fn metrics(rows: &[Value], result: &Value) -> Value {
     let launcher_spawn = span(rows, "launcher", "spawn_begin", "spawn_return");
     let launcher_prepare = span(rows, "launcher", "entry", "spawn_begin");
     let fixture_runtime = span(rows, "child", "ready", "return");
+    let unsubscribe = span(
+        rows,
+        "codex_shutdown",
+        "unsubscribe_begin",
+        "unsubscribe_return",
+    );
+    let processor_cleanup = span(
+        rows,
+        "codex_shutdown",
+        "processor_cleanup_begin",
+        "processor_cleanup_return",
+    );
+    let processor_join = span(
+        rows,
+        "codex_shutdown",
+        "processor_join_begin",
+        "processor_join_return",
+    );
+    let outbound_join = span(
+        rows,
+        "codex_shutdown",
+        "outbound_join_begin",
+        "outbound_join_return",
+    );
+    let analytics_flush = span(
+        rows,
+        "codex_shutdown",
+        "analytics_flush_begin",
+        "analytics_flush_return",
+    );
+    let client_shutdown = span(
+        rows,
+        "codex_shutdown",
+        "client_shutdown_begin",
+        "client_shutdown_return",
+    );
+    let background_drain = span(
+        rows,
+        "codex_shutdown",
+        "background_drain_begin",
+        "background_drain_return",
+    );
+    let threads_shutdown = span(
+        rows,
+        "codex_shutdown",
+        "threads_shutdown_begin",
+        "threads_shutdown_return",
+    );
+    let thread_unsubscribe = span(rows, "codex_shutdown", "begin", "return");
+    let turn_completed = rows
+        .iter()
+        .filter(|row| {
+            event(row, "codex_jsonl", "event_received") && row["json_type"] == "turn.completed"
+        })
+        .filter_map(ns)
+        .min();
+    let unsubscribe_begin = rows
+        .iter()
+        .filter(|row| event(row, "codex_shutdown", "unsubscribe_begin"))
+        .filter_map(ns)
+        .min();
     let mut ready_spans = Vec::new();
     let mut child_wait_spans = Vec::new();
     let mut drain_spans = Vec::new();
@@ -146,6 +210,18 @@ fn metrics(rows: &[Value], result: &Value) -> Value {
         "rate_wait_ns":sum(&wait),"request_gate_queue_ns":sum(&queue),"policy_sandbox_spawn_ns":sum(&policy),
         "spawn_return_ns":sum(&spawn),"startup_to_ready_ns":sum(&ready_spans),
         "ready_to_wait_observed_ns":sum(&child_wait_spans),"wait_to_last_observed_eof_ns":sum(&drain_spans),
+        "codex_turn_completed_observed_monotonic_ns":turn_completed,
+        "turn_completed_to_unsubscribe_ns":turn_completed.zip(unsubscribe_begin).and_then(|(a,b)| b.checked_sub(a)),
+        "unsubscribe_to_turn_completed_ns":unsubscribe_begin.zip(turn_completed).and_then(|(a,b)| b.checked_sub(a)),
+        "codex_unsubscribe_ns":sum(&unsubscribe),
+        "codex_processor_cleanup_ns":sum(&processor_cleanup),
+        "codex_processor_join_ns":sum(&processor_join),
+        "codex_outbound_join_ns":sum(&outbound_join),
+        "codex_analytics_flush_ns":sum(&analytics_flush),
+        "codex_client_shutdown_ns":sum(&client_shutdown),
+        "codex_background_drain_ns":sum(&background_drain),
+        "codex_threads_shutdown_ns":sum(&threads_shutdown),
+        "codex_thread_unsubscribe_internal_ns":sum(&thread_unsubscribe),
         "unexplained_ns":total.map(|(a,b)|(b-a).saturating_sub(union(&explained,a,b))),
         "attribution":"Observed intervals can overlap. Unexplained time is the complement of their union, not model compute. Missing spans remain null."})
 }
@@ -176,6 +252,76 @@ fn read_trace(directory: &Path) -> io::Result<(Vec<Value>, bool)> {
     }
     rows.sort_by_key(ns);
     Ok((rows, complete))
+}
+
+fn json_u64(value: &Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+}
+
+/// Decode the small, local OTLP JSON evidence files without using their clock
+/// values in the primary pair statistics. OTLP spans are a diagnostic view of
+/// Codex internals; the measured intervals still come from the shared
+/// OS-monotonic event trace. Keeping both views in the report lets a reviewer
+/// locate a difference without silently replacing the measurement clock.
+fn read_otel(root: &Path) -> io::Result<(Vec<Value>, bool)> {
+    let directory = root.join("otel");
+    if !directory.exists() {
+        return Ok((Vec::new(), true));
+    }
+    let mut spans = Vec::new();
+    let mut complete = true;
+    let mut files: Vec<_> = fs::read_dir(&directory)?.collect::<Result<_, _>>()?;
+    files.sort_by_key(|entry| entry.file_name());
+    for entry in files {
+        let path = entry.path();
+        if path.extension().is_none_or(|extension| extension != "otlp") {
+            continue;
+        }
+        let source = path
+            .strip_prefix(root)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .into_owned();
+        let Ok(bytes) = fs::read(&path) else {
+            complete = false;
+            continue;
+        };
+        let Ok(value) = serde_json::from_slice::<Value>(&bytes) else {
+            complete = false;
+            continue;
+        };
+        let Some(resources) = value["resourceSpans"].as_array() else {
+            // Log exports are still preserved as raw files. They simply do
+            // not contribute span rows to this derived diagnostic view.
+            continue;
+        };
+        for resource in resources {
+            for scope in resource["scopeSpans"].as_array().into_iter().flatten() {
+                for span in scope["spans"].as_array().into_iter().flatten() {
+                    let start = json_u64(&span["startTimeUnixNano"]);
+                    let end = json_u64(&span["endTimeUnixNano"]);
+                    let duration = start
+                        .zip(end)
+                        .filter(|(begin, finish)| finish >= begin)
+                        .map(|(begin, finish)| finish - begin);
+                    spans.push(json!({
+                        "name": span["name"],
+                        "trace_id": span["traceId"],
+                        "span_id": span["spanId"],
+                        "start_ns": start,
+                        "end_ns": end,
+                        "duration_ns": duration,
+                        "clock_domain": "unix-wall-clock",
+                        "attributes": span["attributes"],
+                        "source": source,
+                    }));
+                }
+            }
+        }
+    }
+    Ok((spans, complete))
 }
 
 pub(crate) fn verify_seal(directory: &Path) -> io::Result<Value> {
@@ -268,6 +414,7 @@ pub fn build(root: &Path, model_path: &Path) -> io::Result<Value> {
     let mut index = BTreeMap::<String, BTreeMap<String, usize>>::new();
     let mut statuses = BTreeMap::<String, usize>::new();
     let external = read_trace(&root.join("relay"))?.0;
+    let (otel_spans, otel_complete) = read_otel(root)?;
     if root.join("attempts").exists() {
         let mut directories: Vec<_> =
             fs::read_dir(root.join("attempts"))?.collect::<Result<_, _>>()?;
@@ -392,6 +539,17 @@ pub fn build(root: &Path, model_path: &Path) -> io::Result<Value> {
                 "launcher_prepare_ns",
                 "fixture_runtime_ns",
                 "artifact_write_ns",
+                "turn_completed_to_unsubscribe_ns",
+                "unsubscribe_to_turn_completed_ns",
+                "codex_unsubscribe_ns",
+                "codex_processor_cleanup_ns",
+                "codex_processor_join_ns",
+                "codex_outbound_join_ns",
+                "codex_analytics_flush_ns",
+                "codex_client_shutdown_ns",
+                "codex_background_drain_ns",
+                "codex_threads_shutdown_ns",
+                "codex_thread_unsubscribe_internal_ns",
                 "unexplained_ns",
             ] {
                 groups
@@ -435,10 +593,13 @@ pub fn build(root: &Path, model_path: &Path) -> io::Result<Value> {
         "stop":latest_summary(root),"platform":manifest["platform"],"purpose":manifest["purpose"],"boundary_observations":boundary_notes,
         "default_shell_is_direct":arms.iter().filter(|a|a["result"]["backend"] == "shell").filter_map(|a|a["result"]["shell_modes"].as_array()).flatten().next().map(|_|arms.iter().filter(|a|a["result"]["backend"] == "shell").filter_map(|a|a["result"]["shell_modes"].as_array()).flatten().all(|v| v == "Direct")),
         "limits":["No universal lossless replacement claim from this sample.","Model compute and relay internal waiting are inseparable without server evidence.",
-            "Intervals overlap; local residual and missing stages remain unexplained.","Online scenario samples do not support stable p99 estimates.",
+            "Intervals overlap; local residual and missing stages remain unexplained.","The shared formal observer is retained symmetrically and its cost is not subtracted.",
+            "Online scenario samples do not support stable p99 estimates.",
             "Default Shell and Direct control runs are separate artifacts; inspect observed shell_modes before attributing differences."]});
     Ok(
-        json!({"schema_version":2,"manifest":manifest,"summary":summary,"pairs":pairs,"arms":arms,"statistics":statistics}),
+        json!({"schema_version":2,"manifest":manifest,"summary":summary,"pairs":pairs,"arms":arms,"statistics":statistics,
+        "otel":{"enabled":root.join("otel").exists(),"complete":otel_complete,"spans":otel_spans,
+            "raw_directory":root.join("otel").exists().then_some("otel")}}),
     )
 }
 
@@ -675,6 +836,14 @@ pub fn render(report: &Value, format: &str) -> io::Result<String> {
                     row["statistics"]["ratio_ci95"]
                 ));
             }
+            if report["otel"]["enabled"] == true {
+                out.push_str(&format!(
+                    "\n## Local OTel diagnostic index\n\n- Complete: `{}`\n- Raw evidence directory: `{}`\n- Decoded spans: `{}`\n- OTel spans are diagnostic evidence only; formal timing uses the shared OS-monotonic trace.\n",
+                    report["otel"]["complete"],
+                    report["otel"]["raw_directory"],
+                    report["otel"]["spans"].as_array().map_or(0, Vec::len)
+                ));
+            }
             Ok(out)
         }
         "html" => {
@@ -731,5 +900,47 @@ mod tests {
         assert_eq!(result["spawn_return_ns"], 2);
         rows[0]["call_id"] = Value::Null;
         assert!(metrics(&rows, &json!({}))["startup_to_ready_ns"].is_null());
+    }
+    #[test]
+    fn nested_shutdown_spans_are_paired_lifo() {
+        let rows = [
+            json!({"phase":"codex_shutdown","event":"unsubscribe_begin","pid":1,"monotonic_ns":10,"clock_domain":"os-monotonic"}),
+            json!({"phase":"codex_shutdown","event":"begin","pid":1,"monotonic_ns":20,"clock_domain":"os-monotonic"}),
+            json!({"phase":"codex_shutdown","event":"return","pid":1,"monotonic_ns":30,"clock_domain":"os-monotonic"}),
+            json!({"phase":"codex_shutdown","event":"unsubscribe_return","pid":1,"monotonic_ns":40,"clock_domain":"os-monotonic"}),
+        ];
+        assert_eq!(
+            sum(&span(
+                &rows,
+                "codex_shutdown",
+                "unsubscribe_begin",
+                "unsubscribe_return"
+            )),
+            Some(30)
+        );
+        assert_eq!(
+            sum(&span(&rows, "codex_shutdown", "begin", "return")),
+            Some(10)
+        );
+    }
+    #[test]
+    fn otlp_spans_are_indexed_without_entering_monotonic_metrics() {
+        let root = std::env::temp_dir().join(format!(
+            "mbtx-otel-test-{}-{}",
+            std::process::id(),
+            crate::evidence::now_ns()
+        ));
+        fs::create_dir_all(root.join("otel")).unwrap();
+        fs::write(
+            root.join("otel/request-000001.otlp"),
+            br#"{"resourceSpans":[{"scopeSpans":[{"spans":[{"name":"codex.exec","startTimeUnixNano":"100","endTimeUnixNano":"140","attributes":[]}]}]}]}"#,
+        )
+        .unwrap();
+        let (spans, complete) = read_otel(&root).unwrap();
+        assert!(complete);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0]["duration_ns"], 40);
+        assert_eq!(spans[0]["clock_domain"], "unix-wall-clock");
+        fs::remove_dir_all(root).unwrap();
     }
 }

@@ -15,6 +15,26 @@ byId('totals').textContent = report.manifest.suite === 'launcher-startup'
   : `Platform: ${shown(summary.platform)} | Strict pairs: ${summary.strict_comparable_pairs}/${shown(summary.target_pairs)} | ${summary.partial ? 'Partial' : 'Target reached'}\nITT arm statuses: ${pretty(summary.intention_to_treat.arm_statuses)}`;
 byId('totals').textContent += `\nRun purpose: ${shown(summary.purpose)}`;
 byId('limits').textContent = pretty([...(summary.limits || []), ...(summary.boundary_observations || [])]);
+const otelSpans = report.otel?.spans || [];
+const otelByName = {};
+for (const span of otelSpans) {
+  const name = span.name || 'unknown';
+  const bucket = otelByName[name] || (otelByName[name] = { count: 0, durations_ns: [] });
+  bucket.count += 1;
+  if (Number.isFinite(span.duration_ns)) bucket.durations_ns.push(span.duration_ns);
+}
+byId('otel').textContent = report.otel?.enabled
+  ? pretty({
+      complete: report.otel.complete,
+      raw_directory: report.otel.raw_directory,
+      span_count: otelSpans.length,
+      spans: Object.fromEntries(Object.entries(otelByName).map(([name, value]) => [name, {
+        count: value.count,
+        min_ns: value.durations_ns.length ? Math.min(...value.durations_ns) : null,
+        max_ns: value.durations_ns.length ? Math.max(...value.durations_ns) : null,
+      }])),
+    })
+  : 'disabled (formal minimal observation)';
 for (const [id, label, values] of [
   ['task', 'All scenarios', pairs.map(p => p.task_id)],
   ['category', 'All categories', pairs.map(p => p.category)],

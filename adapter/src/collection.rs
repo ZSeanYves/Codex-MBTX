@@ -21,6 +21,7 @@ use std::sync::{
 };
 use std::thread;
 use std::time::{Duration, Instant};
+use tiny_http::{Header, Response, Server};
 
 pub fn option(args: &[String], key: &str) -> Option<String> {
     args.iter()
@@ -48,6 +49,73 @@ impl Drop for Proxy {
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
+}
+
+/// Receives Codex OTLP logs and traces on loopback only. The collector is
+/// deliberately outside the relay proxy, so diagnostic telemetry never spends
+/// an API request or depends on the external service.
+struct OtelCollector {
+    endpoint: String,
+    stop: Arc<std::sync::atomic::AtomicBool>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl Drop for OtelCollector {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+fn start_otel_collector(directory: &Path) -> io::Result<OtelCollector> {
+    fs::create_dir_all(directory)?;
+    let server = Server::http("127.0.0.1:0").map_err(io::Error::other)?;
+    let endpoint = format!("http://{}", server.server_addr());
+    let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let stopped = Arc::clone(&stop);
+    let destination = directory.to_owned();
+    let thread = thread::spawn(move || {
+        let mut sequence = 0u64;
+        while !stopped.load(Ordering::Relaxed) {
+            let Ok(Some(mut request)) = server.recv_timeout(Duration::from_millis(100)) else {
+                continue;
+            };
+            sequence += 1;
+            let received_ns = now_ns();
+            let mut body = Vec::new();
+            let read_result = request.as_reader().read_to_end(&mut body);
+            let path = request.url().to_owned();
+            let body_file = destination.join(format!("request-{sequence:06}.otlp"));
+            let meta_file = destination.join(format!("request-{sequence:06}.json"));
+            if read_result.is_ok() {
+                let _ = write_new(&body_file, &body);
+                let _ = write_json(
+                    &meta_file,
+                    &json!({
+                        "schema_version": 1,
+                        "received_ns": received_ns,
+                        "clock_domain": "os-monotonic",
+                        "path": path,
+                        "bytes": body.len(),
+                        "body": body_file.file_name().and_then(|v| v.to_str()),
+                    }),
+                );
+                let response = Response::from_string("{}")
+                    .with_header(Header::from_bytes("Content-Type", "application/json").unwrap());
+                let _ = request.respond(response);
+            } else {
+                let _ = request
+                    .respond(Response::from_string("invalid OTLP body").with_status_code(400));
+            }
+        }
+    });
+    Ok(OtelCollector {
+        endpoint,
+        stop,
+        thread: Some(thread),
+    })
 }
 
 fn start_proxy(
@@ -109,6 +177,8 @@ pub fn config(
     launcher: Option<&Path>,
     direct: bool,
     tool_mode: &str,
+    otel_endpoint: Option<&str>,
+    otel_context: Option<&Value>,
 ) -> io::Result<String> {
     let mut value = json!({"model_provider":"evaluation","model":model,"review_model":model,
         "model_reasoning_effort":"xhigh","approval_policy":"never","sandbox_mode":"workspace-write",
@@ -124,6 +194,35 @@ pub fn config(
     }
     if direct {
         value["features"]["unified_exec_zsh_fork"] = json!(false);
+    }
+    if let Some(endpoint) = otel_endpoint {
+        let attributes = otel_context
+            .and_then(Value::as_object)
+            .map(|context| {
+                [
+                    "experiment_id",
+                    "pair_id",
+                    "attempt_id",
+                    "task_id",
+                    "backend",
+                ]
+                .into_iter()
+                .filter_map(|key| {
+                    context[key]
+                        .as_str()
+                        .map(|value| (format!("mbtx.{key}"), json!(value)))
+                })
+                .collect::<serde_json::Map<_, _>>()
+            })
+            .unwrap_or_default();
+        value["otel"] = json!({
+            "environment": "mbtx-evaluation",
+            "exporter": {"otlp-http": {"endpoint": format!("{endpoint}/v1/logs"), "protocol": "json"}},
+            "trace_exporter": {"otlp-http": {"endpoint": format!("{endpoint}/v1/traces"), "protocol": "json"}},
+            "metrics_exporter": "none",
+            "log_user_prompt": false,
+            "span_attributes": attributes,
+        });
     }
     toml::to_string_pretty(&value).map_err(io::Error::other)
 }
@@ -173,9 +272,12 @@ fn read_output(
     name: &'static str,
     trace: Trace,
     stopped: Arc<AtomicU64>,
+    jsonl_trace: bool,
 ) -> thread::JoinHandle<io::Result<(Vec<u8>, Option<u64>)>> {
     thread::spawn(move || {
         let mut bytes = Vec::new();
+        let mut jsonl_pending = Vec::new();
+        let mut jsonl_sequence = 0u64;
         let mut chunk = [0; 16384];
         let mut eof = None;
         let flags = unsafe { libc::fcntl(pipe.as_raw_fd(), libc::F_GETFL) };
@@ -226,6 +328,26 @@ fn read_output(
                 break;
             }
             bytes.extend_from_slice(&chunk[..n]);
+            if jsonl_trace && name == "stdout" {
+                jsonl_pending.extend_from_slice(&chunk[..n]);
+                while let Some(position) = jsonl_pending.iter().position(|byte| *byte == b'\n') {
+                    let line: Vec<_> = jsonl_pending.drain(..=position).collect();
+                    let Ok(value) = serde_json::from_slice::<Value>(&line) else {
+                        continue;
+                    };
+                    jsonl_sequence += 1;
+                    trace.emit(
+                        "codex_jsonl",
+                        "event_received",
+                        json!({
+                            "event_index": jsonl_sequence,
+                            "json_type": value["type"],
+                            "turn_completed": value["type"] == "turn.completed",
+                            "turn_failed": value["type"] == "turn.failed",
+                        }),
+                    )?;
+                }
+            }
         }
         let started = now_ns();
         write_new(&path, &bytes)?;
@@ -253,6 +375,8 @@ struct Engine {
     experiment: String,
     relay_directory: PathBuf,
     fault: String,
+    observation_profile: String,
+    otel_endpoint: Option<String>,
 }
 
 impl Engine {
@@ -300,7 +424,8 @@ impl Engine {
         )?;
         let context = json!({"experiment_id":self.experiment,"pair_id":pair,"attempt_id":id,
             "task_id":task["id"],"category":task["category"],"backend":backend,"round":round,"sample_phase":phase,
-            "platform":std::env::consts::OS,"tool_mode":self.tool_mode});
+            "platform":std::env::consts::OS,"tool_mode":self.tool_mode,
+            "observation_profile":self.observation_profile});
         let trace = Trace::create(&directory.join("events.jsonl"), context.clone())?;
         write_json(&directory.join("task.json"), task)?;
         let configuration = config(
@@ -309,6 +434,8 @@ impl Engine {
             (backend == "transparent").then_some(&self.mbtx),
             self.direct,
             &self.tool_mode,
+            self.otel_endpoint.as_deref(),
+            Some(&context),
         )?;
         write_new(&home.join("config.toml"), configuration.as_bytes())?;
         write_new(&directory.join("config.toml"), configuration.as_bytes())?;
@@ -412,6 +539,7 @@ impl Engine {
                     "stdout",
                     trace.clone(),
                     Arc::clone(&stopped),
+                    self.observation_profile == "diagnostic",
                 );
                 let err = read_output(
                     child.stderr.take().unwrap(),
@@ -419,6 +547,7 @@ impl Engine {
                     "stderr",
                     trace.clone(),
                     Arc::clone(&stopped),
+                    false,
                 );
                 // Only this thread owns wait/reap. Timestamp before collection and disk IO.
                 let (finished, received) = mpsc::sync_channel(1);
@@ -814,6 +943,12 @@ pub fn run(args: &[String]) -> io::Result<()> {
     } else {
         "formal"
     };
+    let observation_profile = option(args, "--observation-profile").unwrap_or("minimal".into());
+    if !matches!(observation_profile.as_str(), "minimal" | "diagnostic") {
+        return Err(io::Error::other(
+            "--observation-profile must be minimal or diagnostic",
+        ));
+    }
     let interval = number(args, "--min-interval-ms", 15000)?.max(6000);
     let codex = fs::canonicalize(required(args, "--codex")?)?;
     let mbtx = fs::canonicalize(required(args, "--mbtx")?)?;
@@ -874,6 +1009,9 @@ pub fn run(args: &[String]) -> io::Result<()> {
     let manifest = json!({"schema_version":2,"experiment_id":experiment,"suite":suite_name,"purpose":purpose,"target_pairs":tasks.len()*per_task,
         "pairs_per_task":per_task,"rounds":rounds,"seed":20260913,"tasks":tasks,
         "min_request_interval_ms":interval,"max_concurrent_requests":1,"tool_mode":tool_mode,"fault":fault,
+        "observation_profile":observation_profile,
+        "timing_policy":{"primary_clock":"os-monotonic","shared_observer":true,"diagnostic_exports_excluded":true,
+            "formal_observer":"shared Codex/launcher event trace; observer cost is symmetric and retained, not subtracted"},
         "direct_control":args.iter().any(|v| v == "--direct-shell"),"platform":std::env::consts::OS,
         "model":model_name,"upstream":if replay_mode {"fixed-responses"} else {&upstream},
         "timeout_ms":number(args, "--timeout-ms", 300000)?,"path":std::env::var("PATH").ok(),
@@ -909,6 +1047,11 @@ pub fn run(args: &[String]) -> io::Result<()> {
     let relay_directory = output
         .join("relay")
         .join(format!("generation-{generation}"));
+    let otel = if observation_profile == "diagnostic" {
+        Some(start_otel_collector(&output.join("otel"))?)
+    } else {
+        None
+    };
     let replay = if replay_mode {
         Some(Replay::start(relay_directory.clone())?)
     } else {
@@ -944,6 +1087,8 @@ pub fn run(args: &[String]) -> io::Result<()> {
         experiment,
         relay_directory,
         fault,
+        observation_profile,
+        otel_endpoint: otel.as_ref().map(|collector| collector.endpoint.clone()),
     };
     let mut window = VecDeque::new();
     let mut attempted = 0;
@@ -1051,6 +1196,9 @@ pub fn run(args: &[String]) -> io::Result<()> {
     }
     drop(engine);
     drop(proxy);
+    // Codex exports OTel batches during shutdown. Stop the loopback collector
+    // before writing the run summary so every exported batch is on disk.
+    drop(otel);
     let summary = json!({"schema_version":2,"attempted_pairs":attempted,"valid_pairs":valid,"target_pairs":tasks.len()*per_task,
         "failed_arms":failures,"partial":valid<tasks.len()*per_task,"stop_reason":stop_reason,"elapsed_seconds":started.elapsed().as_secs_f64()});
     write_json(
@@ -1078,13 +1226,47 @@ mod tests {
     }
     #[test]
     fn config_uses_structured_toml_and_keeps_shell_default() {
-        let text = config("a\"b", "http://localhost/v1", None, false, "code").unwrap();
+        let text = config(
+            "a\"b",
+            "http://localhost/v1",
+            None,
+            false,
+            "code",
+            None,
+            None,
+        )
+        .unwrap();
         let parsed: toml::Value = toml::from_str(&text).unwrap();
         assert_eq!(parsed["model"].as_str(), Some("a\"b"));
         assert!(parsed.get("mbtx_backend").is_none());
         assert_eq!(
             parsed["model_providers"]["evaluation"]["request_max_retries"].as_integer(),
             Some(0)
+        );
+    }
+
+    #[test]
+    fn diagnostic_config_uses_loopback_otlp_and_redacts_prompts() {
+        let context = json!({"experiment_id":"e","pair_id":"p","attempt_id":"a","task_id":"t","backend":"shell"});
+        let text = config(
+            "model",
+            "http://localhost/v1",
+            None,
+            false,
+            "code",
+            Some("http://127.0.0.1:1234"),
+            Some(&context),
+        )
+        .unwrap();
+        let parsed: toml::Value = toml::from_str(&text).unwrap();
+        assert_eq!(
+            parsed["otel"]["exporter"]["otlp-http"]["endpoint"].as_str(),
+            Some("http://127.0.0.1:1234/v1/logs")
+        );
+        assert_eq!(parsed["otel"]["log_user_prompt"].as_bool(), Some(false));
+        assert_eq!(
+            parsed["otel"]["span_attributes"]["mbtx.attempt_id"].as_str(),
+            Some("a")
         );
     }
 }

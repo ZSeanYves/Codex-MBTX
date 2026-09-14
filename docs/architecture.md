@@ -51,3 +51,10 @@ Both arms enable the same Codex and fixture observation. Actual Direct/ZshFork
 execution is recorded after fallback selection. The common Unix PTY status fix
 preserves real signals in both arms, so its benefit cannot be attributed to MBTX.
 Separate minimal/full startup observations quantify trace perturbation.
+
+For fixed-replay diagnosis, an optional loopback OTLP collector and Codex
+JSONL receipt observer are enabled only by the `diagnostic` observation
+profile. Their raw payloads are retained and indexed in the report, but their
+export and parsing work is excluded from formal latency statistics. The
+formal `minimal` profile keeps the same shared OS-monotonic event layer for
+both arms and does not start the collector.

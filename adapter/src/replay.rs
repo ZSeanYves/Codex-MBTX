@@ -35,6 +35,10 @@ fn session_id(value: &Value) -> Option<i64> {
     }
 }
 
+fn is_model_request(body: &Value) -> bool {
+    body["input"].is_array()
+}
+
 fn response(body: &Value, active: &Value, sequence: usize) -> io::Result<String> {
     let input = body["input"]
         .as_array()
@@ -122,7 +126,22 @@ impl Replay {
                     let _ =
                         write_json(&directory.join(format!("request-{sequence:06}.json")), body);
                 }
-                let sse = parsed.and_then(|body| response(&body, &active, sequence));
+                let sse = parsed.and_then(|body| {
+                    if is_model_request(&body) {
+                        response(&body, &active, sequence)
+                    } else {
+                        // Codex may send a housekeeping request (for example
+                        // a response deletion containing only `turn_ids`). It
+                        // is not a model turn and must not be classified as a
+                        // missing Responses input or a provider failure.
+                        let _ = trace.emit(
+                            "replay",
+                            "housekeeping",
+                            json!({"keys":body.as_object().map(|fields| fields.keys().cloned().collect::<Vec<_>>())}),
+                        );
+                        Ok(String::new())
+                    }
+                });
                 let fault = active["fault"].as_str().unwrap_or("none");
                 if matches!(fault, "429" | "503") {
                     let code = fault.parse::<u16>().unwrap();
@@ -151,6 +170,9 @@ impl Replay {
                     continue;
                 }
                 match sse {
+                    Ok(sse) if sse.is_empty() => {
+                        let _ = request.respond(Response::from_string("{}"));
+                    }
                     Ok(sse) => {
                         let _ = crate::evidence::write_new(
                             &directory.join(format!("response-{sequence:06}.sse")),
@@ -211,5 +233,11 @@ mod tests {
             session_id(&json!({"output":"{\"session_id\":42}"})),
             Some(42)
         );
+    }
+
+    #[test]
+    fn housekeeping_requests_are_not_model_turns() {
+        assert!(!is_model_request(&json!({"turn_ids":["turn-1"]})));
+        assert!(is_model_request(&json!({"input":[]})));
     }
 }
