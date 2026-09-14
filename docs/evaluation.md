@@ -2,8 +2,10 @@
 
 The protocol answers three separate questions: execution compatibility, local
 performance attribution, and the hypothesis of a 10% startup advantage.
-Formal collection and scientific acceptance happen after code verification.
-Default Shell remains the product default.
+Code verification and formal evidence are assessed separately. Default Shell
+remains the product default. The [report index](reports/README.md) records the
+available datasets and their coverage; a successful run is not automatically a
+complete protocol result.
 
 ## Scenarios and sampling
 
@@ -140,11 +142,31 @@ do not support reliable p99 estimates. A 10% startup claim requires at least
 1000 minimal-observation pairs and a ratio interval upper bound no greater than
 0.90. A current-protocol result is not a reproduction of an old end-to-end run.
 
-Historical raw reports under `docs/archive/` remain unchanged. The archived
-reports examined so far have end-to-end durations, not startup-ready timestamps.
-Their proposed 10% startup benefit therefore remains a hypothesis, not an
-attributed historical finding. Linux and macOS evidence is never pooled.
-`moon run scripts/audit-history.mbtx ARCHIVED.json NEW-AUDIT.json` preserves the
-selected report's checksum and recorded metadata. Historical rebuild/retest is
-pending identification of the exact recipe behind the claimed startup result;
-the available end-to-end reports cannot supply missing startup boundaries.
+The current statistics implementation includes a stage only when both arms
+have positive values. Reports must disclose the resulting sample count and
+distinguish conditional stage estimates from all-arm estimates. Missing values
+remain unknown; exclusion of a legitimate zero does not make it missing in the
+raw evidence. Stage intervals may overlap and cannot be summed as a complete
+latency budget. Failure to detect a difference is not evidence of equivalence.
+
+## Report and retention conventions
+
+Report prose, headings and developer documentation use English. Literal
+commands, multilingual fixture inputs, captured output and provider responses
+retain their original bytes; translating those fields would change evidence.
+Reports state their source revision, platform, sample selection, units, interval
+method and conclusion limits. Observed events, inferred causes and unknown
+boundaries remain distinguishable.
+
+The current tree retains the two online datasets listed in the
+[report index](reports/README.md), together with local launcher and replay
+evidence. Superseded documents and removed runs remain in Git history. Run
+retention is not sample selection: failed attempts inside each retained run
+remain part of ITT, and retained successful windows do not estimate historical
+service availability.
+
+Earlier end-to-end measurements do not supply missing startup-ready boundaries.
+Historical reconstruction requires the original revision, toolchain, profile
+and task recipe. `moon run scripts/audit-history.mbtx SOURCE.json AUDIT.json`
+records a supplied report's checksum and metadata without changing it. Linux
+and macOS evidence is never pooled.

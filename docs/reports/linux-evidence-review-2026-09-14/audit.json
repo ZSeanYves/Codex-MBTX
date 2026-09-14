@@ -1,0 +1,645 @@
+{
+  "data_commit": "370432d3289f0c5be790788f136f47db5cabbc9f",
+  "code_commit": "5159635",
+  "review_date": "2026-09-14",
+  "raw_evidence_modified": false,
+  "new_experiments_or_relay_requests": false,
+  "source_verification": [
+    {
+      "scope": "startup_run_seal",
+      "files": 33341,
+      "status": "verified"
+    },
+    {
+      "scope": "startup_source_hashes",
+      "files": 48,
+      "status": "verified"
+    },
+    {
+      "scope": "codex_source_hashes",
+      "files": 48,
+      "status": "verified"
+    }
+  ],
+  "startup_verification": {
+    "summary_equal": true,
+    "statistics_equal": true,
+    "pairs_equal": true,
+    "arm_results_equal": true,
+    "seals": [
+      {
+        "status": "success",
+        "count": 12120
+      }
+    ]
+  },
+  "startup_summary": {
+    "complete_jsonl": true,
+    "failed_arms": 0,
+    "formal_pairs_per_stratum": 1000,
+    "intention_to_treat": {
+      "attempted_pairs": 6000
+    },
+    "limits": [
+      "Minimal observation is primary. Full trace is a separate perturbation calibration.",
+      "All arms create new processes. Warmup is not process reuse."
+    ],
+    "partial": false,
+    "purpose": "formal",
+    "strict_comparable_pairs": 6000,
+    "target_pairs": 6000
+  },
+  "codex_suites": [
+    {
+      "suite": "offline",
+      "analysis": {
+        "summary": {
+          "boundary_observations": [
+            {
+              "confidence": "inferred",
+              "layer": "sandbox",
+              "message": "A separate PID namespace is observed. Sandbox teardown may terminate the descendant before its tail write; emitted tail bytes must still be present in Codex output."
+            },
+            {
+              "confidence": "unknown",
+              "layer": "sandbox",
+              "message": "The sandbox outer wait normalizes signal termination to an exit code. This Codex sample does not prove inner Shell signal identity; native launcher contracts check real wait status separately."
+            }
+          ],
+          "default_shell_is_direct": true,
+          "intention_to_treat": {
+            "arm_statuses": {
+              "success": 480
+            },
+            "attempted_pairs": 240
+          },
+          "limits": [
+            "No universal lossless replacement claim from this sample.",
+            "Model compute and relay internal waiting are inseparable without server evidence.",
+            "Intervals overlap; local residual and missing stages remain unexplained.",
+            "Online scenario samples do not support stable p99 estimates.",
+            "Default Shell and Direct control runs are separate artifacts; inspect observed shell_modes before attributing differences."
+          ],
+          "partial": false,
+          "platform": "linux",
+          "purpose": "formal",
+          "stop": {
+            "attempted_pairs": 240,
+            "elapsed_seconds": 5167.503367132,
+            "failed_arms": 0,
+            "partial": false,
+            "schema_version": 2,
+            "stop_reason": null,
+            "target_pairs": 240,
+            "valid_pairs": 240
+          },
+          "strict_comparable_pairs": 240,
+          "target_pairs": 240
+        },
+        "coverage": [
+          {
+            "task": "argv_empty_unicode",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "argv_long",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "argv_metacharacters",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "cancel_ctrl_c",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "cancel_sigkill",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "cancel_sigterm",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "cwd_symlink",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "descendant_cancel",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "descendant_pipe_tail",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "environment_empty_unset",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "environment_path_login",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "exec_missing_permission",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "exit_code_vs_signal",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "exit_nonzero",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "output_interleaved",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "output_split_large",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "output_truncation_tail",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "session_cancel_resources",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "session_failure_recovery",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "session_poll",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "session_sequence",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "stdin_backpressure",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "stdin_eof",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          },
+          {
+            "task": "stdin_pty_utf8",
+            "attempted_pairs": 10,
+            "strict_pairs": 10
+          }
+        ],
+        "formal_arm_statuses": [
+          {
+            "backend": "shell",
+            "status": "success",
+            "failure_class": null,
+            "arms": 240
+          },
+          {
+            "backend": "transparent",
+            "status": "success",
+            "failure_class": null,
+            "arms": 240
+          }
+        ],
+        "post_response_to_wait": [
+          {
+            "backend": "shell",
+            "arms": 240,
+            "measured": 240,
+            "between_9_9_and_10_1_seconds": 229,
+            "median_ns": 10008155355
+          },
+          {
+            "backend": "transparent",
+            "arms": 240,
+            "measured": 240,
+            "between_9_9_and_10_1_seconds": 231,
+            "median_ns": 10008266744
+          }
+        ],
+        "cleanup": [
+          {
+            "processes_clean": true,
+            "unidentified_live": [],
+            "arms": 480
+          }
+        ],
+        "display_differences": [
+          {
+            "task": "cwd_symlink",
+            "pairs": 10
+          },
+          {
+            "task": "environment_empty_unset",
+            "pairs": 10
+          },
+          {
+            "task": "environment_path_login",
+            "pairs": 10
+          },
+          {
+            "task": "output_truncation_tail",
+            "pairs": 2
+          }
+        ]
+      },
+      "verification": {
+        "summary_equal": true,
+        "statistics_equal": true,
+        "pairs_equal": true,
+        "arm_results_equal": true,
+        "seals": [
+          {
+            "status": "success",
+            "count": 480
+          }
+        ]
+      }
+    },
+    {
+      "suite": "online",
+      "analysis": {
+        "summary": {
+          "boundary_observations": [
+            {
+              "confidence": "inferred",
+              "layer": "sandbox",
+              "message": "A separate PID namespace is observed. Sandbox teardown may terminate the descendant before its tail write; emitted tail bytes must still be present in Codex output."
+            },
+            {
+              "confidence": "unknown",
+              "layer": "sandbox",
+              "message": "The sandbox outer wait normalizes signal termination to an exit code. This Codex sample does not prove inner Shell signal identity; native launcher contracts check real wait status separately."
+            }
+          ],
+          "default_shell_is_direct": true,
+          "intention_to_treat": {
+            "arm_statuses": {
+              "relay_error": 7,
+              "success": 379,
+              "unknown": 32
+            },
+            "attempted_pairs": 209
+          },
+          "limits": [
+            "No universal lossless replacement claim from this sample.",
+            "Model compute and relay internal waiting are inseparable without server evidence.",
+            "Intervals overlap; local residual and missing stages remain unexplained.",
+            "Online scenario samples do not support stable p99 estimates.",
+            "Default Shell and Direct control runs are separate artifacts; inspect observed shell_modes before attributing differences."
+          ],
+          "partial": true,
+          "platform": "linux",
+          "purpose": "formal",
+          "stop": {
+            "attempted_pairs": 209,
+            "elapsed_seconds": 15952.244595794,
+            "failed_arms": 39,
+            "partial": true,
+            "schema_version": 2,
+            "stop_reason": null,
+            "target_pairs": 192,
+            "valid_pairs": 183
+          },
+          "strict_comparable_pairs": 183,
+          "target_pairs": 192
+        },
+        "coverage": [
+          {
+            "task": "argv_empty_unicode",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "argv_long",
+            "attempted_pairs": 12,
+            "strict_pairs": 0
+          },
+          {
+            "task": "argv_metacharacters",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "cancel_ctrl_c",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "cancel_sigkill",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "cancel_sigterm",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "cwd_symlink",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "descendant_cancel",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "descendant_pipe_tail",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "environment_empty_unset",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "environment_path_login",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "exec_missing_permission",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "exit_code_vs_signal",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "exit_nonzero",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "output_interleaved",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "output_split_large",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "output_truncation_tail",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "session_cancel_resources",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "session_failure_recovery",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "session_poll",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          },
+          {
+            "task": "session_sequence",
+            "attempted_pairs": 11,
+            "strict_pairs": 7
+          },
+          {
+            "task": "stdin_backpressure",
+            "attempted_pairs": 10,
+            "strict_pairs": 8
+          },
+          {
+            "task": "stdin_eof",
+            "attempted_pairs": 9,
+            "strict_pairs": 8
+          },
+          {
+            "task": "stdin_pty_utf8",
+            "attempted_pairs": 8,
+            "strict_pairs": 8
+          }
+        ],
+        "formal_arm_statuses": [
+          {
+            "backend": "shell",
+            "status": "relay_error",
+            "failure_class": "external_or_harness_failure",
+            "arms": 4
+          },
+          {
+            "backend": "shell",
+            "status": "success",
+            "failure_class": null,
+            "arms": 190
+          },
+          {
+            "backend": "shell",
+            "status": "unknown",
+            "failure_class": "model_trajectory_deviation",
+            "arms": 15
+          },
+          {
+            "backend": "transparent",
+            "status": "relay_error",
+            "failure_class": "external_or_harness_failure",
+            "arms": 3
+          },
+          {
+            "backend": "transparent",
+            "status": "success",
+            "failure_class": null,
+            "arms": 189
+          },
+          {
+            "backend": "transparent",
+            "status": "unknown",
+            "failure_class": "model_trajectory_deviation",
+            "arms": 17
+          }
+        ],
+        "post_response_to_wait": [
+          {
+            "backend": "shell",
+            "arms": 209,
+            "measured": 209,
+            "between_9_9_and_10_1_seconds": 195,
+            "median_ns": 10008739431
+          },
+          {
+            "backend": "transparent",
+            "arms": 209,
+            "measured": 209,
+            "between_9_9_and_10_1_seconds": 193,
+            "median_ns": 10008921944
+          }
+        ],
+        "cleanup": [
+          {
+            "processes_clean": true,
+            "unidentified_live": [],
+            "arms": 418
+          }
+        ],
+        "display_differences": [
+          {
+            "task": "cwd_symlink",
+            "pairs": 8
+          },
+          {
+            "task": "environment_empty_unset",
+            "pairs": 8
+          },
+          {
+            "task": "environment_path_login",
+            "pairs": 8
+          },
+          {
+            "task": "output_truncation_tail",
+            "pairs": 2
+          }
+        ]
+      },
+      "verification": {
+        "summary_equal": true,
+        "statistics_equal": true,
+        "pairs_equal": true,
+        "arm_results_equal": true,
+        "seals": [
+          {
+            "status": "success",
+            "count": 421
+          }
+        ]
+      }
+    }
+  ],
+  "request_pacing": {
+    "requests": 839,
+    "minimum_start_interval_ns": 15000144207,
+    "maximum_start_interval_ns": 126440286671,
+    "peak_in_flight": 1,
+    "final_in_flight": 0,
+    "http_statuses": [
+      {
+        "status": 200,
+        "requests": 834
+      },
+      {
+        "status": 502,
+        "requests": 5
+      }
+    ],
+    "responses_completed": 831,
+    "stream_eof": 839,
+    "tool_arguments_complete": 418
+  },
+  "output_merge_checks": [
+    {
+      "suite": "offline",
+      "pair_id": "r1-output_truncation_tail-a05",
+      "independent_streams_equal": true,
+      "streams": [
+        {
+          "stream": "stderr",
+          "bytes": 4096,
+          "sha256": "ccda6c08aee28331768d1ac1a86581078e659a43c8500ec2eecbe189239d077d"
+        },
+        {
+          "stream": "stdout",
+          "bytes": 262153,
+          "sha256": "d229e8f3c5ea0ad51aa4486f168f2c4435344819d7d4ca794884f1ebad57ecf5"
+        }
+      ]
+    },
+    {
+      "suite": "offline",
+      "pair_id": "r1-output_truncation_tail-a08",
+      "independent_streams_equal": true,
+      "streams": [
+        {
+          "stream": "stderr",
+          "bytes": 4096,
+          "sha256": "ccda6c08aee28331768d1ac1a86581078e659a43c8500ec2eecbe189239d077d"
+        },
+        {
+          "stream": "stdout",
+          "bytes": 262153,
+          "sha256": "d229e8f3c5ea0ad51aa4486f168f2c4435344819d7d4ca794884f1ebad57ecf5"
+        }
+      ]
+    },
+    {
+      "suite": "online",
+      "pair_id": "r1-output_truncation_tail-a02",
+      "independent_streams_equal": true,
+      "streams": [
+        {
+          "stream": "stderr",
+          "bytes": 4096,
+          "sha256": "ccda6c08aee28331768d1ac1a86581078e659a43c8500ec2eecbe189239d077d"
+        },
+        {
+          "stream": "stdout",
+          "bytes": 262153,
+          "sha256": "d229e8f3c5ea0ad51aa4486f168f2c4435344819d7d4ca794884f1ebad57ecf5"
+        }
+      ]
+    },
+    {
+      "suite": "online",
+      "pair_id": "r2-output_truncation_tail-a03",
+      "independent_streams_equal": true,
+      "streams": [
+        {
+          "stream": "stderr",
+          "bytes": 4096,
+          "sha256": "ccda6c08aee28331768d1ac1a86581078e659a43c8500ec2eecbe189239d077d"
+        },
+        {
+          "stream": "stdout",
+          "bytes": 262153,
+          "sha256": "d229e8f3c5ea0ad51aa4486f168f2c4435344819d7d4ca794884f1ebad57ecf5"
+        }
+      ]
+    }
+  ],
+  "recovery": "Independent copies only. Every changed PTY file must match its pre-existing attempt seal before use; original top-level seals also verified. See pty-recovery.json."
+}

@@ -65,6 +65,21 @@ differences. A startup advantage is a hypothesis until the paired measurements
 and uncertainty interval support it; previous end-to-end results do not establish
 a launcher startup benefit.
 
+## Evaluation Results
+
+The [report index](docs/reports/README.md) separates the retained eight-category
+baseline from the expanded Linux evaluation. The
+[2026-09-14 report](docs/reports/linux-evidence-review-2026-09-14/README.md)
+records 240/240 passing fixed-replay pairs, 183/192 strictly comparable online
+pairs, and 6,000 startup pairs including observation calibration.
+
+Minimal-observation measurements identify approximately 0.49 ms of additional
+startup latency in the current MBTX path. End-to-end confidence intervals do not
+establish a speed advantage. Coverage gaps, merged-output differences, the PTY
+publication issue and unresolved post-response waiting are documented with the
+results. These findings support an optional backend within the tested scope;
+they do not establish universal lossless replacement.
+
 ## Layout
 
 | Path | Purpose |
@@ -78,11 +93,13 @@ a launcher startup benefit.
 | `evidence/{macos,linux}/launcher/` | Platform-specific startup evidence |
 | `evidence/{macos,linux}/codex-replay/` | Fixed-response Codex evidence |
 | `evidence/linux/codex-relay/` | Linux real relay evidence |
-| `docs/archive/` | Unmodified historical experiments and migration index |
+| `docs/reports/` | Evaluation reports, paired statistics and integrity audits |
 
 The [architecture](docs/architecture.md) and [Codex integration](codex/README.md)
 describe the ownership and configuration boundaries. Linux and macOS artifacts
 are independent; results do not establish universal lossless replacement or
 justify changing the default backend without reviewing the collected evidence.
 The [code verification record](docs/code-validation.md) separates implementation
-checks from the formal measurements that remain to be collected.
+checks from collected performance evidence. Superseded experimental documents
+and discarded run directories are available through Git history; the report
+index states which datasets remain in the current tree.

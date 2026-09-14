@@ -1,9 +1,10 @@
 # Code verification record
 
-This records implementation checks, not formal performance results. No real relay
-requests were made during these checks. Formal Linux collection, the 1,000-pair
-startup experiments, historical reproduction and scientific acceptance remain
-pending the separately collected evidence.
+This records implementation checks completed before formal Linux collection.
+No real relay requests were made during these checks. The separately collected
+[Linux evaluation](reports/linux-evidence-review-2026-09-14/README.md) now
+reports startup, fixed-replay and online results. Its coverage limits and
+remaining attribution work are not resolved by these implementation checks.
 
 ## Scope
 
@@ -72,11 +73,15 @@ does not assign a numerical speedup to the workflow change.
 
 ## Remaining evidence
 
-Run the [Linux collection procedure](linux-online.md) to collect the short online
-validation, 192 target online pairs, startup minimal/full observations and the
-larger offline replay. macOS evidence remains a separate platform artifact.
-The historical startup claim still needs its exact original build and measurement
-recipe; current measurements cannot substitute for that reproduction.
+The [report index](reports/README.md) records the completed Linux startup and
+offline datasets and the partial online dataset. Online long-argument and
+sequential-execution quotas remain incomplete. Post-response timing attribution
+and exact-byte publication of PTY evidence also require follow-up.
+
+The [collection procedure](linux-online.md) defines how to collect additional
+artifacts. macOS and direct tool mode require separately identified formal
+datasets. Historical startup reproduction still needs the exact original build
+and measurement recipe; current measurements cannot substitute for it.
 
 Model computation and internal relay waiting remain a combined external interval
 unless the relay supplies trustworthy server-side timestamps. Neither these code

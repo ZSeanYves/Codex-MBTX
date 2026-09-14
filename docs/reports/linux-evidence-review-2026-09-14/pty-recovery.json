@@ -1,0 +1,534 @@
+[
+  {
+    "suite": "offline",
+    "source": "evidence/linux/codex-replay/20260914T045159-1789332720090",
+    "restored_files": 40,
+    "files": [
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a00-shell/trace/stream-96251-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a00-transparent/trace/stream-96037-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a01-shell/trace/stream-106913-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a01-transparent/trace/stream-106696-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a02-shell/trace/stream-117579-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a02-transparent/trace/stream-117367-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a03-shell/trace/stream-128265-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a03-transparent/trace/stream-128054-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a04-shell/trace/stream-138930-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a04-transparent/trace/stream-138717-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a05-shell/trace/stream-149642-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a05-transparent/trace/stream-149424-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a06-shell/trace/stream-160305-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a06-transparent/trace/stream-160094-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a07-shell/trace/stream-174238-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a07-transparent/trace/stream-174022-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a08-shell/trace/stream-189763-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a08-transparent/trace/stream-189547-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a09-shell/trace/stream-202351-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a09-transparent/trace/stream-202130-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a00-shell/trace/stream-94340-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a00-transparent/trace/stream-94126-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a01-shell/trace/stream-104994-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a01-transparent/trace/stream-104782-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a02-shell/trace/stream-115671-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a02-transparent/trace/stream-115456-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a03-shell/trace/stream-126354-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a03-transparent/trace/stream-126133-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a04-shell/trace/stream-137025-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a04-transparent/trace/stream-136815-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a05-shell/trace/stream-147718-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a05-transparent/trace/stream-147507-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a06-shell/trace/stream-158394-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a06-transparent/trace/stream-158179-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a07-shell/trace/stream-171460-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a07-transparent/trace/stream-171247-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a08-shell/trace/stream-187797-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a08-transparent/trace/stream-187584-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a09-shell/trace/stream-200335-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a09-transparent/trace/stream-200099-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      }
+    ]
+  },
+  {
+    "suite": "online",
+    "source": "evidence/linux/codex-relay/20260914T072517-1789341917874",
+    "restored_files": 34,
+    "files": [
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a00-shell/trace/stream-231518-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a00-transparent/trace/stream-231260-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a01-shell/trace/stream-244972-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a01-transparent/trace/stream-244644-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a02-shell/trace/stream-259290-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a02-transparent/trace/stream-259005-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a03-shell/trace/stream-272364-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a03-transparent/trace/stream-272101-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a04-shell/trace/stream-280259-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-cancel_ctrl_c-a04-transparent/trace/stream-279992-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a00-shell/trace/stream-228915-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a00-transparent/trace/stream-228639-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a01-shell/trace/stream-242302-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a01-transparent/trace/stream-242042-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a02-shell/trace/stream-256607-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a02-transparent/trace/stream-256274-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a03-shell/trace/stream-270095-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r1-stdin_pty_utf8-a03-transparent/trace/stream-269828-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a00-shell/trace/stream-289761-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a00-transparent/trace/stream-289456-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a01-shell/trace/stream-302719-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a01-transparent/trace/stream-302457-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a02-shell/trace/stream-315946-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a02-transparent/trace/stream-315668-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a03-shell/trace/stream-328940-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-cancel_ctrl_c-a03-transparent/trace/stream-328656-9-pty.bin",
+        "received_sha256": "5fed2f9055fa48edc4b690509bb9bbdfc8db8dafbc5c38c31e4df3a50caef9e1",
+        "recovered_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "sealed_sha256": "0d6451a57f5e190787c73e4d3f6ec5c116f026c314359cb670d5e4d69f81a980",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a00-shell/trace/stream-290019-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a00-transparent/trace/stream-290279-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a01-shell/trace/stream-302980-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a01-transparent/trace/stream-303329-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a02-shell/trace/stream-316251-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a02-transparent/trace/stream-316508-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a03-shell/trace/stream-329198-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      },
+      {
+        "path": "attempts/r2-stdin_pty_utf8-a03-transparent/trace/stream-329464-9-pty.bin",
+        "received_sha256": "1a5a6d10e5b5a4ba911d2bb40c71cf50fdb9021bbc595efd6db75b739117e88f",
+        "recovered_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "sealed_sha256": "97b77cc8ceb748df60af6683c79242d33c5a4b674a81a1be60a9453345ef60fd",
+        "operation": "LF to CRLF, accepted only on exact pre-existing SHA-256 match"
+      }
+    ]
+  }
+]

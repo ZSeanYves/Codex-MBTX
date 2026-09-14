@@ -1,0 +1,5786 @@
+[
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "codex_total_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 10686027055.645834,
+      "transparent_mean": 10728435452.308332,
+      "ratio": 1.0039685840623145,
+      "ratio_ci95": [
+        0.9897971632562039,
+        1.0201445618064917
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 42408396.6625,
+      "delta_median": 2380787,
+      "delta_ci95": [
+        -108868987.62083334,
+        211323185.07916668
+      ],
+      "transparent_faster": 98,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "external_response_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "rate_wait_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "request_to_first_byte_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "tool_call_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 840349064.9708333,
+      "transparent_mean": 841889927.3833333,
+      "ratio": 1.0018335980567237,
+      "ratio_ci95": [
+        0.9991772694932821,
+        1.0045213781822313
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1540862.4125,
+      "delta_median": 863238,
+      "delta_ci95": [
+        -689090.0916666667,
+        3778934.8666666667
+      ],
+      "transparent_faster": 94,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 230,
+      "shell_mean": 41573710.686956525,
+      "transparent_mean": 43154200.45652174,
+      "ratio": 1.0380165672837351,
+      "ratio_ci95": [
+        1.029007051808484,
+        1.0483266552187505
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1580489.7695652174,
+      "delta_median": 1339665,
+      "delta_ci95": [
+        1181293.2260869564,
+        1992614.3130434782
+      ],
+      "transparent_faster": 60,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "spawn_return_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 3458137.4833333334,
+      "transparent_mean": 3406672.5166666666,
+      "ratio": 0.9851177210522414,
+      "ratio_ci95": [
+        0.9683682071903543,
+        1.0024942699220454
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -51464.96666666667,
+      "delta_median": -9138,
+      "delta_ci95": [
+        -112870.41666666667,
+        8080.45
+      ],
+      "transparent_faster": 124,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "policy_sandbox_spawn_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 152948569.5625,
+      "transparent_mean": 154957286.10416666,
+      "ratio": 1.013133280993817,
+      "ratio_ci95": [
+        1.0022511193976646,
+        1.0253211195446852
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2008716.5416666667,
+      "delta_median": 800178,
+      "delta_ci95": [
+        352397.4791666667,
+        3864107.8041666667
+      ],
+      "transparent_faster": 75,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "fixture_runtime_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 190,
+      "shell_mean": 303909914.18421054,
+      "transparent_mean": 304317020.7105263,
+      "ratio": 1.0013395631643296,
+      "ratio_ci95": [
+        0.9939966218058313,
+        1.010351066969174
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 407106.5263157895,
+      "delta_median": -32148,
+      "delta_ci95": [
+        -1796955.8736842105,
+        2851866.931578947
+      ],
+      "transparent_faster": 101,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "artifact_write_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 46185632.69166667,
+      "transparent_mean": 40177051.670833334,
+      "ratio": 0.8699036763024041,
+      "ratio_ci95": [
+        0.7142894573928074,
+        1.0517386925565066
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -6008581.020833333,
+      "delta_median": -174004,
+      "delta_ci95": [
+        -14570290.975,
+        2259805.975
+      ],
+      "transparent_faster": 129,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "unexplained_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 9845677990.675,
+      "transparent_mean": 9886545524.925,
+      "ratio": 1.0041508095520397,
+      "ratio_ci95": [
+        0.9888203008527318,
+        1.0215961734772303
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 40867534.25,
+      "delta_median": 2154828,
+      "delta_ci95": [
+        -111540962.95833333,
+        208527088.17083332
+      ],
+      "transparent_faster": 99,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "post_response_to_wait_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 9619432928.85,
+      "transparent_mean": 9658995678.954166,
+      "ratio": 1.0041127944232047,
+      "ratio_ci95": [
+        0.9883946768017392,
+        1.0220503756680654
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 39562750.104166664,
+      "delta_median": 122440,
+      "delta_ci95": [
+        -113094070.6625,
+        208212324.17083332
+      ],
+      "transparent_faster": 107,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "codex_total_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 10686027055.645834,
+      "transparent_mean": 10728435452.308332,
+      "ratio": 1.0039685840623145,
+      "ratio_ci95": [
+        0.9897971632562039,
+        1.0201445618064917
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 42408396.6625,
+      "delta_median": 2380787,
+      "delta_ci95": [
+        -108868987.62083334,
+        211323185.07916668
+      ],
+      "transparent_faster": 98,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "external_response_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "rate_wait_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "request_to_first_byte_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "tool_call_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 840349064.9708333,
+      "transparent_mean": 841889927.3833333,
+      "ratio": 1.0018335980567237,
+      "ratio_ci95": [
+        0.9991772694932821,
+        1.0045213781822313
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1540862.4125,
+      "delta_median": 863238,
+      "delta_ci95": [
+        -689090.0916666667,
+        3778934.8666666667
+      ],
+      "transparent_faster": 94,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 230,
+      "shell_mean": 41573710.686956525,
+      "transparent_mean": 43154200.45652174,
+      "ratio": 1.0380165672837351,
+      "ratio_ci95": [
+        1.029007051808484,
+        1.0483266552187505
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1580489.7695652174,
+      "delta_median": 1339665,
+      "delta_ci95": [
+        1181293.2260869564,
+        1992614.3130434782
+      ],
+      "transparent_faster": 60,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "spawn_return_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 3458137.4833333334,
+      "transparent_mean": 3406672.5166666666,
+      "ratio": 0.9851177210522414,
+      "ratio_ci95": [
+        0.9683682071903543,
+        1.0024942699220454
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -51464.96666666667,
+      "delta_median": -9138,
+      "delta_ci95": [
+        -112870.41666666667,
+        8080.45
+      ],
+      "transparent_faster": 124,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "policy_sandbox_spawn_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 152948569.5625,
+      "transparent_mean": 154957286.10416666,
+      "ratio": 1.013133280993817,
+      "ratio_ci95": [
+        1.0022511193976646,
+        1.0253211195446852
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2008716.5416666667,
+      "delta_median": 800178,
+      "delta_ci95": [
+        352397.4791666667,
+        3864107.8041666667
+      ],
+      "transparent_faster": 75,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "fixture_runtime_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 190,
+      "shell_mean": 303909914.18421054,
+      "transparent_mean": 304317020.7105263,
+      "ratio": 1.0013395631643296,
+      "ratio_ci95": [
+        0.9939966218058313,
+        1.010351066969174
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 407106.5263157895,
+      "delta_median": -32148,
+      "delta_ci95": [
+        -1796955.8736842105,
+        2851866.931578947
+      ],
+      "transparent_faster": 101,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "artifact_write_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 46185632.69166667,
+      "transparent_mean": 40177051.670833334,
+      "ratio": 0.8699036763024041,
+      "ratio_ci95": [
+        0.7142894573928074,
+        1.0517386925565066
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -6008581.020833333,
+      "delta_median": -174004,
+      "delta_ci95": [
+        -14570290.975,
+        2259805.975
+      ],
+      "transparent_faster": 129,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "unexplained_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 9845677990.675,
+      "transparent_mean": 9886545524.925,
+      "ratio": 1.0041508095520397,
+      "ratio_ci95": [
+        0.9888203008527318,
+        1.0215961734772303
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 40867534.25,
+      "delta_median": 2154828,
+      "delta_ci95": [
+        -111540962.95833333,
+        208527088.17083332
+      ],
+      "transparent_faster": 99,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "post_response_to_wait_ns",
+      "selected_pairs": 240
+    },
+    "statistics": {
+      "pairs": 240,
+      "shell_mean": 9619432928.85,
+      "transparent_mean": 9658995678.954166,
+      "ratio": 1.0041127944232047,
+      "ratio_ci95": [
+        0.9883946768017392,
+        1.0220503756680654
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 39562750.104166664,
+      "delta_median": 122440,
+      "delta_ci95": [
+        -113094070.6625,
+        208212324.17083332
+      ],
+      "transparent_faster": 107,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_empty_unicode",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 9285728741.6,
+      "transparent_mean": 9287754713.1,
+      "ratio": 1.000218181206492,
+      "ratio_ci95": [
+        0.9994930493477777,
+        1.0007943563560162
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 2025971.5,
+      "delta_median": -2471039,
+      "delta_ci95": [
+        -4079903.9,
+        7746780
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_empty_unicode",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20916113.2,
+      "transparent_mean": 21818522.3,
+      "ratio": 1.0431442061615923,
+      "ratio_ci95": [
+        0.9791695416907664,
+        1.1171310486385786
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 902409.1,
+      "delta_median": 460670,
+      "delta_ci95": [
+        -444187.5,
+        2348920.6
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_empty_unicode",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 55461254.5,
+      "transparent_mean": 56828393.1,
+      "ratio": 1.0246503367499558,
+      "ratio_ci95": [
+        0.9874259006635925,
+        1.061247489698101
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1367138.6,
+      "delta_median": 1941549,
+      "delta_ci95": [
+        -715995.5,
+        3299073.4
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_long",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 9296193356.3,
+      "transparent_mean": 10291127957.3,
+      "ratio": 1.10702602268118,
+      "ratio_ci95": [
+        0.9986209040727477,
+        1.4110089981260547
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 994934601,
+      "delta_median": 578217,
+      "delta_ci95": [
+        -14210463,
+        2997833444.1
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_long",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20593375.1,
+      "transparent_mean": 21810334.5,
+      "ratio": 1.05909470371372,
+      "ratio_ci95": [
+        1.0153022385304844,
+        1.096797724956962
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1216959.4,
+      "delta_median": 1198732,
+      "delta_ci95": [
+        323101.7,
+        1951556.1
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_long",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 58290726.6,
+      "transparent_mean": 58875660.3,
+      "ratio": 1.0100347642604268,
+      "ratio_ci95": [
+        0.9767745627724289,
+        1.0405261401249564
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 584933.7,
+      "delta_median": 589117,
+      "delta_ci95": [
+        -1376462.2,
+        2319290.1
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_metacharacters",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10282997839.4,
+      "transparent_mean": 10290444143,
+      "ratio": 1.0007241374272655,
+      "ratio_ci95": [
+        1.0002439144121584,
+        1.0015163577377515
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 7446303.6,
+      "delta_median": 3239478,
+      "delta_ci95": [
+        2508467.9,
+        15588852.2
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_metacharacters",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20823020,
+      "transparent_mean": 21429461.4,
+      "ratio": 1.029123604549196,
+      "ratio_ci95": [
+        0.9876546271010703,
+        1.0759809011832655
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 606441.4,
+      "delta_median": -300255,
+      "delta_ci95": [
+        -265676.2,
+        1526065.1
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "argv_metacharacters",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 54774480.8,
+      "transparent_mean": 56207052.2,
+      "ratio": 1.0261539932296355,
+      "ratio_ci95": [
+        0.9935946443085455,
+        1.063806176004388
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1432571.4,
+      "delta_median": 1330950,
+      "delta_ci95": [
+        -356164.8,
+        3406957
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_ctrl_c",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10511880491.8,
+      "transparent_mean": 11505786374.7,
+      "ratio": 1.0945507213172103,
+      "ratio_ci95": [
+        0.9984396704379103,
+        1.3522169402623823
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 993905882.9,
+      "delta_median": 787294,
+      "delta_ci95": [
+        -17966677.5,
+        2997807151.9
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_ctrl_c",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21280144.3,
+      "transparent_mean": 22909154.7,
+      "ratio": 1.07655072150991,
+      "ratio_ci95": [
+        1.0237516514359162,
+        1.128007339570684
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1629010.4,
+      "delta_median": 1561890,
+      "delta_ci95": [
+        528128,
+        2618997
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_ctrl_c",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 1262962742.7,
+      "transparent_mean": 1262726282.1,
+      "ratio": 0.999812773099312,
+      "ratio_ci95": [
+        0.999060122953188,
+        1.0006040625332
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -236460.6,
+      "delta_median": -338746,
+      "delta_ci95": [
+        -1187622.9,
+        762568.9
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_sigkill",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 12028572956.8,
+      "transparent_mean": 12027676820.9,
+      "ratio": 0.9999254994002017,
+      "ratio_ci95": [
+        0.9995069034266958,
+        1.000325428045207
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -896135.9,
+      "delta_median": -861182,
+      "delta_ci95": [
+        -5932777.9,
+        3913500.1
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_sigkill",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21113275.4,
+      "transparent_mean": 21796318.2,
+      "ratio": 1.0323513423218076,
+      "ratio_ci95": [
+        0.9884924036295196,
+        1.078967368850391
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 683042.8,
+      "delta_median": 662726,
+      "delta_ci95": [
+        -249296.9,
+        1625315.7
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_sigkill",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 1795959360.1,
+      "transparent_mean": 1791407238.9,
+      "ratio": 0.9974653540045882,
+      "ratio_ci95": [
+        0.9961830276955123,
+        0.9988923248244695
+      ],
+      "interpretation": "transparent_faster",
+      "delta": -4552121.2,
+      "delta_median": -6331292,
+      "delta_ci95": [
+        -6856791,
+        -1987518.8
+      ],
+      "transparent_faster": 8,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_sigterm",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 11532252572.8,
+      "transparent_mean": 11541415489.6,
+      "ratio": 1.0007945470099755,
+      "ratio_ci95": [
+        0.9992128962310953,
+        1.002588639408275
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 9162916.8,
+      "delta_median": 744957,
+      "delta_ci95": [
+        -9079500.1,
+        29840247.2
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_sigterm",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20748068,
+      "transparent_mean": 22242256.3,
+      "ratio": 1.072015779975273,
+      "ratio_ci95": [
+        1.0302537401179082,
+        1.117334995443311
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1494188.3,
+      "delta_median": 1237675,
+      "delta_ci95": [
+        639128.8,
+        2378430.3
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cancel_sigterm",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 1290904441.3,
+      "transparent_mean": 1289874833.8,
+      "ratio": 0.9992024138525984,
+      "ratio_ci95": [
+        0.9961092684741282,
+        1.0028192851991609
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -1029607.5,
+      "delta_median": -3374435,
+      "delta_ci95": [
+        -5031839.4,
+        3632689
+      ],
+      "transparent_faster": 8,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cwd_symlink",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 9286224517.5,
+      "transparent_mean": 9286020123.3,
+      "ratio": 0.9999779895263553,
+      "ratio_ci95": [
+        0.9995583852702031,
+        1.0004163378989182
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -204394.2,
+      "delta_median": -80382,
+      "delta_ci95": [
+        -4397809.7,
+        3425132.2
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cwd_symlink",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21282183.8,
+      "transparent_mean": 22104265.5,
+      "ratio": 1.0386276947763227,
+      "ratio_ci95": [
+        0.9928428942534322,
+        1.0834699936300807
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 822081.7,
+      "delta_median": 840137,
+      "delta_ci95": [
+        -156438.9,
+        1728282.6
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "cwd_symlink",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 55171023.9,
+      "transparent_mean": 56805572.4,
+      "ratio": 1.029626937918765,
+      "ratio_ci95": [
+        1.0051974379910658,
+        1.0554337129333242
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1634548.5,
+      "delta_median": 893207,
+      "delta_ci95": [
+        289065,
+        3017155
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "descendant_cancel",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 11408600968.3,
+      "transparent_mean": 11407024679.5,
+      "ratio": 0.9998618332953901,
+      "ratio_ci95": [
+        0.9986703783162078,
+        1.0011205958396496
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -1576288.8,
+      "delta_median": -6311716,
+      "delta_ci95": [
+        -15176951.1,
+        12778342.9
+      ],
+      "transparent_faster": 8,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "descendant_cancel",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21164106.4,
+      "transparent_mean": 22707780,
+      "ratio": 1.0729382838483557,
+      "ratio_ci95": [
+        1.0101419021226732,
+        1.1339775435044814
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1543673.6,
+      "delta_median": 2093889,
+      "delta_ci95": [
+        218806.8,
+        2735151.3
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "descendant_cancel",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 1163108913.8,
+      "transparent_mean": 1163923892.5,
+      "ratio": 1.000700689927083,
+      "ratio_ci95": [
+        0.9995206324644479,
+        1.0016925163631472
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 814978.7,
+      "delta_median": 531459,
+      "delta_ci95": [
+        -558108.7,
+        1967223.3
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "descendant_pipe_tail",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 9288274150.4,
+      "transparent_mean": 9292258873.6,
+      "ratio": 1.0004290057695842,
+      "ratio_ci95": [
+        0.9996865028458534,
+        1.0012169224777956
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 3984723.2,
+      "delta_median": 1861449,
+      "delta_ci95": [
+        -3051126.6,
+        10542930.6
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "descendant_pipe_tail",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21076890.6,
+      "transparent_mean": 22870497.9,
+      "ratio": 1.0850982876952446,
+      "ratio_ci95": [
+        1.042318812507315,
+        1.1333058564704679
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1793607.3,
+      "delta_median": 1175990,
+      "delta_ci95": [
+        920310.8,
+        2703506.4
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "descendant_pipe_tail",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 57203082,
+      "transparent_mean": 58770254,
+      "ratio": 1.0273966357267255,
+      "ratio_ci95": [
+        0.9939998982229644,
+        1.0585438805287533
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1567172,
+      "delta_median": 1995165,
+      "delta_ci95": [
+        -350772.7,
+        3320971.7
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "environment_empty_unset",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10291556130.7,
+      "transparent_mean": 10292254830.8,
+      "ratio": 1.000067890617427,
+      "ratio_ci95": [
+        0.999091576320323,
+        1.0008721462548034
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 698700.1,
+      "delta_median": 5428307,
+      "delta_ci95": [
+        -9354124.4,
+        8969179.1
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "environment_empty_unset",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 22165218.1,
+      "transparent_mean": 22333255.5,
+      "ratio": 1.0075811300047617,
+      "ratio_ci95": [
+        0.9766329666131917,
+        1.039339933679895
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 168037.4,
+      "delta_median": 158502,
+      "delta_ci95": [
+        -522566.8,
+        863035.8
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "environment_empty_unset",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 58376228.9,
+      "transparent_mean": 56298929.5,
+      "ratio": 0.9644153204284835,
+      "ratio_ci95": [
+        0.8949279149782601,
+        1.0219036206922347
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -2077299.4,
+      "delta_median": -1237336,
+      "delta_ci95": [
+        -6526929.2,
+        1227275.5
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "environment_path_login",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10288011659.6,
+      "transparent_mean": 10289437881.1,
+      "ratio": 1.000138629459918,
+      "ratio_ci95": [
+        0.999264044604945,
+        1.000958983939484
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1426221.5,
+      "delta_median": 4597854,
+      "delta_ci95": [
+        -7575104.7,
+        9862105.5
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "environment_path_login",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21065267.1,
+      "transparent_mean": 21939166.3,
+      "ratio": 1.0414853130440487,
+      "ratio_ci95": [
+        0.9728401091787714,
+        1.1217736669642537
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 873899.2,
+      "delta_median": 538608,
+      "delta_ci95": [
+        -587438.7,
+        2472065.9
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "environment_path_login",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 55594755.6,
+      "transparent_mean": 56326416,
+      "ratio": 1.013160601069357,
+      "ratio_ci95": [
+        0.9834494601855315,
+        1.0438923073188495
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 731660.4,
+      "delta_median": 132552,
+      "delta_ci95": [
+        -943549.1,
+        2415515.8
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exec_missing_permission",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10340622081.7,
+      "transparent_mean": 10340766535.3,
+      "ratio": 1.0000139695270611,
+      "ratio_ci95": [
+        0.9992999201598795,
+        1.0008029534128726
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 144453.6,
+      "delta_median": 2433261,
+      "delta_ci95": [
+        -7235404.8,
+        8311253.5
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exec_missing_permission",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exec_missing_permission",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 94821221.8,
+      "transparent_mean": 97054857.7,
+      "ratio": 1.0235562868480146,
+      "ratio_ci95": [
+        1.003417167434664,
+        1.0431646155887553
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2233635.9,
+      "delta_median": 569481,
+      "delta_ci95": [
+        326021.2,
+        4073770
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exit_code_vs_signal",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10055671351.4,
+      "transparent_mean": 9339915825.4,
+      "ratio": 0.9288207121148258,
+      "ratio_ci95": [
+        0.7730086074672446,
+        1.0006768181286212
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -715755526,
+      "delta_median": -81005,
+      "delta_ci95": [
+        -2156186162.3,
+        6994617.8
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exit_code_vs_signal",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 41961275.2,
+      "transparent_mean": 44310448.2,
+      "ratio": 1.0559843090755259,
+      "ratio_ci95": [
+        1.0274220632401379,
+        1.0855775560697276
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2349173,
+      "delta_median": 2391361,
+      "delta_ci95": [
+        1158984.3,
+        3524103.4
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exit_code_vs_signal",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 102074204,
+      "transparent_mean": 104614716.8,
+      "ratio": 1.0248888818177804,
+      "ratio_ci95": [
+        1.0039317988187144,
+        1.0473294027333107
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2540512.8,
+      "delta_median": 2307487,
+      "delta_ci95": [
+        405778.8,
+        4781396.8
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exit_nonzero",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10283760081.3,
+      "transparent_mean": 10288071440.4,
+      "ratio": 1.0004192395647036,
+      "ratio_ci95": [
+        0.9999412992933738,
+        1.001015745243241
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 4311359.1,
+      "delta_median": 1357620,
+      "delta_ci95": [
+        -603846.8,
+        10441980.4
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exit_nonzero",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20699458,
+      "transparent_mean": 22165296.8,
+      "ratio": 1.070815322797341,
+      "ratio_ci95": [
+        1.0206713385498702,
+        1.1176850193512957
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1465838.8,
+      "delta_median": 1903249,
+      "delta_ci95": [
+        430567.9,
+        2387503.1
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "exit_nonzero",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 55575310.5,
+      "transparent_mean": 55814739.8,
+      "ratio": 1.004308195453087,
+      "ratio_ci95": [
+        0.9668074905772961,
+        1.0441758381432464
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 239429.3,
+      "delta_median": -1034541,
+      "delta_ci95": [
+        -1880984.7,
+        2392059.7
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_interleaved",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10354131791.6,
+      "transparent_mean": 10357034266.3,
+      "ratio": 1.0002803204323083,
+      "ratio_ci95": [
+        0.9999440538239793,
+        1.000608972240548
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 2902474.7,
+      "delta_median": 2977695,
+      "delta_ci95": [
+        -579536.7,
+        6304131.8
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_interleaved",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20365346.7,
+      "transparent_mean": 22302677.5,
+      "ratio": 1.0951287905155085,
+      "ratio_ci95": [
+        1.0403137435880816,
+        1.149241103351074
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1937330.8,
+      "delta_median": 1936547,
+      "delta_ci95": [
+        860994.2,
+        2912251.3
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_interleaved",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 124932974,
+      "transparent_mean": 127180726.2,
+      "ratio": 1.0179916648746392,
+      "ratio_ci95": [
+        1.0004696100751445,
+        1.0347122937400537
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2247752.2,
+      "delta_median": 2232345,
+      "delta_ci95": [
+        59322.2,
+        4286892.5
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_split_large",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10115203758.4,
+      "transparent_mean": 10288356794.1,
+      "ratio": 1.0171180966627793,
+      "ratio_ci95": [
+        0.9998102722684689,
+        1.0531156019806627
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 173153035.7,
+      "delta_median": -919946,
+      "delta_ci95": [
+        -1952147.1,
+        518872251.4
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_split_large",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20734544.8,
+      "transparent_mean": 21281124.1,
+      "ratio": 1.0263608053744204,
+      "ratio_ci95": [
+        0.991454177771236,
+        1.0611053542539117
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 546579.3,
+      "delta_median": 864345,
+      "delta_ci95": [
+        -180738.5,
+        1249907.6
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_split_large",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 55727051.6,
+      "transparent_mean": 56558199.6,
+      "ratio": 1.01491462361881,
+      "ratio_ci95": [
+        0.9936693452179609,
+        1.0348488002659797
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 831148,
+      "delta_median": 857832,
+      "delta_ci95": [
+        -352412.7,
+        1907254.8
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_truncation_tail",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 9286966126.8,
+      "transparent_mean": 9291915985.8,
+      "ratio": 1.000532989884147,
+      "ratio_ci95": [
+        1.0000510532655613,
+        1.0009590157684454
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 4949859,
+      "delta_median": 4919321,
+      "delta_ci95": [
+        414964.7,
+        9500341.6
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_truncation_tail",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20552246,
+      "transparent_mean": 21746740.9,
+      "ratio": 1.0581199203240366,
+      "ratio_ci95": [
+        1.0068457374810487,
+        1.0981127362136327
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1194494.9,
+      "delta_median": 1820342,
+      "delta_ci95": [
+        143278.4,
+        1967140
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "output_truncation_tail",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 57301344.6,
+      "transparent_mean": 58145261.9,
+      "ratio": 1.014727705010957,
+      "ratio_ci95": [
+        0.9876997440370942,
+        1.0467359086011392
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 843917.3,
+      "delta_median": -128969,
+      "delta_ci95": [
+        -715784.5,
+        2636829
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_cancel_resources",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 16679943507.6,
+      "transparent_mean": 17086723015,
+      "ratio": 1.0243873432313877,
+      "ratio_ci95": [
+        0.9993111669960666,
+        1.0806092297872985
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 406779507.4,
+      "delta_median": 4409020,
+      "delta_ci95": [
+        -12097472,
+        1202741856.9
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_cancel_resources",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 257921915.7,
+      "transparent_mean": 264128828.4,
+      "ratio": 1.024065084516585,
+      "ratio_ci95": [
+        1.01036976683922,
+        1.0376647049889576
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 6206912.7,
+      "delta_median": 5609468,
+      "delta_ci95": [
+        2683202.4,
+        9713259.1
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_cancel_resources",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 7329918747.6,
+      "transparent_mean": 7337870200.1,
+      "ratio": 1.0010847940848735,
+      "ratio_ci95": [
+        0.996620335137775,
+        1.006052910478788
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 7951452.5,
+      "delta_median": -21568490,
+      "delta_ci95": [
+        -24772395.2,
+        44472564.4
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_failure_recovery",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 9334273261.9,
+      "transparent_mean": 9445504023.4,
+      "ratio": 1.0119163815306345,
+      "ratio_ci95": [
+        0.9999817749583579,
+        1.0449393938957963
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 111230761.5,
+      "delta_median": 1679190,
+      "delta_ci95": [
+        -188378.1,
+        329541473.3
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_failure_recovery",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 41182766.8,
+      "transparent_mean": 43411307.4,
+      "ratio": 1.0541134259099854,
+      "ratio_ci95": [
+        1.0182314342754706,
+        1.091604034189622
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 2228540.6,
+      "delta_median": 1628907,
+      "delta_ci95": [
+        752571.7,
+        3701866.9
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_failure_recovery",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 102009963.3,
+      "transparent_mean": 106205313.8,
+      "ratio": 1.041126870006432,
+      "ratio_ci95": [
+        1.022099863687094,
+        1.0606691077592383
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 4195350.5,
+      "delta_median": 3832421,
+      "delta_ci95": [
+        2290784.2,
+        6119641.5
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_poll",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 12497109767.2,
+      "transparent_mean": 11492798590.3,
+      "ratio": 0.9196365243157323,
+      "ratio_ci95": [
+        0.7588606300949197,
+        1.0012233445697063
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -1004311176.9,
+      "delta_median": -11444956,
+      "delta_ci95": [
+        -3014615839.6,
+        15271713.9
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_poll",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 20819655.7,
+      "transparent_mean": 21592489,
+      "ratio": 1.037120368902162,
+      "ratio_ci95": [
+        0.984757359077532,
+        1.0919477214502502
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 772833.3,
+      "delta_median": 162686,
+      "delta_ci95": [
+        -331698.4,
+        1858082.1
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_poll",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 2262129675.2,
+      "transparent_mean": 2258102172.2,
+      "ratio": 0.9982195967613378,
+      "ratio_ci95": [
+        0.9862223346946833,
+        1.0094761352827146
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -4027503,
+      "delta_median": -1484858,
+      "delta_ci95": [
+        -31467617.1,
+        21380269.6
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_sequence",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10727990545,
+      "transparent_mean": 10746504903.7,
+      "ratio": 1.0017257993118414,
+      "ratio_ci95": [
+        1.000008502159513,
+        1.0039948122797469
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 18514358.7,
+      "delta_median": 10939768,
+      "delta_ci95": [
+        91262.1,
+        42854561.1
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_sequence",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 215067396.7,
+      "transparent_mean": 219965170.1,
+      "ratio": 1.0227732026106773,
+      "ratio_ci95": [
+        0.9981910415039259,
+        1.0478115663142846
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 4897773.4,
+      "delta_median": 3707278,
+      "delta_ci95": [
+        -388284.9,
+        10179614.1
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "session_sequence",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 492735124.5,
+      "transparent_mean": 509000095.9,
+      "ratio": 1.0330095635388379,
+      "ratio_ci95": [
+        1.0009769001951334,
+        1.0790600630996043
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 16264971.4,
+      "delta_median": 2861282,
+      "delta_ci95": [
+        486952.8,
+        38931654.8
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_backpressure",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10289759228.8,
+      "transparent_mean": 10291888102.6,
+      "ratio": 1.0002068924794705,
+      "ratio_ci95": [
+        0.9996325340189092,
+        1.0008711250699076
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 2128873.8,
+      "delta_median": 576987,
+      "delta_ci95": [
+        -3781650.4,
+        8963214.7
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_backpressure",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21263034.6,
+      "transparent_mean": 23259011.9,
+      "ratio": 1.0938707638654737,
+      "ratio_ci95": [
+        1.0458904008644923,
+        1.140622698308073
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1995977.3,
+      "delta_median": 1685701,
+      "delta_ci95": [
+        986757,
+        2934214.8
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_backpressure",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 58482317.3,
+      "transparent_mean": 60203588.3,
+      "ratio": 1.0294323323607424,
+      "ratio_ci95": [
+        0.9997355245247365,
+        1.0575359743779127
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1721271,
+      "delta_median": 1256515,
+      "delta_ci95": [
+        -15643.9,
+        3345805
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_eof",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 10291858830.7,
+      "transparent_mean": 10287036201.5,
+      "ratio": 0.9995314131995655,
+      "ratio_ci95": [
+        0.9977958452387944,
+        1.000576729133342
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -4822629.2,
+      "delta_median": 3334235,
+      "delta_ci95": [
+        -22723527.2,
+        5931346.9
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_eof",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21544591.6,
+      "transparent_mean": 22506971.1,
+      "ratio": 1.044669192058391,
+      "ratio_ci95": [
+        0.9975028323647597,
+        1.0969861057276018
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 962379.5,
+      "delta_median": 1258022,
+      "delta_ci95": [
+        -55392.6,
+        2009811
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_eof",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 56203222.2,
+      "transparent_mean": 57523669.1,
+      "ratio": 1.0234941494155116,
+      "ratio_ci95": [
+        0.9831607545219736,
+        1.068445662376487
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1320446.9,
+      "delta_median": 1305442,
+      "delta_ci95": [
+        -965519.7,
+        3778386.4
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_pty_utf8",
+      "metric": "codex_total_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 12707065617.9,
+      "transparent_mean": 12714733284.7,
+      "ratio": 1.000603417581255,
+      "ratio_ci95": [
+        0.9996127285341957,
+        1.0015485890442284
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 7667666.8,
+      "delta_median": 11571339,
+      "delta_ci95": [
+        -4922679.9,
+        18761115
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_pty_utf8",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 21855452,
+      "transparent_mean": 21915532.5,
+      "ratio": 1.0027489937064673,
+      "ratio_ci95": [
+        0.9476473395621359,
+        1.0659919828206474
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 60080.5,
+      "delta_median": -849232,
+      "delta_ci95": [
+        -1180168.5,
+        1406709.1
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "offline",
+      "cohort": "strict",
+      "task": "stdin_pty_utf8",
+      "metric": "tool_call_ns",
+      "selected_pairs": 10
+    },
+    "statistics": {
+      "pairs": 10,
+      "shell_mean": 3468659392.5,
+      "transparent_mean": 3469040191,
+      "ratio": 1.0001097826153884,
+      "ratio_ci95": [
+        0.9997333531827748,
+        1.000475544427589
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 380798.5,
+      "delta_median": 473802,
+      "delta_ci95": [
+        -924959.4,
+        1649157
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "codex_total_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 209,
+      "shell_mean": 37838036984.28708,
+      "transparent_mean": 37515014528.51196,
+      "ratio": 0.9914630228859584,
+      "ratio_ci95": [
+        0.8909547761456938,
+        1.1103391001774308
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -323022455.7751196,
+      "delta_median": -132658988,
+      "delta_ci95": [
+        -4321817962.564593,
+        3984640248.827751
+      ],
+      "transparent_faster": 110,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "external_response_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 209,
+      "shell_mean": 18406926207.344498,
+      "transparent_mean": 18371567907.5311,
+      "ratio": 0.9980790763533736,
+      "ratio_ci95": [
+        0.7840331755926477,
+        1.2658348857711839
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -35358299.81339713,
+      "delta_median": 102553914,
+      "delta_ci95": [
+        -4322257547.392344,
+        4488767596.980862
+      ],
+      "transparent_faster": 101,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "rate_wait_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 198,
+      "shell_mean": 9338530142.11111,
+      "transparent_mean": 9104841677.00505,
+      "ratio": 0.9749758836187435,
+      "ratio_ci95": [
+        0.9265783118475031,
+        1.0242167189588567
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -233688465.1060606,
+      "delta_median": -78590709,
+      "delta_ci95": [
+        -691393215.0656565,
+        223030100.2070707
+      ],
+      "transparent_faster": 103,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "request_to_first_byte_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 209,
+      "shell_mean": 9878356011.468899,
+      "transparent_mean": 9661026310.239235,
+      "ratio": 0.9779994058750928,
+      "ratio_ci95": [
+        0.6740829570126693,
+        1.4481837330172243
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -217329701.22966507,
+      "delta_median": -62088070,
+      "delta_ci95": [
+        -3760378281.8995214,
+        3553748110.5645933
+      ],
+      "transparent_faster": 108,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "tool_call_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 196,
+      "shell_mean": 908750525.8979592,
+      "transparent_mean": 877517371.2244898,
+      "ratio": 0.96563066123939,
+      "ratio_ci95": [
+        0.8927046704474798,
+        1.0060299054732251
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -31233154.673469387,
+      "delta_median": -157771,
+      "delta_ci95": [
+        -96969770.06632653,
+        5261177.3112244895
+      ],
+      "transparent_faster": 100,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 187,
+      "shell_mean": 46683059.60427807,
+      "transparent_mean": 46029882.016042784,
+      "ratio": 0.9860082523773692,
+      "ratio_ci95": [
+        0.9223886094997333,
+        1.0262978048828832
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -653177.5882352941,
+      "delta_median": 639259,
+      "delta_ci95": [
+        -3708638.219251337,
+        1191739.2620320856
+      ],
+      "transparent_faster": 73,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "spawn_return_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 196,
+      "shell_mean": 3754246.785714286,
+      "transparent_mean": 3559892.56122449,
+      "ratio": 0.9482308341504465,
+      "ratio_ci95": [
+        0.8849439270827388,
+        0.9973378051718076
+      ],
+      "interpretation": "transparent_faster",
+      "delta": -194354.22448979592,
+      "delta_median": -26802,
+      "delta_ci95": [
+        -445597.5867346939,
+        -8875.122448979591
+      ],
+      "transparent_faster": 108,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "policy_sandbox_spawn_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 196,
+      "shell_mean": 188967235.26530612,
+      "transparent_mean": 183536555.17857143,
+      "ratio": 0.9712612608259303,
+      "ratio_ci95": [
+        0.897457664562192,
+        1.0270532975419646
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -5430680.0867346935,
+      "delta_median": -84704,
+      "delta_ci95": [
+        -20155326.06632653,
+        4988446.821428572
+      ],
+      "transparent_faster": 101,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "fixture_runtime_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 151,
+      "shell_mean": 336148205.77483445,
+      "transparent_mean": 333196652.7218543,
+      "ratio": 0.991219488897236,
+      "ratio_ci95": [
+        0.9633732873178311,
+        1.0142680909820048
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -2951553.0529801324,
+      "delta_median": -965689,
+      "delta_ci95": [
+        -10706767.490066225,
+        4516077.231788079
+      ],
+      "transparent_faster": 84,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "artifact_write_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 209,
+      "shell_mean": 53441834.72248804,
+      "transparent_mean": 63631275.86124402,
+      "ratio": 1.1906641340378294,
+      "ratio_ci95": [
+        0.9791410816033562,
+        1.440093913549805
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 10189441.13875598,
+      "delta_median": 400610,
+      "delta_ci95": [
+        -1283000.6172248805,
+        21242943.866028707
+      ],
+      "transparent_faster": 94,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "unexplained_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 209,
+      "shell_mean": 9643462809.679426,
+      "transparent_mean": 9666879395.124401,
+      "ratio": 1.0024282341216135,
+      "ratio_ci95": [
+        0.9711025008263211,
+        1.0344651440492205
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 23416585.444976076,
+      "delta_median": 987187,
+      "delta_ci95": [
+        -280366025.8755981,
+        327149151.708134
+      ],
+      "transparent_faster": 100,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "ITT",
+      "task": "all",
+      "metric": "post_response_to_wait_ns",
+      "selected_pairs": 209
+    },
+    "statistics": {
+      "pairs": 209,
+      "shell_mean": 9431429589.15311,
+      "transparent_mean": 9454468845.755981,
+      "ratio": 1.0024428170072295,
+      "ratio_ci95": [
+        0.9704094908043394,
+        1.0351873583395468
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 23039256.602870815,
+      "delta_median": 112106,
+      "delta_ci95": [
+        -281911728.9617225,
+        328153796.93301433
+      ],
+      "transparent_faster": 96,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "codex_total_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 35561881378.21311,
+      "transparent_mean": 34580840178.90164,
+      "ratio": 0.9724131243541996,
+      "ratio_ci95": [
+        0.8753945292101193,
+        1.0814498463256295
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -981041199.3114754,
+      "delta_median": -156604043,
+      "delta_ci95": [
+        -4637046595.010929,
+        2722925399.8469944
+      ],
+      "transparent_faster": 98,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "external_response_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 15449072637.721312,
+      "transparent_mean": 14758305025.972677,
+      "ratio": 0.9552874384147811,
+      "ratio_ci95": [
+        0.7412698746530006,
+        1.244969794333546
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -690767611.7486339,
+      "delta_median": -31851807,
+      "delta_ci95": [
+        -4517519228.918033,
+        3200963331.103825
+      ],
+      "transparent_faster": 92,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "rate_wait_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 175,
+      "shell_mean": 9727249022.485714,
+      "transparent_mean": 9533841806.857143,
+      "ratio": 0.9801169667619811,
+      "ratio_ci95": [
+        0.9319455617649749,
+        1.0291737567160621
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -193407215.62857142,
+      "delta_median": -76852354,
+      "delta_ci95": [
+        -680176944.9428571,
+        279630717.3542857
+      ],
+      "transparent_faster": 91,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "request_to_first_byte_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 7962125088.786885,
+      "transparent_mean": 7257319745.005465,
+      "ratio": 0.911480247305584,
+      "ratio_ci95": [
+        0.5871032454770174,
+        1.4077012135029179
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -704805343.7814207,
+      "delta_median": -82988121,
+      "delta_ci95": [
+        -4001931449.956284,
+        2529074008.8688526
+      ],
+      "transparent_faster": 97,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "tool_call_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 902315345.8579235,
+      "transparent_mean": 902796522.0163934,
+      "ratio": 1.0005332682866126,
+      "ratio_ci95": [
+        0.9933002885735283,
+        1.007428636875694
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 481176.15846994537,
+      "delta_median": -130074,
+      "delta_ci95": [
+        -5691185.513661202,
+        6553485.928961748
+      ],
+      "transparent_faster": 93,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 175,
+      "shell_mean": 43282901.27428571,
+      "transparent_mean": 44297048.942857146,
+      "ratio": 1.0234306767502652,
+      "ratio_ci95": [
+        1.0130818273815065,
+        1.0342058654984243
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1014147.6685714286,
+      "delta_median": 774484,
+      "delta_ci95": [
+        555285.9942857142,
+        1505150.7657142857
+      ],
+      "transparent_faster": 64,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "spawn_return_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 3430042.0655737706,
+      "transparent_mean": 3375679.4972677594,
+      "ratio": 0.984151049093062,
+      "ratio_ci95": [
+        0.9594497038157195,
+        1.0094324370572023
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -54362.56830601093,
+      "delta_median": -24584,
+      "delta_ci95": [
+        -143731.09289617487,
+        31018.666666666668
+      ],
+      "transparent_faster": 100,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "policy_sandbox_spawn_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 179914995.54098362,
+      "transparent_mean": 180550740.147541,
+      "ratio": 1.0035335832049228,
+      "ratio_ci95": [
+        0.9712965788846014,
+        1.0356716640903134
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 635744.606557377,
+      "delta_median": -74459,
+      "delta_ci95": [
+        -5121889.715846995,
+        6460587.491803279
+      ],
+      "transparent_faster": 94,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "fixture_runtime_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 143,
+      "shell_mean": 353095431.7062937,
+      "transparent_mean": 350039754.3496503,
+      "ratio": 0.9913460297634632,
+      "ratio_ci95": [
+        0.9619299695725853,
+        1.0171629642358384
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -3055677.356643357,
+      "delta_median": -965689,
+      "delta_ci95": [
+        -11392354.013986014,
+        5628145.20979021
+      ],
+      "transparent_faster": 79,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "artifact_write_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 56234065.13661202,
+      "transparent_mean": 63929036.55191257,
+      "ratio": 1.1368382562528032,
+      "ratio_ci95": [
+        0.9291880360903126,
+        1.3920374604676968
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 7694971.415300546,
+      "delta_median": 249808,
+      "delta_ci95": [
+        -4344859.797814208,
+        20350250.50273224
+      ],
+      "transparent_faster": 85,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "unexplained_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 9833561815.016394,
+      "transparent_mean": 9790727581.311476,
+      "ratio": 0.9956440774451117,
+      "ratio_ci95": [
+        0.976051687608246,
+        1.0110228991069838
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -42834233.704918034,
+      "delta_median": 1001547,
+      "delta_ci95": [
+        -240461967.12021858,
+        108096317.61202186
+      ],
+      "transparent_faster": 85,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "all",
+      "metric": "post_response_to_wait_ns",
+      "selected_pairs": 183
+    },
+    "statistics": {
+      "pairs": 183,
+      "shell_mean": 9621674769.84153,
+      "transparent_mean": 9577881696.174864,
+      "ratio": 0.9954484978224444,
+      "ratio_ci95": [
+        0.9755406432784581,
+        1.0112389754301878
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -43793073.666666664,
+      "delta_median": 215047,
+      "delta_ci95": [
+        -239858627.81420764,
+        109155265.94535519
+      ],
+      "transparent_faster": 85,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_empty_unicode",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 29272340936.25,
+      "transparent_mean": 38081523585.125,
+      "ratio": 1.3009387827252985,
+      "ratio_ci95": [
+        0.9593953465769084,
+        1.940761585445678
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 8809182648.875,
+      "delta_median": -435643302,
+      "delta_ci95": [
+        -1213478131.75,
+        27366808288.375
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_empty_unicode",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 23262569.25,
+      "transparent_mean": 22574761.875,
+      "ratio": 0.97043287146797,
+      "ratio_ci95": [
+        0.9227145832036114,
+        1.0275996427494931
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -687807.375,
+      "delta_median": -1298811,
+      "delta_ci95": [
+        -1880333.125,
+        615427.875
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_empty_unicode",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 88163494.5,
+      "transparent_mean": 87590819.25,
+      "ratio": 0.9935043948377069,
+      "ratio_ci95": [
+        0.6949828823047277,
+        1.406403730855897
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -572675.25,
+      "delta_median": -9753594,
+      "delta_ci95": [
+        -30368469.5,
+        33487609.875
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_long",
+      "metric": "codex_total_ns",
+      "selected_pairs": 0
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_long",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 0
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_long",
+      "metric": "tool_call_ns",
+      "selected_pairs": 0
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_metacharacters",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 31108612072.625,
+      "transparent_mean": 29627553019.875,
+      "ratio": 0.9523907061718995,
+      "ratio_ci95": [
+        0.8812698935971631,
+        0.9991578916602928
+      ],
+      "interpretation": "transparent_faster",
+      "delta": -1481059052.75,
+      "delta_median": -372872592,
+      "delta_ci95": [
+        -3983666122.625,
+        -25059198.875
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_metacharacters",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 23257679.5,
+      "transparent_mean": 23528261.375,
+      "ratio": 1.0116340873559635,
+      "ratio_ci95": [
+        0.9492066829312215,
+        1.0682196120456826
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 270581.875,
+      "delta_median": 262051,
+      "delta_ci95": [
+        -1220629.25,
+        1528530
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "argv_metacharacters",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 75268972.5,
+      "transparent_mean": 115096643.125,
+      "ratio": 1.5291379608642857,
+      "ratio_ci95": [
+        1.1310674293892615,
+        1.9364489724159892
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 39827670.625,
+      "delta_median": 36033029,
+      "delta_ci95": [
+        10108485.625,
+        64918041
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_ctrl_c",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 33206181959.125,
+      "transparent_mean": 33065334667.5,
+      "ratio": 0.9957584014989024,
+      "ratio_ci95": [
+        0.953616340649955,
+        1.0448756978211589
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -140847291.625,
+      "delta_median": 5260599,
+      "delta_ci95": [
+        -1667192400.125,
+        1327186046.5
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_ctrl_c",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22401458.75,
+      "transparent_mean": 23361503.375,
+      "ratio": 1.0428563441208936,
+      "ratio_ci95": [
+        1.000037051059955,
+        1.0905390070900391
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 960044.625,
+      "delta_median": 793070,
+      "delta_ci95": [
+        841.375,
+        1962299.25
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_ctrl_c",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 1262443162,
+      "transparent_mean": 1264104227.125,
+      "ratio": 1.0013157543840379,
+      "ratio_ci95": [
+        1.0003737242179387,
+        1.0022109821483733
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1661065.125,
+      "delta_median": 1533262,
+      "delta_ci95": [
+        471918.75,
+        2791099.375
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_sigkill",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 29506620240.875,
+      "transparent_mean": 28320349788.875,
+      "ratio": 0.9597964645792716,
+      "ratio_ci95": [
+        0.9170644899069412,
+        1.0098170763529641
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -1186270452,
+      "delta_median": -1306196672,
+      "delta_ci95": [
+        -2487580359.25,
+        283125936.25
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_sigkill",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22484534.5,
+      "transparent_mean": 22959817.25,
+      "ratio": 1.02113820724196,
+      "ratio_ci95": [
+        0.9756361480410985,
+        1.0792644457931586
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 475282.75,
+      "delta_median": -355922,
+      "delta_ci95": [
+        -554419.25,
+        1754285.875
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_sigkill",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 1791755670.875,
+      "transparent_mean": 1793938598,
+      "ratio": 1.001218317408162,
+      "ratio_ci95": [
+        0.9961396314579225,
+        1.0058544413382933
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 2182927.125,
+      "delta_median": -465260,
+      "delta_ci95": [
+        -6929028.5,
+        10471284.875
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_sigterm",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 30395452965.875,
+      "transparent_mean": 43610212199.75,
+      "ratio": 1.4347610561589992,
+      "ratio_ci95": [
+        0.9131302797807336,
+        2.4884563116059475
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 13214759233.875,
+      "delta_median": -1702221362,
+      "delta_ci95": [
+        -2777857356.625,
+        43191447480.75
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_sigterm",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 23484891.5,
+      "transparent_mean": 23142155.125,
+      "ratio": 0.9854060907626505,
+      "ratio_ci95": [
+        0.931678337884549,
+        1.0490041647957633
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -342736.375,
+      "delta_median": -808125,
+      "delta_ci95": [
+        -1652294,
+        1102989
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cancel_sigterm",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 1293350729.75,
+      "transparent_mean": 1292361675.5,
+      "ratio": 0.9992352776186308,
+      "ratio_ci95": [
+        0.9951919374506661,
+        1.003592088317755
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -989054.25,
+      "delta_median": -4223192,
+      "delta_ci95": [
+        -6230254.875,
+        4632894.625
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cwd_symlink",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 28583782660.875,
+      "transparent_mean": 30793539679,
+      "ratio": 1.0773080681567622,
+      "ratio_ci95": [
+        0.9247919921496371,
+        1.2973269961708527
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 2209757018.125,
+      "delta_median": -469475124,
+      "delta_ci95": [
+        -2291599705.375,
+        8071388320
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cwd_symlink",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22254723.875,
+      "transparent_mean": 23089543.5,
+      "ratio": 1.0375120190072455,
+      "ratio_ci95": [
+        0.9866127240662217,
+        1.0869531133655934
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 834819.625,
+      "delta_median": 918188,
+      "delta_ci95": [
+        -309565.625,
+        1873617.5
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "cwd_symlink",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 107633070.125,
+      "transparent_mean": 97036474.125,
+      "ratio": 0.9015488828136778,
+      "ratio_ci95": [
+        0.6103222804062789,
+        1.3118066240616288
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -10596596,
+      "delta_median": -11188953,
+      "delta_ci95": [
+        -52029684.375,
+        26430825.25
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "descendant_cancel",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 29299225570.5,
+      "transparent_mean": 30752460432.375,
+      "ratio": 1.049599770423222,
+      "ratio_ci95": [
+        0.9758318895919257,
+        1.134993565554295
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1453234861.875,
+      "delta_median": 78505307,
+      "delta_ci95": [
+        -720637932.25,
+        3898620347.375
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "descendant_cancel",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22258959.5,
+      "transparent_mean": 22717651.125,
+      "ratio": 1.0206070560036735,
+      "ratio_ci95": [
+        0.934930686630979,
+        1.0989743390158857
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 458691.625,
+      "delta_median": 250256,
+      "delta_ci95": [
+        -1490016.375,
+        2156733.75
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "descendant_cancel",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 1163864383.25,
+      "transparent_mean": 1164301784.75,
+      "ratio": 1.0003758182708355,
+      "ratio_ci95": [
+        0.9994291621676165,
+        1.0014411368078715
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 437401.5,
+      "delta_median": -157771,
+      "delta_ci95": [
+        -664595.25,
+        1677009.5
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "descendant_pipe_tail",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 28742932750.75,
+      "transparent_mean": 43557036914.375,
+      "ratio": 1.5153998825411596,
+      "ratio_ci95": [
+        0.9835497065826018,
+        2.5591719432316875
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 14814104163.625,
+      "delta_median": -409408296,
+      "delta_ci95": [
+        -482400286.375,
+        43481588470.625
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "descendant_pipe_tail",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22358774.375,
+      "transparent_mean": 23160710.25,
+      "ratio": 1.0358667188795763,
+      "ratio_ci95": [
+        0.9799397211241695,
+        1.0819496728166864
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 801935.875,
+      "delta_median": 573736,
+      "delta_ci95": [
+        -446599.25,
+        1820499.5
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "descendant_pipe_tail",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 98467416.375,
+      "transparent_mean": 80617369.5,
+      "ratio": 0.8187212833225919,
+      "ratio_ci95": [
+        0.680133511233901,
+        1.023424301107253
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -17850046.875,
+      "delta_median": -25401543,
+      "delta_ci95": [
+        -37848570.5,
+        1910302.75
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "environment_empty_unset",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 29912450675,
+      "transparent_mean": 29410716329.125,
+      "ratio": 0.9832265717267247,
+      "ratio_ci95": [
+        0.9533846047017144,
+        1.0143427062216692
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -501734345.875,
+      "delta_median": -725989414,
+      "delta_ci95": [
+        -1435346216.75,
+        417096478.625
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "environment_empty_unset",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22368490.5,
+      "transparent_mean": 22968869.875,
+      "ratio": 1.0268404063743148,
+      "ratio_ci95": [
+        0.9975763319571848,
+        1.0518877439878058
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 600379.375,
+      "delta_median": 831648,
+      "delta_ci95": [
+        -56149,
+        1141912.75
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "environment_empty_unset",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 80957072.875,
+      "transparent_mean": 73399262.75,
+      "ratio": 0.9066442269143121,
+      "ratio_ci95": [
+        0.7200663481095032,
+        1.162887516498211
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -7557810.125,
+      "delta_median": -742675,
+      "delta_ci95": [
+        -30660049.25,
+        10663563.125
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "environment_path_login",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 30059069722.125,
+      "transparent_mean": 29744430008.75,
+      "ratio": 0.9895326197289662,
+      "ratio_ci95": [
+        0.9528463169178569,
+        1.0288527438435078
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -314639713.375,
+      "delta_median": -660563889,
+      "delta_ci95": [
+        -1442345689.375,
+        853199487.125
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "environment_path_login",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22139503.625,
+      "transparent_mean": 24085186.625,
+      "ratio": 1.0878828646276844,
+      "ratio_ci95": [
+        1.021780892640303,
+        1.1597527537609864
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1945683,
+      "delta_median": 1731716,
+      "delta_ci95": [
+        503389.25,
+        3350368.875
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "environment_path_login",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 95023222.75,
+      "transparent_mean": 94555912,
+      "ratio": 0.9950821416441593,
+      "ratio_ci95": [
+        0.7056711192339017,
+        1.3711804821465037
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -467310.75,
+      "delta_median": -20900463,
+      "delta_ci95": [
+        -30075619.875,
+        31958808.25
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exec_missing_permission",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 28705665782.625,
+      "transparent_mean": 28877114675.875,
+      "ratio": 1.0059726499482124,
+      "ratio_ci95": [
+        0.9275428129716755,
+        1.136401770304083
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 171448893.25,
+      "delta_median": -1095360215,
+      "delta_ci95": [
+        -2225059244.875,
+        3510596844.75
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exec_missing_permission",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 0,
+      "ratio": null,
+      "ratio_ci95": null,
+      "delta": null,
+      "interpretation": "insufficient_evidence",
+      "ratio_ci_upper_at_most_0_90": false
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exec_missing_permission",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 96512953.625,
+      "transparent_mean": 105105309.75,
+      "ratio": 1.0890280092181772,
+      "ratio_ci95": [
+        1.0220181086511668,
+        1.1699254819620055
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 8592356.125,
+      "delta_median": 3301924,
+      "delta_ci95": [
+        2119463.125,
+        16652918.75
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exit_code_vs_signal",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 52398891270.5,
+      "transparent_mean": 30782990158.75,
+      "ratio": 0.5874740745913547,
+      "ratio_ci95": [
+        0.3543040368066179,
+        1.075480290533399
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -21615901111.75,
+      "delta_median": -1707176874,
+      "delta_ci95": [
+        -54502732644.25,
+        2261027256
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exit_code_vs_signal",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 44676457.75,
+      "transparent_mean": 44652815.875,
+      "ratio": 0.9994708202890146,
+      "ratio_ci95": [
+        0.9661384513239768,
+        1.0409218656012094
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -23641.875,
+      "delta_median": -518483,
+      "delta_ci95": [
+        -1542862,
+        1780025.75
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exit_code_vs_signal",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 139082275,
+      "transparent_mean": 114579807.125,
+      "ratio": 0.8238275303233284,
+      "ratio_ci95": [
+        0.6735872827971618,
+        0.9902685917252871
+      ],
+      "interpretation": "transparent_faster",
+      "delta": -24502467.875,
+      "delta_median": -3257228,
+      "delta_ci95": [
+        -52521242.875,
+        -1217288
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exit_nonzero",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 29328762410.25,
+      "transparent_mean": 29823582122.5,
+      "ratio": 1.0168714828579697,
+      "ratio_ci95": [
+        0.9647950370633688,
+        1.071582235456142
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 494819712.25,
+      "delta_median": 121604594,
+      "delta_ci95": [
+        -1058997020,
+        2044305928.5
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exit_nonzero",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 21802670.75,
+      "transparent_mean": 22699110.375,
+      "ratio": 1.0411160465283824,
+      "ratio_ci95": [
+        0.9946060832648542,
+        1.0976764818475708
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 896439.625,
+      "delta_median": 548353,
+      "delta_ci95": [
+        -120794,
+        2052635.125
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "exit_nonzero",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 85253305.125,
+      "transparent_mean": 108463240.75,
+      "ratio": 1.2722467544333813,
+      "ratio_ci95": [
+        0.9060620461964459,
+        1.8765580351784776
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 23209935.625,
+      "delta_median": 3126047,
+      "delta_ci95": [
+        -9697382.5,
+        60378916.25
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_interleaved",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 40300670899,
+      "transparent_mean": 29133109668.625,
+      "ratio": 0.7228939126506674,
+      "ratio_ci95": [
+        0.46477727863756624,
+        1.005641267573945
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -11167561230.375,
+      "delta_median": -457616433,
+      "delta_ci95": [
+        -32682130813.375,
+        167438057.375
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_interleaved",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22601076.125,
+      "transparent_mean": 23576009.5,
+      "ratio": 1.0431365909131018,
+      "ratio_ci95": [
+        1.0002664951000286,
+        1.0909756948910203
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 974933.375,
+      "delta_median": 588308,
+      "delta_ci95": [
+        6082.375,
+        1994844.5
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_interleaved",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 156018671.25,
+      "transparent_mean": 141701074.625,
+      "ratio": 0.9082315179953181,
+      "ratio_ci95": [
+        0.7507569018154434,
+        1.0524786078071942
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -14317596.625,
+      "delta_median": -388332,
+      "delta_ci95": [
+        -45370268.625,
+        7272474.625
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_split_large",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 36389457661.875,
+      "transparent_mean": 29815927521.5,
+      "ratio": 0.8193561937236002,
+      "ratio_ci95": [
+        0.574834594094414,
+        1.0499142208541443
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -6573530140.375,
+      "delta_median": 352507046,
+      "delta_ci95": [
+        -21295223796.625,
+        1434375376.875
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_split_large",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22574807.5,
+      "transparent_mean": 23357326.375,
+      "ratio": 1.0346633686688136,
+      "ratio_ci95": [
+        0.9907201174169508,
+        1.0807190914798446
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 782518.875,
+      "delta_median": -280189,
+      "delta_ci95": [
+        -213472.875,
+        1783888.75
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_split_large",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 74428101.125,
+      "transparent_mean": 84202062.75,
+      "ratio": 1.1313208516308229,
+      "ratio_ci95": [
+        0.9315133323846287,
+        1.3429321977821687
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 9773961.625,
+      "delta_median": 1973359,
+      "delta_ci95": [
+        -5830270.625,
+        22855105.375
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_truncation_tail",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 31596137387.75,
+      "transparent_mean": 47111214410.375,
+      "ratio": 1.4910434725682729,
+      "ratio_ci95": [
+        0.951979657496816,
+        2.566467242247961
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 15515077022.625,
+      "delta_median": 729035205,
+      "delta_ci95": [
+        -1431220093,
+        47343613683.875
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_truncation_tail",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22788899.375,
+      "transparent_mean": 22750453.25,
+      "ratio": 0.9983129450717494,
+      "ratio_ci95": [
+        0.9496987303563276,
+        1.040390358072919
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -38446.125,
+      "delta_median": 637431,
+      "delta_ci95": [
+        -1157205.375,
+        915641.25
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "output_truncation_tail",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 118264181.375,
+      "transparent_mean": 87444783.5,
+      "ratio": 0.7394020952356167,
+      "ratio_ci95": [
+        0.5207712939525007,
+        1.1004975053566717
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -30819397.875,
+      "delta_median": -27940852,
+      "delta_ci95": [
+        -68887633.125,
+        9372713.25
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_cancel_resources",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 59506755839.5,
+      "transparent_mean": 58621924267.25,
+      "ratio": 0.9851305694661536,
+      "ratio_ci95": [
+        0.866157277679511,
+        1.0894926716047004
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -884831572.25,
+      "delta_median": 253012820,
+      "delta_ci95": [
+        -8793347627,
+        5034412542.125
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_cancel_resources",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 261535240.875,
+      "transparent_mean": 266797205.125,
+      "ratio": 1.020119522831399,
+      "ratio_ci95": [
+        1.0041799702794645,
+        1.0347071405811616
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 5261964.25,
+      "delta_median": 3000012,
+      "delta_ci95": [
+        1101266.25,
+        9001883.875
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_cancel_resources",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 7393102245.875,
+      "transparent_mean": 7416350218.75,
+      "ratio": 1.0031445490812698,
+      "ratio_ci95": [
+        0.9978937567602425,
+        1.0086428357110122
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 23247972.875,
+      "delta_median": 5975736,
+      "delta_ci95": [
+        -15501519,
+        64072589.125
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_failure_recovery",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 28873713613.125,
+      "transparent_mean": 30260122385.5,
+      "ratio": 1.0480162957543773,
+      "ratio_ci95": [
+        0.9742606221586162,
+        1.1383559504052794
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1386408772.375,
+      "delta_median": -352590458,
+      "delta_ci95": [
+        -764943687,
+        3941744143.375
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_failure_recovery",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 44196496.875,
+      "transparent_mean": 46206932.375,
+      "ratio": 1.0454885713156423,
+      "ratio_ci95": [
+        0.9946734895840387,
+        1.1008933090148911
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 2010435.5,
+      "delta_median": 2265866,
+      "delta_ci95": [
+        -237895.625,
+        4365245.25
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_failure_recovery",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 120431598.25,
+      "transparent_mean": 127191447.125,
+      "ratio": 1.056130193182087,
+      "ratio_ci95": [
+        0.9505938178571571,
+        1.1834630908797852
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 6759848.875,
+      "delta_median": -1124139,
+      "delta_ci95": [
+        -5790009.625,
+        21179402.625
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_poll",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 39818399428.125,
+      "transparent_mean": 31311189396.25,
+      "ratio": 0.7863497741231134,
+      "ratio_ci95": [
+        0.5042630605327976,
+        1.0878125847542932
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -8507210031.875,
+      "delta_median": -189480170,
+      "delta_ci95": [
+        -29230696549,
+        2687463613.75
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_poll",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22651926.125,
+      "transparent_mean": 23039321,
+      "ratio": 1.017102072153257,
+      "ratio_ci95": [
+        0.9709599823052335,
+        1.0623616878821855
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 387394.875,
+      "delta_median": 464042,
+      "delta_ci95": [
+        -673681.5,
+        1366584.5
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_poll",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 2286702303.125,
+      "transparent_mean": 2294149412.25,
+      "ratio": 1.0032567025077217,
+      "ratio_ci95": [
+        0.9890105464252474,
+        1.0194622928752437
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 7447109.125,
+      "delta_median": -4836747,
+      "delta_ci95": [
+        -25549868.125,
+        44557189.875
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_sequence",
+      "metric": "codex_total_ns",
+      "selected_pairs": 7
+    },
+    "statistics": {
+      "pairs": 7,
+      "shell_mean": 52081624663.42857,
+      "transparent_mean": 43914750391.57143,
+      "ratio": 0.8431908696275391,
+      "ratio_ci95": [
+        0.5646468810676603,
+        1.3016488386928176
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -8166874271.857142,
+      "delta_median": -2375907860,
+      "delta_ci95": [
+        -28566367960.142857,
+        12464026655
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_sequence",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 7
+    },
+    "statistics": {
+      "pairs": 7,
+      "shell_mean": 217672628.14285713,
+      "transparent_mean": 222203645.7142857,
+      "ratio": 1.020815743394502,
+      "ratio_ci95": [
+        0.9929042268692306,
+        1.0569963106915548
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 4531017.571428572,
+      "delta_median": 3855759,
+      "delta_ci95": [
+        -1568055.857142857,
+        12122959.857142856
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "session_sequence",
+      "metric": "tool_call_ns",
+      "selected_pairs": 7
+    },
+    "statistics": {
+      "pairs": 7,
+      "shell_mean": 517285595,
+      "transparent_mean": 531589700,
+      "ratio": 1.027652239185203,
+      "ratio_ci95": [
+        0.9654832077310416,
+        1.09660493624973
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 14304105,
+      "delta_median": 554897,
+      "delta_ci95": [
+        -18119517,
+        48958934.71428572
+      ],
+      "transparent_faster": 3,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_backpressure",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 42610679870.25,
+      "transparent_mean": 35160000743.625,
+      "ratio": 0.8251452652407236,
+      "ratio_ci95": [
+        0.420125308695004,
+        1.6662966701529718
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -7450679126.625,
+      "delta_median": -1999428292,
+      "delta_ci95": [
+        -40913282414.25,
+        19068310345.375
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_backpressure",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 23191944.875,
+      "transparent_mean": 23144206.375,
+      "ratio": 0.997941591347457,
+      "ratio_ci95": [
+        0.9664740515844191,
+        1.0292626502512179
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -47738.5,
+      "delta_median": -152658,
+      "delta_ci95": [
+        -779639.625,
+        684251.75
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_backpressure",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 98907816.25,
+      "transparent_mean": 82526133.5,
+      "ratio": 0.8343742348067461,
+      "ratio_ci95": [
+        0.5779553495875317,
+        1.2665426122655503
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -16381682.75,
+      "delta_median": -24501475,
+      "delta_ci95": [
+        -53207617.5,
+        18972213.875
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_eof",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 29829355723.875,
+      "transparent_mean": 29015081399.5,
+      "ratio": 0.972702249022319,
+      "ratio_ci95": [
+        0.9272099857277081,
+        1.0225448813536955
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -814274324.375,
+      "delta_median": -2315126131,
+      "delta_ci95": [
+        -2240001696.25,
+        648191985.375
+      ],
+      "transparent_faster": 5,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_eof",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 21946448.5,
+      "transparent_mean": 22997472.625,
+      "ratio": 1.0478903967081508,
+      "ratio_ci95": [
+        0.9975600198068538,
+        1.113135549487828
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1051024.125,
+      "delta_median": 701800,
+      "delta_ci95": [
+        -55972.625,
+        2425716.75
+      ],
+      "transparent_faster": 1,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_eof",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 91864215,
+      "transparent_mean": 93390041.625,
+      "ratio": 1.016609586496766,
+      "ratio_ci95": [
+        0.6566256743196042,
+        1.5205234266757222
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": 1525826.625,
+      "delta_median": -16251589,
+      "delta_ci95": [
+        -38376829.25,
+        39097767.75
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_pty_utf8",
+      "metric": "codex_total_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 48461455505.25,
+      "transparent_mean": 35735899125.25,
+      "ratio": 0.7374087045606503,
+      "ratio_ci95": [
+        0.38282874613859036,
+        1.2539145920138035
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -12725556380,
+      "delta_median": -848454368,
+      "delta_ci95": [
+        -46816165817.875,
+        9799095821.25
+      ],
+      "transparent_faster": 4,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_pty_utf8",
+      "metric": "startup_to_ready_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 22112361.625,
+      "transparent_mean": 23760442.375,
+      "ratio": 1.0745321000962962,
+      "ratio_ci95": [
+        1.0028775931848417,
+        1.1474080908660995
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 1648080.75,
+      "delta_median": 1131973,
+      "delta_ci95": [
+        65024.875,
+        3154566.25
+      ],
+      "transparent_faster": 2,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "online",
+      "cohort": "strict",
+      "task": "stdin_pty_utf8",
+      "metric": "tool_call_ns",
+      "selected_pairs": 8
+    },
+    "statistics": {
+      "pairs": 8,
+      "shell_mean": 3470343779.875,
+      "transparent_mean": 3468223155.75,
+      "ratio": 0.9993889296682081,
+      "ratio_ci95": [
+        0.9980155798719481,
+        1.0008063906639075
+      ],
+      "interpretation": "no_clear_difference",
+      "delta": -2120624.125,
+      "delta_median": -3330572,
+      "delta_ci95": [
+        -6893604.875,
+        2796503.5
+      ],
+      "transparent_faster": 6,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "AB",
+      "task": "native-noop",
+      "metric": "startup_ns",
+      "selected_pairs": 500
+    },
+    "statistics": {
+      "pairs": 500,
+      "shell_mean": 432237.768,
+      "transparent_mean": 927654.948,
+      "ratio": 2.146168189541456,
+      "ratio_ci95": [
+        2.131228078309925,
+        2.161610498355102
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 495417.18,
+      "delta_median": 491335,
+      "delta_ci95": [
+        490593.458,
+        500109.74
+      ],
+      "transparent_faster": 0,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "BA",
+      "task": "native-noop",
+      "metric": "startup_ns",
+      "selected_pairs": 500
+    },
+    "statistics": {
+      "pairs": 500,
+      "shell_mean": 434042.726,
+      "transparent_mean": 930738.096,
+      "ratio": 2.14434672037333,
+      "ratio_ci95": [
+        2.1291794507007125,
+        2.158969496920185
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 496695.37,
+      "delta_median": 495197,
+      "delta_ci95": [
+        491790.818,
+        501828.836
+      ],
+      "transparent_faster": 0,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "AB",
+      "task": "native-small",
+      "metric": "startup_ns",
+      "selected_pairs": 500
+    },
+    "statistics": {
+      "pairs": 500,
+      "shell_mean": 431818.67,
+      "transparent_mean": 917947.896,
+      "ratio": 2.125771671706552,
+      "ratio_ci95": [
+        2.1089458252965128,
+        2.142081984075351
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 486129.226,
+      "delta_median": 485814,
+      "delta_ci95": [
+        481540.272,
+        490386.884
+      ],
+      "transparent_faster": 0,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "BA",
+      "task": "native-small",
+      "metric": "startup_ns",
+      "selected_pairs": 500
+    },
+    "statistics": {
+      "pairs": 500,
+      "shell_mean": 431358.828,
+      "transparent_mean": 924305.544,
+      "ratio": 2.142776463589613,
+      "ratio_ci95": [
+        2.1252529612784534,
+        2.1599557730684
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 492946.716,
+      "delta_median": 492069,
+      "delta_ci95": [
+        487616.61,
+        498699.234
+      ],
+      "transparent_faster": 0,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "AB",
+      "task": "shell-noop",
+      "metric": "startup_ns",
+      "selected_pairs": 500
+    },
+    "statistics": {
+      "pairs": 500,
+      "shell_mean": 738126.336,
+      "transparent_mean": 1231154.966,
+      "ratio": 1.6679461305659198,
+      "ratio_ci95": [
+        1.6555679761521656,
+        1.680345346261833
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 493028.63,
+      "delta_median": 492754,
+      "delta_ci95": [
+        486118.394,
+        499830.35
+      ],
+      "transparent_faster": 0,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "BA",
+      "task": "shell-noop",
+      "metric": "startup_ns",
+      "selected_pairs": 500
+    },
+    "statistics": {
+      "pairs": 500,
+      "shell_mean": 744383.956,
+      "transparent_mean": 1225967.938,
+      "ratio": 1.6469564236551064,
+      "ratio_ci95": [
+        1.6354110217265994,
+        1.6589363860312134
+      ],
+      "interpretation": "transparent_slower",
+      "delta": 481583.982,
+      "delta_median": 481859,
+      "delta_ci95": [
+        474261.042,
+        488906.876
+      ],
+      "transparent_faster": 0,
+      "ratio_ci_upper_at_most_0_90": false,
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913"
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "linux / native-noop / full",
+      "task": "linux / native-noop / full",
+      "metric": "startup_ns",
+      "selected_pairs": 1000
+    },
+    "statistics": {
+      "delta": 540707.094,
+      "delta_ci95": [
+        536913.112,
+        544223.355
+      ],
+      "delta_median": 542198,
+      "interpretation": "transparent_slower",
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
+      "pairs": 1000,
+      "ratio": 2.2452238054770466,
+      "ratio_ci95": [
+        2.232807003448524,
+        2.257585940473215
+      ],
+      "ratio_ci_upper_at_most_0_90": false,
+      "shell_mean": 434224.829,
+      "transparent_faster": 0,
+      "transparent_mean": 974931.923
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "linux / native-noop / minimal",
+      "task": "linux / native-noop / minimal",
+      "metric": "startup_ns",
+      "selected_pairs": 1000
+    },
+    "statistics": {
+      "delta": 496056.275,
+      "delta_ci95": [
+        492661.568,
+        499361.73
+      ],
+      "delta_median": 493035,
+      "interpretation": "transparent_slower",
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
+      "pairs": 1000,
+      "ratio": 2.145255557376085,
+      "ratio_ci95": [
+        2.1345411529697067,
+        2.1562670842540386
+      ],
+      "ratio_ci_upper_at_most_0_90": false,
+      "shell_mean": 433140.247,
+      "transparent_faster": 0,
+      "transparent_mean": 929196.522
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "linux / native-small / full",
+      "task": "linux / native-small / full",
+      "metric": "startup_ns",
+      "selected_pairs": 1000
+    },
+    "statistics": {
+      "delta": 535672.425,
+      "delta_ci95": [
+        531843.332,
+        539440.341
+      ],
+      "delta_median": 534954,
+      "interpretation": "transparent_slower",
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
+      "pairs": 1000,
+      "ratio": 2.238789817513398,
+      "ratio_ci95": [
+        2.2265278127371593,
+        2.2508642110634067
+      ],
+      "ratio_ci_upper_at_most_0_90": false,
+      "shell_mean": 432415.909,
+      "transparent_faster": 0,
+      "transparent_mean": 968088.334
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "linux / native-small / minimal",
+      "task": "linux / native-small / minimal",
+      "metric": "startup_ns",
+      "selected_pairs": 1000
+    },
+    "statistics": {
+      "delta": 489537.971,
+      "delta_ci95": [
+        486155.077,
+        493208.806
+      ],
+      "delta_median": 489053,
+      "interpretation": "transparent_slower",
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
+      "pairs": 1000,
+      "ratio": 2.134269538152395,
+      "ratio_ci95": [
+        2.122918342065945,
+        2.1460196825963327
+      ],
+      "ratio_ci_upper_at_most_0_90": false,
+      "shell_mean": 431588.749,
+      "transparent_faster": 0,
+      "transparent_mean": 921126.72
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "linux / shell-noop / full",
+      "task": "linux / shell-noop / full",
+      "metric": "startup_ns",
+      "selected_pairs": 1000
+    },
+    "statistics": {
+      "delta": 531681.168,
+      "delta_ci95": [
+        526454.361,
+        536691.114
+      ],
+      "delta_median": 535260,
+      "interpretation": "transparent_slower",
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
+      "pairs": 1000,
+      "ratio": 1.7157340980219924,
+      "ratio_ci95": [
+        1.7069887197139888,
+        1.7244365175142184
+      ],
+      "ratio_ci_upper_at_most_0_90": false,
+      "shell_mean": 742847.336,
+      "transparent_faster": 0,
+      "transparent_mean": 1274528.504
+    }
+  },
+  {
+    "group": {
+      "suite": "startup",
+      "cohort": "linux / shell-noop / minimal",
+      "task": "linux / shell-noop / minimal",
+      "metric": "startup_ns",
+      "selected_pairs": 1000
+    },
+    "statistics": {
+      "delta": 487306.306,
+      "delta_ci95": [
+        482453.333,
+        491916.329
+      ],
+      "delta_median": 487722,
+      "interpretation": "transparent_slower",
+      "method": "paired bootstrap of ratio of means; percentile interval; 2000 resamples; xorshift32 seed 20260913",
+      "pairs": 1000,
+      "ratio": 1.6574069787301011,
+      "ratio_ci95": [
+        1.6492185586125698,
+        1.6654299053101216
+      ],
+      "ratio_ci_upper_at_most_0_90": false,
+      "shell_mean": 741255.146,
+      "transparent_faster": 0,
+      "transparent_mean": 1228561.452
+    }
+  }
+]

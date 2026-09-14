@@ -134,5 +134,13 @@ git push origin main
 
 On macOS, `git pull --ff-only origin main` makes the raw evidence and offline
 HTML/Markdown reports available to reviewers. Never add private credentials or
-mutable Codex homes. Historical reports remain unchanged; new measurements are
-evaluated under the [current protocol](evaluation.md).
+mutable Codex homes. Preserve the bytes of sealed artifacts, including PTY
+CRLF sequences; do not translate captured commands or outputs. The
+[current evaluation report](reports/linux-evidence-review-2026-09-14/README.md#evidence-integrity)
+documents a known newline-conversion issue in the retained PTY artifacts.
+Publishing a report does not establish that a fresh checkout passes its seals.
+
+The [report index](reports/README.md) identifies the retained datasets and their
+limits. Removed preliminary runs and superseded documents remain available
+through Git history. New measurements use the [current protocol](evaluation.md)
+and retain every failed attempt within their run.

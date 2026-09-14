@@ -1,9 +1,14 @@
-# Linux Online Comparison: Evidence and Decision
+# Linux Online Execution Baseline
 
 Source run: `20260913T152436165546119`, published in `6da3b57`.
 Implementation: `c3479b685a120905e065ea3057cd56d97c959aae`.
 Platform: Linux x86_64, kernel `6.14.0-28-generic`.
 Model configuration: `gpt-5.6-terra`, `xhigh`, OpenrouterICU Responses relay.
+
+This report describes the original eight-category protocol. The
+[expanded evaluation](../../../../../docs/reports/linux-evidence-review-2026-09-14/README.md)
+reports subsequent measurements under a different protocol; its results are not
+pooled with this baseline.
 
 ## Supported Conclusion
 
@@ -49,8 +54,9 @@ AB/BA ordering is balanced: 16 pairs start with Shell and 16 with MBTX.
 The observer's collection window was 1,641.798 seconds (27.36 minutes), including
 the inter-arm pauses and excluding the earlier build step. There are no failed
 arms to omit within this run, so its intention-to-treat and complete-pair counts
-agree. Earlier failed runs remain separate evidence of external availability;
-this successful window does not erase them or establish long-term reliability.
+agree. Earlier failed runs are available through Git history as separate
+evidence of external availability. This retained successful window does not
+establish long-term reliability.
 
 ## Observed Differences
 
@@ -151,11 +157,12 @@ working baseline implementation with basic compatibility on this Linux setup.
 It provides no demonstrated performance or reliability reason to switch the
 default from Shell.
 
-The next useful work is an offline reproduction of the merged-output ordering
-difference with symmetric stream/lifecycle observations, then real process-group
-cancellation, SIGKILL, recovery and leak cases. Complete those measurements and
-record the actual execution mode before spending on more copies of this same
-online task set. No additional production API requests were made in this review.
+The original coverage gaps motivate fixed-response stream and lifecycle
+observations, process-group cancellation, SIGKILL, session recovery and resource
+checks. The expanded evaluation reports subsequent measurements of these
+boundaries and records actual execution mode. They do not retroactively extend
+this baseline's coverage. No additional external API requests were made for
+this baseline analysis.
 
 ## Reproduce the Review
 
