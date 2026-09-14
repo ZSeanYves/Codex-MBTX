@@ -1,0 +1,23 @@
+{
+  "category": "environment",
+  "check": "cwd_symlink",
+  "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"cd 'space 路径/link' && '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+  "control": "none",
+  "control_mode": "cwd_symlink",
+  "expected_exits": [
+    0
+  ],
+  "id": "cwd_symlink",
+  "steps": [
+    {
+      "arguments": {
+        "cmd": "cd 'space 路径/link' && '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment",
+        "max_output_tokens": 25000,
+        "tty": false,
+        "yield_time_ms": 10000
+      },
+      "tool": "exec_command"
+    }
+  ],
+  "timeout_ms": 300000
+}

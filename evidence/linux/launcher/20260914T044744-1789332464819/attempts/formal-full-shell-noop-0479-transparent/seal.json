@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "path": "82307-22969000118360.jsonl",
+      "sha256": "b67ccdb6e358d25b43c18b09be5af819d7b323239ff5e7a781d2e2c927506ca2"
+    },
+    {
+      "path": "82307-22969000118360.receipt.json",
+      "sha256": "c5aacdc02d68e5e14f0a8b40d22172255f35ae3c4c9d0581be2ec39e1aff341d"
+    },
+    {
+      "path": "82307-22969000118360.started.json",
+      "sha256": "24dafd9398ca320ce51e5f9cc64c4840200cc6b5377bff375f70bf8ebd20a86b"
+    },
+    {
+      "path": "launcher.jsonl",
+      "sha256": "b0be3369cf9eb40278c91518bbbaca956aaa13bf8c6b88990c4f03d551472a7d"
+    },
+    {
+      "path": "result.json",
+      "sha256": "1c603d605ebeb6996a3c0727f837a1da45866d1d81cb3557dbf504ef90b79d19"
+    }
+  ],
+  "schema_version": 2
+}

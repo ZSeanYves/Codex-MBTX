@@ -1,0 +1,73 @@
+{
+  "files": [
+    {
+      "path": "codex.stderr.log",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "codex.stdout.jsonl",
+      "sha256": "433b29ceabc5fdd5126212e598622fbd617bd1e5d56592ad506cb42226c8a449"
+    },
+    {
+      "path": "config.toml",
+      "sha256": "d29d23daf91c7d3ef0d72084f7b95778f9726f830e75a52f8bed199cdef080e4"
+    },
+    {
+      "path": "events.jsonl",
+      "sha256": "a689768e4fd34ae4e63dc020f3a9fa80c457960aa3ab7d3b1aef40d6ee15b6ae"
+    },
+    {
+      "path": "facts.json",
+      "sha256": "a07b06a47f9932a99b744da2f95ae4eaead24de4d98368f0c91037922ba7983f"
+    },
+    {
+      "path": "prompt.txt",
+      "sha256": "82798da5f3a9bd0d254cc9c0ac4461ba154e6ed4c924f812418172784db9c6c1"
+    },
+    {
+      "path": "relay/request-000089.json",
+      "sha256": "1a80cc8a0b52af0fce09719e9d8a70bf32eb3e0f7287c0f9a7ed131f2da63f9b"
+    },
+    {
+      "path": "relay/request-000089.jsonl",
+      "sha256": "c092c84e9cb7887907158c9e741c1870ede3df9e2e5e0a23b30a7068b42ba2bb"
+    },
+    {
+      "path": "relay/request-000090.json",
+      "sha256": "0c56c7d32bc8a9d1bb949d0165ffd5d808de35ba04e2cf70e4101472e91ebec0"
+    },
+    {
+      "path": "relay/request-000090.jsonl",
+      "sha256": "726da870e9441255101402a89e0fb3884e51178ca44035cbbdc0ee92e8e9df34"
+    },
+    {
+      "path": "relay/response-000089.sse",
+      "sha256": "67702bdd922d67aa68b5b5af4d9dfc8626176dbd367f1f91b5c54baf6c4d508a"
+    },
+    {
+      "path": "relay/response-000090.sse",
+      "sha256": "d29edbde9f5b6c0172236e6bb9b5a59312e6cf65c07e263dc054c73cca3d19e5"
+    },
+    {
+      "path": "result.json",
+      "sha256": "c3622dabf09aa2ec800c029d12efa6e7950991ba4c8728b53413f22bff22c506"
+    },
+    {
+      "path": "task.json",
+      "sha256": "13a2a74081ce646e41ab95bb0cf5212f35103bd4688eaba2baa9a7a802e333ef"
+    },
+    {
+      "path": "trace/process-100083.jsonl",
+      "sha256": "7408948cec7eabfbab24d3df6d447b5c0028fdb456a031053fff6606a236252f"
+    },
+    {
+      "path": "trace/stream-100083-34-stderr.bin",
+      "sha256": "92cfcb1b589a6c34248fba7ddf7227ca905a0e41f74f0532502d15b9025f8da8"
+    },
+    {
+      "path": "trace/stream-100083-9-stderr.bin",
+      "sha256": "42a6a15c99f615578e88c364023222a24f452a9557d25cee451ce4cf50cf1dd0"
+    }
+  ],
+  "schema_version": 2
+}

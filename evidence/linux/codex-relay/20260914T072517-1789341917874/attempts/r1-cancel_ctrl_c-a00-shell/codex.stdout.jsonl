@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a09d2f-447a-7580-84ed-05eb54c89a8b"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Executing the provided program exactly once."}}
+{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc \"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\"","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc \"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\"","aggregated_output":"cancel-ready\r\n^C","exit_code":130,"status":"failed"}}
+{"type":"error","message":"unexpected status 502 Bad Gateway: Upstream service temporarily unavailable, url: http://127.0.0.1:38039/v1/responses, request id: 366b672d-2f44-4031-b05b-7d32f50290e6"}
+{"type":"turn.failed","error":{"message":"unexpected status 502 Bad Gateway: Upstream service temporarily unavailable, url: http://127.0.0.1:38039/v1/responses, request id: 366b672d-2f44-4031-b05b-7d32f50290e6"}}

@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "environment"
+  ],
+  "attempt_id": "r2-environment_empty_unset-a03-transparent",
+  "backend": "transparent",
+  "call_id": "exec-c2450ebb-2da2-4191-b6b9-9ac5b15da75d",
+  "completed_ns": 46859659363577,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-relay/20260914T072517-1789341917874/attempts/r2-environment_empty_unset-a03-transparent/workspace",
+  "environment": {
+    "HOME": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-relay/20260914T072517-1789341917874/attempts/r2-environment_empty_unset-a03-transparent/workspace/home",
+    "MBTX_ABSENT": null,
+    "MBTX_EMPTY": "",
+    "MBTX_EVAL_MARKER": "fixed-environment",
+    "PATH": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-relay/20260914T072517-1789341917874/attempts/r2-environment_empty_unset-a03-transparent/workspace/home/tmp/arg0/codex-arg016874M:/home/zseanyves/.moon/bin:/home/zseanyves/miniforge3/bin:/home/zseanyves/miniforge3/condabin:/home/zseanyves/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin"
+  },
+  "exit_code_requested": 0,
+  "experiment_id": "codex-relay-3a46cc3a1a5bb7bcaff11a1507ba6c80591c4c3f86766605b11d83cdb7359d60",
+  "mode": "environment",
+  "pair_id": "r2-environment_empty_unset-a03",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533130]",
+  "ppid": 2,
+  "process_instance": "5-46859650736864",
+  "process_start_ticks": 4685964,
+  "ready_ns": 46859650736864,
+  "stdin_tty": false,
+  "task_id": "environment_empty_unset"
+}

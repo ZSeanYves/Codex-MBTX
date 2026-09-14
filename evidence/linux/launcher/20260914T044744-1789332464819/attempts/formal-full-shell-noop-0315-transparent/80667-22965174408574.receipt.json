@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/e0b347a8350c0288259e2aacbac97bc07e69d7877964a14389b306c2baad9515/mbtx-fixture",
+    "noop"
+  ],
+  "attempt_id": "formal-full-shell-noop-0315-transparent",
+  "backend": "transparent",
+  "call_id": null,
+  "completed_ns": 22965176066397,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/launcher/20260914T044744-1789332464819/attempts/formal-full-shell-noop-0315-transparent",
+  "exit_code_requested": 0,
+  "experiment_id": "launcher-startup-d32535281bc9e871c8772c2cb6fe995abcd7e17e9675be328b2affd8ff2b75a1",
+  "mode": "noop",
+  "pair_id": "formal-full-shell-noop-0315",
+  "pgid": 80664,
+  "pid": 80667,
+  "pid_namespace": "pid:[4026531836]",
+  "ppid": 80664,
+  "process_instance": "80667-22965174408574",
+  "process_start_ticks": 2296517,
+  "ready_ns": 22965174408574,
+  "stdin_tty": false,
+  "task_id": "shell-noop"
+}

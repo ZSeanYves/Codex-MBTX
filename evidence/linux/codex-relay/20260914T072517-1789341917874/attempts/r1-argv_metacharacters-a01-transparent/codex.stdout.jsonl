@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a09d5f-3c65-7140-95ec-6f850792fec6"}
+{"type":"turn.started"}
+{"type":"error","message":"unexpected status 502 Bad Gateway: Upstream service temporarily unavailable, url: http://127.0.0.1:38039/v1/responses, request id: 6ec42e09-8dd2-4ebb-90f5-ad0721ca342b"}
+{"type":"turn.failed","error":{"message":"unexpected status 502 Bad Gateway: Upstream service temporarily unavailable, url: http://127.0.0.1:38039/v1/responses, request id: 6ec42e09-8dd2-4ebb-90f5-ad0721ca342b"}}

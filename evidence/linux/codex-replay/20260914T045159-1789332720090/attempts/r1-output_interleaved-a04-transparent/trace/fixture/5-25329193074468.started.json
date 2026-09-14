@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "output-interleaved"
+  ],
+  "attempt_id": "r1-output_interleaved-a04-transparent",
+  "backend": "transparent",
+  "call_id": "exec-f5bc3b13-3c72-44f7-b41c-a6c10ea39cd7",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-output_interleaved-a04-transparent/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "output-interleaved",
+  "pair_id": "r1-output_interleaved-a04",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533000]",
+  "ppid": 2,
+  "process_instance": "5-25329193074468",
+  "process_start_ticks": 2532919,
+  "ready_ns": 25329193074468,
+  "stdin_tty": false,
+  "task_id": "output_interleaved"
+}

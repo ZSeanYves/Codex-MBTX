@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "small"
+  ],
+  "attempt_id": "r1-session_cancel_resources-a09-transparent",
+  "backend": "transparent",
+  "call_id": "exec-c3ed5957-48bc-4929-af97-892c348fb53a",
+  "completed_ns": 28046479126059,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-session_cancel_resources-a09-transparent/workspace",
+  "exit_code_requested": 0,
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "small",
+  "pair_id": "r1-session_cancel_resources-a09",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533066]",
+  "ppid": 2,
+  "process_instance": "5-28046399403157",
+  "process_start_ticks": 2804639,
+  "ready_ns": 28046399403157,
+  "stdin_tty": false,
+  "task_id": "session_cancel_resources"
+}

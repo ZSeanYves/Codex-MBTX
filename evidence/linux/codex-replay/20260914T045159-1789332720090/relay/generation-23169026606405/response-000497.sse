@@ -1,0 +1,9 @@
+event: response.created
+data: {"response":{"id":"replay-497"},"type":"response.created"}
+
+event: response.output_item.done
+data: {"item":{"call_id":"call-497","input":"let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"env -u MBTX_ABSENT MBTX_EMPTY= '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n","name":"exec","type":"custom_tool_call"},"type":"response.output_item.done"}
+
+event: response.completed
+data: {"response":{"id":"replay-497"},"type":"response.completed"}
+

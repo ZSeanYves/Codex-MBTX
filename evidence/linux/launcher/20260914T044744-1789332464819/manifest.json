@@ -1,0 +1,29 @@
+{
+  "experiment_id": "launcher-startup-d32535281bc9e871c8772c2cb6fe995abcd7e17e9675be328b2affd8ff2b75a1",
+  "fixture": {
+    "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/e0b347a8350c0288259e2aacbac97bc07e69d7877964a14389b306c2baad9515/mbtx-fixture",
+    "sha256": "773f769a6356cd8b06590e2f0925c7ded43cdef3440d08b6e467cd3f882139f0"
+  },
+  "launcher": {
+    "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/e0b347a8350c0288259e2aacbac97bc07e69d7877964a14389b306c2baad9515/mbtx",
+    "sha256": "233c8a313f89c42d1a797f6e503d109823b7ae6a9e19243a81ba6b8c9dab036c"
+  },
+  "observation_modes": [
+    "minimal",
+    "full"
+  ],
+  "order": "AB/BA; observation order alternates per pair",
+  "pairs_per_workload_observation": 1000,
+  "platform": "linux",
+  "primary_observation": "minimal",
+  "purpose": "formal",
+  "ready_transport": "inherited pipe, native u64 OS CLOCK_MONOTONIC; recorded before fixture IO",
+  "schema_version": 2,
+  "suite": "launcher-startup",
+  "warmup_pairs": 10,
+  "workloads": [
+    "native-noop",
+    "native-small",
+    "shell-noop"
+  ]
+}

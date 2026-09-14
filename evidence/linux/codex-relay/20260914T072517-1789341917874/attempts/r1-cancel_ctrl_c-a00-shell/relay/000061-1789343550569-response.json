@@ -1,0 +1,55 @@
+{
+  "status": 502,
+  "headers": [
+    {
+      "name": "server",
+      "value": "nginx/1.18.0 (Ubuntu)"
+    },
+    {
+      "name": "date",
+      "value": "Sun, 13 Sep 2026 23:54:35 GMT"
+    },
+    {
+      "name": "content-type",
+      "value": "application/json; charset=utf-8"
+    },
+    {
+      "name": "content-length",
+      "value": "88"
+    },
+    {
+      "name": "connection",
+      "value": "keep-alive"
+    },
+    {
+      "name": "referrer-policy",
+      "value": "strict-origin-when-cross-origin"
+    },
+    {
+      "name": "x-client-request-id",
+      "value": "f857b797-fd97-468b-a64a-6d97dea30879"
+    },
+    {
+      "name": "x-content-type-options",
+      "value": "nosniff"
+    },
+    {
+      "name": "x-frame-options",
+      "value": "DENY"
+    },
+    {
+      "name": "x-request-id",
+      "value": "366b672d-2f44-4031-b05b-7d32f50290e6"
+    },
+    {
+      "name": "vary",
+      "value": "Origin"
+    }
+  ],
+  "body": {
+    "error": {
+      "message": "Upstream service temporarily unavailable",
+      "type": "upstream_error"
+    }
+  }
+}

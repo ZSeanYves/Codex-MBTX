@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a09df3-7dae-7891-9dd3-565c5e96ce4f"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc ./absent-program","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc ./absent-program","aggregated_output":"/bin/bash: line 1: ./absent-program: No such file or directory\n","exit_code":127,"status":"failed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":27901,"cached_input_tokens":22016,"cache_write_input_tokens":0,"output_tokens":230,"reasoning_output_tokens":97}}

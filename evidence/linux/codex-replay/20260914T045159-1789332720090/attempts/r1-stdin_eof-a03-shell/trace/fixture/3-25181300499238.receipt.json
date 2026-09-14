@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "stdin"
+  ],
+  "attempt_id": "r1-stdin_eof-a03-shell",
+  "backend": "shell",
+  "call_id": "exec-79750623-2b83-4220-8961-467686c828be",
+  "completed_ns": 25181302447715,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-stdin_eof-a03-shell/workspace",
+  "exit_code_requested": 0,
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "input_bytes": 0,
+  "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "input_utf8": "",
+  "mode": "stdin",
+  "pair_id": "r1-stdin_eof-a03",
+  "pgid": 1,
+  "pid": 3,
+  "pid_namespace": "pid:[4026533000]",
+  "ppid": 2,
+  "process_instance": "3-25181300499238",
+  "process_start_ticks": 2518129,
+  "ready_ns": 25181300499238,
+  "stdin_tty": false,
+  "task_id": "stdin_eof"
+}

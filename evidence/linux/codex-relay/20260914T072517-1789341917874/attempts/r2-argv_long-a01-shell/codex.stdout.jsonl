@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"01a09dc1-c7bb-7d03-864c-9c8631c3a57c"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Executing the supplied program exactly as provided."}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"DONE"}}
+{"type":"turn.completed","usage":{"input_tokens":30512,"cached_input_tokens":25088,"cache_write_input_tokens":0,"output_tokens":373,"reasoning_output_tokens":101}}

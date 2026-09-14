@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "output-tail"
+  ],
+  "attempt_id": "r1-output_truncation_tail-a08-shell",
+  "backend": "shell",
+  "call_id": "exec-372bcd62-3478-4c92-a36c-d17a4f8c0ce6",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-output_truncation_tail-a08-shell/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "output-tail",
+  "pair_id": "r1-output_truncation_tail-a08",
+  "pgid": 1,
+  "pid": 2,
+  "pid_namespace": "pid:[4026533128]",
+  "ppid": 1,
+  "process_instance": "2-27483377799180",
+  "process_start_ticks": 2748337,
+  "ready_ns": 27483377799180,
+  "stdin_tty": false,
+  "task_id": "output_truncation_tail"
+}

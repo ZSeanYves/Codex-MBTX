@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "session"
+  ],
+  "attempt_id": "r1-session_poll-a00-transparent",
+  "backend": "transparent",
+  "call_id": "exec-db58ea1e-4baf-4656-b7b7-bb969e9220a3",
+  "completed_ns": 23456508188451,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-session_poll-a00-transparent/workspace",
+  "exit_code_requested": 0,
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "session",
+  "pair_id": "r1-session_poll-a00",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533000]",
+  "ppid": 2,
+  "process_instance": "5-23454305690218",
+  "process_start_ticks": 2345430,
+  "ready_ns": 23454305690218,
+  "stdin_tty": false,
+  "task_id": "session_poll"
+}

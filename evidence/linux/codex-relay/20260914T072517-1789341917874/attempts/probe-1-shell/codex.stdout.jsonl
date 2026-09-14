@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a09d17-50d0-7552-b187-d246005b4c08"}
+{"type":"turn.started"}
+{"type":"error","message":"stream disconnected before completion: An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID 218cb310-4511-4c8b-9fa7-d574a9992c88 in your message."}
+{"type":"turn.failed","error":{"message":"stream disconnected before completion: An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID 218cb310-4511-4c8b-9fa7-d574a9992c88 in your message."}}

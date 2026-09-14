@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "ignore-term"
+  ],
+  "attempt_id": "r1-cancel_sigkill-a07-shell",
+  "backend": "shell",
+  "call_id": "exec-613f816f-4577-46d4-a94b-51f3dff64bc1",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-cancel_sigkill-a07-shell/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "ignore-term",
+  "pair_id": "r1-cancel_sigkill-a07",
+  "pgid": 1,
+  "pid": 2,
+  "pid_namespace": "pid:[4026533128]",
+  "ppid": 1,
+  "process_instance": "2-27127753209331",
+  "process_start_ticks": 2712775,
+  "ready_ns": 27127753209331,
+  "stdin_tty": false,
+  "task_id": "cancel_sigkill"
+}

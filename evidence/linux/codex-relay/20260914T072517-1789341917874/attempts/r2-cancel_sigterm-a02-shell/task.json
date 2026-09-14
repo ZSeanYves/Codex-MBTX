@@ -1,0 +1,32 @@
+{
+  "category": "cancellation",
+  "check": "term",
+  "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' term\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\",\"yield_time_ms\":10000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+  "control": "term",
+  "control_mode": "term",
+  "expected_exits": [
+    143
+  ],
+  "id": "cancel_sigterm",
+  "steps": [
+    {
+      "arguments": {
+        "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' term",
+        "max_output_tokens": 25000,
+        "tty": false,
+        "yield_time_ms": 1000
+      },
+      "tool": "exec_command"
+    },
+    {
+      "arguments": {
+        "chars": "",
+        "max_output_tokens": 25000,
+        "session_id": "$session",
+        "yield_time_ms": 10000
+      },
+      "tool": "write_stdin"
+    }
+  ],
+  "timeout_ms": 300000
+}

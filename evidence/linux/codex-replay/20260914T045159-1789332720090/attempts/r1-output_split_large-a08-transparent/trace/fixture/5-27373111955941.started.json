@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "output-large"
+  ],
+  "attempt_id": "r1-output_split_large-a08-transparent",
+  "backend": "transparent",
+  "call_id": "exec-f8e55377-4845-40c9-87b4-7dd34199586a",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-output_split_large-a08-transparent/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "output-large",
+  "pair_id": "r1-output_split_large-a08",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533127]",
+  "ppid": 2,
+  "process_instance": "5-27373111955941",
+  "process_start_ticks": 2737310,
+  "ready_ns": 27373111955941,
+  "stdin_tty": false,
+  "task_id": "output_split_large"
+}

@@ -1,0 +1,23 @@
+{
+  "category": "stdin",
+  "check": "stdin_eof",
+  "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin </dev/null\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+  "control": "none",
+  "control_mode": "stdin_eof",
+  "expected_exits": [
+    0
+  ],
+  "id": "stdin_eof",
+  "steps": [
+    {
+      "arguments": {
+        "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin </dev/null",
+        "max_output_tokens": 25000,
+        "tty": false,
+        "yield_time_ms": 10000
+      },
+      "tool": "exec_command"
+    }
+  ],
+  "timeout_ms": 300000
+}

@@ -1,0 +1,953 @@
+{
+  "binaries": {
+    "code_mode_host": {
+      "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/codex-code-mode-host",
+      "sha256": "f48b85fd9978986fa17e715fc02c024f88c87730ae5c5d57fe364e62602de300"
+    },
+    "codex": {
+      "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/codex-exec",
+      "sha256": "71a8fbce4d0cb2439b440b28dcd929964053a6be964fa124d6079988067cb0c3"
+    },
+    "evaluation_model": {
+      "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/evaluation-model",
+      "sha256": "fb6049c68747f2efd9849a3ff01e992b248d56bf938a93d3a5b6d3fd6b3f6b90"
+    },
+    "fixture": {
+      "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+      "sha256": "773f769a6356cd8b06590e2f0925c7ded43cdef3440d08b6e467cd3f882139f0"
+    },
+    "launcher": {
+      "path": "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx",
+      "sha256": "233c8a313f89c42d1a797f6e503d109823b7ae6a9e19243a81ba6b8c9dab036c"
+    },
+    "proxy": null
+  },
+  "direct_control": false,
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "fault": "none",
+  "max_concurrent_requests": 1,
+  "min_request_interval_ms": 15000,
+  "model": "gpt-5.6-terra",
+  "pairs_per_task": 10,
+  "path": "/home/zseanyves/.moon/bin:/home/zseanyves/miniforge3/bin:/home/zseanyves/miniforge3/condabin:/home/zseanyves/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin",
+  "platform": "linux",
+  "purpose": "formal",
+  "rounds": 1,
+  "schema_version": 2,
+  "seed": 20260913,
+  "suite": "codex-replay",
+  "target_pairs": 240,
+  "tasks": [
+    {
+      "category": "argv",
+      "check": "argv_empty_unicode",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' argv '' 'a b' '中文'\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "argv_empty_unicode",
+      "expected_exits": [
+        0
+      ],
+      "id": "argv_empty_unicode",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' argv '' 'a b' '中文'",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "argv",
+      "check": "argv_metacharacters",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' argv ''\\\\''\\\"\\\\' '$() ${HOME}; * ? | & < >' 'line1\\nline2'\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "argv_metacharacters",
+      "expected_exits": [
+        0
+      ],
+      "id": "argv_metacharacters",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' argv ''\\''\"\\' '$() ${HOME}; * ? | & < >' 'line1\nline2'",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "argv",
+      "check": "argv_long",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' argv 'abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd' 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "argv_long",
+      "expected_exits": [
+        0
+      ],
+      "id": "argv_long",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' argv 'abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd' 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "stdin",
+      "check": "stdin_eof",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin </dev/null\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "stdin_eof",
+      "expected_exits": [
+        0
+      ],
+      "id": "stdin_eof",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin </dev/null",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "stdin",
+      "check": "stdin_pty_utf8",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin\",\"tty\":true,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"第一行\\n\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\nconst r2 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"最后一行\\n\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r2);\nif (r2.session_id != null) sessionId = r2.session_id;\nconst r3 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0004\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r3);\nif (r3.session_id != null) sessionId = r3.session_id;\n",
+      "control": "none",
+      "control_mode": "stdin_pty_utf8",
+      "expected_exits": [
+        0
+      ],
+      "id": "stdin_pty_utf8",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin",
+            "max_output_tokens": 25000,
+            "tty": true,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "第一行\n",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "chars": "最后一行\n",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "chars": "\u0004",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "stdin",
+      "check": "stdin_backpressure",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' emit-input | '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "stdin_backpressure",
+      "expected_exits": [
+        0
+      ],
+      "id": "stdin_backpressure",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' emit-input | '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' stdin",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "environment",
+      "check": "cwd_symlink",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"cd 'space 路径/link' && '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "cwd_symlink",
+      "expected_exits": [
+        0
+      ],
+      "id": "cwd_symlink",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "cd 'space 路径/link' && '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "environment",
+      "check": "environment_empty_unset",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"env -u MBTX_ABSENT MBTX_EMPTY= '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "environment_empty_unset",
+      "expected_exits": [
+        0
+      ],
+      "id": "environment_empty_unset",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "env -u MBTX_ABSENT MBTX_EMPTY= '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "environment",
+      "check": "environment",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "environment",
+      "expected_exits": [
+        0
+      ],
+      "id": "environment_path_login",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "output",
+      "check": "output-large",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' output-large\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "output-large",
+      "expected_exits": [
+        0
+      ],
+      "id": "output_split_large",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' output-large",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "output",
+      "check": "output-interleaved",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' output-interleaved\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "output-interleaved",
+      "expected_exits": [
+        0
+      ],
+      "id": "output_interleaved",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' output-interleaved",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "output",
+      "check": "output-tail",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' output-tail\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":1000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "output-tail",
+      "expected_exits": [
+        0
+      ],
+      "id": "output_truncation_tail",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' output-tail",
+            "max_output_tokens": 1000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "errors",
+      "check": "exit",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' exit 7\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "exit",
+      "expected_exits": [
+        7
+      ],
+      "id": "exit_nonzero",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' exit 7",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "errors",
+      "check": "exec_errors",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"./absent-program\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.exec_command({\"cmd\":\"./not-executable\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "none",
+      "control_mode": "exec_errors",
+      "expected_exits": [
+        127,
+        126
+      ],
+      "id": "exec_missing_permission",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "./absent-program",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "./not-executable",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "errors",
+      "check": "exit_signal",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' exit 143\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' self-term\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "none",
+      "control_mode": "exit_signal",
+      "expected_exits": [
+        143,
+        143
+      ],
+      "id": "exit_code_vs_signal",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' exit 143",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' self-term",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "background",
+      "check": "session",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' session\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\",\"yield_time_ms\":10000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "none",
+      "control_mode": "session",
+      "expected_exits": [
+        0
+      ],
+      "id": "session_poll",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' session",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 10000
+          },
+          "tool": "write_stdin"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "background",
+      "check": "descendants",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' descendants\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "none",
+      "control_mode": "descendants",
+      "expected_exits": [
+        130
+      ],
+      "id": "descendant_cancel",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' descendants",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "background",
+      "check": "pipe-tail",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' pipe-tail\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+      "control": "none",
+      "control_mode": "pipe-tail",
+      "expected_exits": [
+        0
+      ],
+      "id": "descendant_pipe_tail",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' pipe-tail",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "cancellation",
+      "check": "interrupt",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":true,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "none",
+      "control_mode": "interrupt",
+      "expected_exits": [
+        130
+      ],
+      "id": "cancel_ctrl_c",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": true,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "cancellation",
+      "check": "term",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' term\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\",\"yield_time_ms\":10000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "term",
+      "control_mode": "term",
+      "expected_exits": [
+        143
+      ],
+      "id": "cancel_sigterm",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' term",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 10000
+          },
+          "tool": "write_stdin"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "cancellation",
+      "check": "ignore-term",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' ignore-term\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\",\"yield_time_ms\":10000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "term-kill",
+      "control_mode": "ignore-term",
+      "expected_exits": [
+        137
+      ],
+      "id": "cancel_sigkill",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' ignore-term",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 10000
+          },
+          "tool": "write_stdin"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "recovery",
+      "check": "sequence",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\nconst r2 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r2);\nif (r2.session_id != null) sessionId = r2.session_id;\nconst r3 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r3);\nif (r3.session_id != null) sessionId = r3.session_id;\nconst r4 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r4);\nif (r4.session_id != null) sessionId = r4.session_id;\nconst r5 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r5);\nif (r5.session_id != null) sessionId = r5.session_id;\nconst r6 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r6);\nif (r6.session_id != null) sessionId = r6.session_id;\nconst r7 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r7);\nif (r7.session_id != null) sessionId = r7.session_id;\nconst r8 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r8);\nif (r8.session_id != null) sessionId = r8.session_id;\nconst r9 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r9);\nif (r9.session_id != null) sessionId = r9.session_id;\n",
+      "control": "none",
+      "control_mode": "sequence",
+      "expected_exits": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "id": "session_sequence",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "recovery",
+      "check": "recovery",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' exit 7\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n",
+      "control": "none",
+      "control_mode": "recovery",
+      "expected_exits": [
+        7,
+        0
+      ],
+      "id": "session_failure_recovery",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' exit 7",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    },
+    {
+      "category": "recovery",
+      "check": "resources",
+      "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\nconst r2 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r2);\nif (r2.session_id != null) sessionId = r2.session_id;\nconst r3 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r3);\nif (r3.session_id != null) sessionId = r3.session_id;\nconst r4 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r4);\nif (r4.session_id != null) sessionId = r4.session_id;\nconst r5 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r5);\nif (r5.session_id != null) sessionId = r5.session_id;\nconst r6 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r6);\nif (r6.session_id != null) sessionId = r6.session_id;\nconst r7 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r7);\nif (r7.session_id != null) sessionId = r7.session_id;\nconst r8 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r8);\nif (r8.session_id != null) sessionId = r8.session_id;\nconst r9 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r9);\nif (r9.session_id != null) sessionId = r9.session_id;\nconst r10 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r10);\nif (r10.session_id != null) sessionId = r10.session_id;\nconst r11 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r11);\nif (r11.session_id != null) sessionId = r11.session_id;\nconst r12 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r12);\nif (r12.session_id != null) sessionId = r12.session_id;\nconst r13 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r13);\nif (r13.session_id != null) sessionId = r13.session_id;\nconst r14 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r14);\nif (r14.session_id != null) sessionId = r14.session_id;\nconst r15 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt\",\"tty\":false,\"yield_time_ms\":1000,\"max_output_tokens\":25000});\ntext(r15);\nif (r15.session_id != null) sessionId = r15.session_id;\nconst r16 = await tools.write_stdin({...{\"session_id\":\"$session\",\"chars\":\"\\u0003\",\"yield_time_ms\":1000,\"max_output_tokens\":25000},session_id:sessionId});\ntext(r16);\nif (r16.session_id != null) sessionId = r16.session_id;\nconst r17 = await tools.exec_command({\"cmd\":\"'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r17);\nif (r17.session_id != null) sessionId = r17.session_id;\n",
+      "control": "none",
+      "control_mode": "resources",
+      "expected_exits": [
+        130,
+        0,
+        130,
+        0,
+        130,
+        0,
+        130,
+        0,
+        130,
+        0,
+        130,
+        0
+      ],
+      "id": "session_cancel_resources",
+      "steps": [
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' interrupt",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 1000
+          },
+          "tool": "exec_command"
+        },
+        {
+          "arguments": {
+            "chars": "\u0003",
+            "max_output_tokens": 25000,
+            "session_id": "$session",
+            "yield_time_ms": 1000
+          },
+          "tool": "write_stdin"
+        },
+        {
+          "arguments": {
+            "cmd": "'/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' small",
+            "max_output_tokens": 25000,
+            "tty": false,
+            "yield_time_ms": 10000
+          },
+          "tool": "exec_command"
+        }
+      ],
+      "timeout_ms": 300000
+    }
+  ],
+  "timeout_ms": 300000,
+  "tool_mode": "code",
+  "upstream": "fixed-responses"
+}

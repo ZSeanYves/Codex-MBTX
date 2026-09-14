@@ -1,0 +1,23 @@
+{
+  "category": "environment",
+  "check": "environment_empty_unset",
+  "code_mode_program": "let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"env -u MBTX_ABSENT MBTX_EMPTY= '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\n",
+  "control": "none",
+  "control_mode": "environment_empty_unset",
+  "expected_exits": [
+    0
+  ],
+  "id": "environment_empty_unset",
+  "steps": [
+    {
+      "arguments": {
+        "cmd": "env -u MBTX_ABSENT MBTX_EMPTY= '/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture' environment",
+        "max_output_tokens": 25000,
+        "tty": false,
+        "yield_time_ms": 10000
+      },
+      "tool": "exec_command"
+    }
+  ],
+  "timeout_ms": 300000
+}

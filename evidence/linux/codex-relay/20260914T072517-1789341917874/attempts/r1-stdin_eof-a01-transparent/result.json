@@ -1,0 +1,32 @@
+{
+  "actual_exits": [],
+  "artifact_dir": "attempts/r1-stdin_eof-a01-transparent",
+  "attempt_id": "r1-stdin_eof-a01-transparent",
+  "backend": "transparent",
+  "begin_ns": 36979787937931,
+  "behavior_match": null,
+  "boundary_notes": [],
+  "category": "stdin",
+  "codex_reported_usage": null,
+  "confidence": "observed",
+  "elapsed_ms": 127229.995902,
+  "end_ns": 37107017933833,
+  "exit_code": 1,
+  "expected_exits": [
+    0
+  ],
+  "experiment_id": "codex-relay-3a46cc3a1a5bb7bcaff11a1507ba6c80591c4c3f86766605b11d83cdb7359d60",
+  "failure_class": "external_or_harness_failure",
+  "pair_id": "r1-stdin_eof-a01",
+  "platform": "linux",
+  "round": 1,
+  "sample_phase": "formal",
+  "shell_modes": [],
+  "signal": null,
+  "status": "relay_error",
+  "strict_comparable": false,
+  "task_id": "stdin_eof",
+  "tool_mode": "code",
+  "trajectory_match": false,
+  "usage": null
+}

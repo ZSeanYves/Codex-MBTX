@@ -1,0 +1,9 @@
+event: response.created
+data: {"response":{"id":"replay-506"},"type":"response.created"}
+
+event: response.output_item.done
+data: {"item":{"content":[{"text":"DONE","type":"output_text"}],"id":"done-506","role":"assistant","type":"message"},"type":"response.output_item.done"}
+
+event: response.completed
+data: {"response":{"id":"replay-506"},"type":"response.completed"}
+

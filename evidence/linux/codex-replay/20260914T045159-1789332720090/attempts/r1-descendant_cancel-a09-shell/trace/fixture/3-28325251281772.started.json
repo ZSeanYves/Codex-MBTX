@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "grandchild"
+  ],
+  "attempt_id": "r1-descendant_cancel-a09-shell",
+  "backend": "shell",
+  "call_id": "exec-e64220e2-5fee-4443-ba26-6e4c44d69d29",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-descendant_cancel-a09-shell/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "grandchild",
+  "pair_id": "r1-descendant_cancel-a09",
+  "pgid": 1,
+  "pid": 3,
+  "pid_namespace": "pid:[4026533065]",
+  "ppid": 2,
+  "process_instance": "3-28325251281772",
+  "process_start_ticks": 2832525,
+  "ready_ns": 28325251281772,
+  "stdin_tty": false,
+  "task_id": "descendant_cancel"
+}

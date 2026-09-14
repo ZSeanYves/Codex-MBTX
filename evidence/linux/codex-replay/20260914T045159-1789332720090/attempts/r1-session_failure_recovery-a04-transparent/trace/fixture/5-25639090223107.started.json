@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "small"
+  ],
+  "attempt_id": "r1-session_failure_recovery-a04-transparent",
+  "backend": "transparent",
+  "call_id": "exec-2c81b7e3-4e65-48f2-a4a8-7df1202fd93c",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-session_failure_recovery-a04-transparent/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "small",
+  "pair_id": "r1-session_failure_recovery-a04",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026532999]",
+  "ppid": 2,
+  "process_instance": "5-25639090223107",
+  "process_start_ticks": 2563908,
+  "ready_ns": 25639090223107,
+  "stdin_tty": false,
+  "task_id": "session_failure_recovery"
+}

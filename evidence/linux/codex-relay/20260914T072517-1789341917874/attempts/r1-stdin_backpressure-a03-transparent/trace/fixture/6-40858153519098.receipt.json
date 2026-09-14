@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "emit-input"
+  ],
+  "attempt_id": "r1-stdin_backpressure-a03-transparent",
+  "backend": "transparent",
+  "call_id": "exec-388ed931-9e21-45f4-ba30-3edf75c316fb",
+  "completed_ns": 40858193445375,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-relay/20260914T072517-1789341917874/attempts/r1-stdin_backpressure-a03-transparent/workspace",
+  "exit_code_requested": 0,
+  "experiment_id": "codex-relay-3a46cc3a1a5bb7bcaff11a1507ba6c80591c4c3f86766605b11d83cdb7359d60",
+  "mode": "emit-input",
+  "pair_id": "r1-stdin_backpressure-a03",
+  "pgid": 1,
+  "pid": 6,
+  "pid_namespace": "pid:[4026533130]",
+  "ppid": 5,
+  "process_instance": "6-40858153519098",
+  "process_start_ticks": 4085815,
+  "ready_ns": 40858153519098,
+  "stdin_tty": false,
+  "task_id": "stdin_backpressure"
+}

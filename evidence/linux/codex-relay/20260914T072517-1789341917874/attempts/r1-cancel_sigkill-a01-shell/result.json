@@ -1,0 +1,197 @@
+{
+  "actual_exits": [
+    137
+  ],
+  "artifact_dir": "attempts/r1-cancel_sigkill-a01-shell",
+  "attempt_id": "r1-cancel_sigkill-a01-shell",
+  "backend": "shell",
+  "begin_ns": 36801025543098,
+  "behavior_match": true,
+  "boundary_notes": [],
+  "category": "cancellation",
+  "codex_reported_usage": null,
+  "confidence": "observed",
+  "elapsed_ms": 150327.816634,
+  "end_ns": 36951353359732,
+  "exit_code": 1,
+  "expected_exits": [
+    137
+  ],
+  "experiment_id": "codex-relay-3a46cc3a1a5bb7bcaff11a1507ba6c80591c4c3f86766605b11d83cdb7359d60",
+  "failure_class": "external_or_harness_failure",
+  "pair_id": "r1-cancel_sigkill-a01",
+  "platform": "linux",
+  "round": 1,
+  "sample_phase": "formal",
+  "shell_modes": [
+    "Direct"
+  ],
+  "signal": null,
+  "status": "relay_error",
+  "strict_comparable": false,
+  "task_id": "cancel_sigkill",
+  "tool_mode": "code",
+  "trajectory_match": true,
+  "usage": {
+    "complete": false,
+    "requests": [
+      {
+        "request_id": 172,
+        "response_id": "resp_05034646a4319f6f016aa742401f5487d0862a71a8fb20c1f3",
+        "usage": {
+          "attribution": {
+            "items": {
+              "at_59e9627f-f773-500f-b72c-6d77c542faff": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 3333,
+                "input_tokens": 3333,
+                "output_tokens": 0
+              },
+              "ctc_05034646a4319f6f016aa74243cdcc87d0a1176378ff8d5adb": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 189
+              },
+              "msg_01a09d5a-9024-7d93-8738-94581911662c": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 604,
+                    "output_tokens": 0
+                  },
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 143,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 747,
+                "output_tokens": 0
+              },
+              "msg_01a09d5a-9024-7d93-8738-946b31f56f9d": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 502,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 502,
+                "output_tokens": 0
+              },
+              "msg_01a09d5a-9024-7d93-8738-9476a3de481b": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 56,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 56,
+                "output_tokens": 0
+              },
+              "msg_01a09d5a-9024-7d93-8738-94844f6e6bbb": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 585,
+                    "output_tokens": 0
+                  },
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 475,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 1060,
+                "output_tokens": 0
+              },
+              "msg_01a09d5a-902a-76c1-82fa-3167b4a1aa5e": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 229,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 229,
+                "output_tokens": 0
+              },
+              "msg_05034646a4319f6f016aa74243245887d0aaf655d38050a501": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 15
+                  }
+                ],
+                "input_tokens": 0,
+                "output_tokens": 15
+              },
+              "msg_9835a558-65cb-555b-a532-c67d043a765e": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 3295,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 3295,
+                    "input_tokens": 3556,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 3556,
+                "output_tokens": 0
+              },
+              "rs_05034646a4319f6f016aa74240c7e487d0b97503f42614e3c2": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 2,
+                "output_tokens": 81
+              }
+            },
+            "request_fields": {
+              "instructions": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 4380,
+                "input_tokens": 4380,
+                "output_tokens": 0
+              }
+            }
+          },
+          "input_tokens": 13865,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 11008
+          },
+          "output_tokens": 285,
+          "output_tokens_details": {
+            "reasoning_tokens": 81
+          },
+          "total_tokens": 14150
+        }
+      }
+    ],
+    "source": "responses_proxy"
+  }
+}

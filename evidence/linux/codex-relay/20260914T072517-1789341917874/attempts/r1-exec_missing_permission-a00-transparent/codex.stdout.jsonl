@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a09d3c-3681-7ab1-922a-b60e045ba4d9"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc ./absent-program","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"/bin/bash -lc ./absent-program","aggregated_output":"/bin/bash: line 1: ./absent-program: No such file or directory\n","exit_code":127,"status":"failed"}}
+{"type":"error","message":"unexpected status 502 Bad Gateway: Upstream service temporarily unavailable, url: http://127.0.0.1:38039/v1/responses, request id: 979bcde1-7494-40aa-8276-4016189ad33c"}
+{"type":"turn.failed","error":{"message":"unexpected status 502 Bad Gateway: Upstream service temporarily unavailable, url: http://127.0.0.1:38039/v1/responses, request id: 979bcde1-7494-40aa-8276-4016189ad33c"}}

@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "small"
+  ],
+  "attempt_id": "r1-session_sequence-a00-transparent",
+  "backend": "transparent",
+  "call_id": "exec-d3bac00e-6701-482e-a1af-3f3a14d25750",
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-session_sequence-a00-transparent/workspace",
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "mode": "small",
+  "pair_id": "r1-session_sequence-a00",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533002]",
+  "ppid": 2,
+  "process_instance": "5-23628851129494",
+  "process_start_ticks": 2362884,
+  "ready_ns": 23628851129494,
+  "stdin_tty": false,
+  "task_id": "session_sequence"
+}

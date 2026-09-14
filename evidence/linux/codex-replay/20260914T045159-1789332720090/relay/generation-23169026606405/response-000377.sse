@@ -1,0 +1,9 @@
+event: response.created
+data: {"response":{"id":"replay-377"},"type":"response.created"}
+
+event: response.output_item.done
+data: {"item":{"call_id":"call-377","input":"let sessionId;\nconst r0 = await tools.exec_command({\"cmd\":\"./absent-program\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r0);\nif (r0.session_id != null) sessionId = r0.session_id;\nconst r1 = await tools.exec_command({\"cmd\":\"./not-executable\",\"tty\":false,\"yield_time_ms\":10000,\"max_output_tokens\":25000});\ntext(r1);\nif (r1.session_id != null) sessionId = r1.session_id;\n","name":"exec","type":"custom_tool_call"},"type":"response.output_item.done"}
+
+event: response.completed
+data: {"response":{"id":"replay-377"},"type":"response.completed"}
+

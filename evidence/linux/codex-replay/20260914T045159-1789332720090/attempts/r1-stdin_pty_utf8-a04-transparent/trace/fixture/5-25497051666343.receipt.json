@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "/home/zseanyves/Moonbit/Codex-MBTX/_build/bundles/a2847d02e4a48330364bc7d468f5eb9cfe9fd965dcddd65889254af950abddd2/mbtx-fixture",
+    "stdin"
+  ],
+  "attempt_id": "r1-stdin_pty_utf8-a04-transparent",
+  "backend": "transparent",
+  "call_id": "exec-6a768b2b-c5c7-4681-9f02-0f5553e12a54",
+  "completed_ns": 25500390933224,
+  "cwd": "/home/zseanyves/Moonbit/Codex-MBTX/evidence/linux/codex-replay/20260914T045159-1789332720090/attempts/r1-stdin_pty_utf8-a04-transparent/workspace",
+  "exit_code_requested": 0,
+  "experiment_id": "codex-replay-414f1eab4509781d799d5dfcbd4178b80540d38fa54f70a07f15154b6d55f295",
+  "input_bytes": 23,
+  "input_sha256": "01c602f989f371910643435e44601b20c243a271cd17ae2323b97d83b70bfa53",
+  "input_utf8": "第一行\n最后一行\n",
+  "mode": "stdin",
+  "pair_id": "r1-stdin_pty_utf8-a04",
+  "pgid": 1,
+  "pid": 5,
+  "pid_namespace": "pid:[4026533000]",
+  "ppid": 2,
+  "process_instance": "5-25497051666343",
+  "process_start_ticks": 2549704,
+  "ready_ns": 25497051666343,
+  "stdin_tty": true,
+  "task_id": "stdin_pty_utf8"
+}
