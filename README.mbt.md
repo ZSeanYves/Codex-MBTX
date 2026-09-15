@@ -6,6 +6,13 @@ the resolved child, forwards cancellation, waits for its exit, and preserves its
 observable exit status. It is neither a shell language parser nor a script runtime.
 The default Codex backend remains Shell.
 
+This repository remains available for launcher optimization measurements,
+including local OTel diagnostics, process and shutdown traces, and Linux/macOS
+collection. Programmable MBTX tool development and agent-step research will take
+place in the [Codex fork](https://github.com/ZSeanYves/codex-mbtx-runtime).
+The [research handoff](docs/plans/programmable-mbtx-research.md) records the
+responsibilities and proposed work for that fork.
+
 ## Build and Check
 
 Install the latest MoonBit CLI and stable Rust, then:
