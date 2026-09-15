@@ -3,11 +3,20 @@
 **Status:** Proposed. This document defines the next implementation cycle. It
 does not change the runtime, the evaluator, or the current report conclusions.
 
-**Baseline preserved:** the current `main` state is preserved at
-`archive/pre-openseek-step-refactor-2026-09-15` and was pushed before this plan
-was written. The baseline contains the transparent launcher, the current
+**Baseline preserved:** the pre-plan `main` state is preserved at
+[`archive/pre-openseek-step-refactor-2026-09-15`](https://github.com/ZSeanYves/Codex-MBTX/tree/archive/pre-openseek-step-refactor-2026-09-15),
+commit `3527b02a4bc35df8017ac8d1f3b296d9fcdc1d2c`. The branch was pushed before
+this plan was written. The baseline contains the transparent launcher, the current
 evaluation harness, the pinned Codex revision, and the existing evidence
-layout. It remains a read-only reference for migration and regression review.
+layout. It is treated as a frozen reference for migration and regression review;
+this is a project convention, not a claim that branch protection was configured.
+This cycle creates the historical branch and this document only. Fork creation,
+source migration, dashboard deployment, and new collection are future work.
+
+The initial migration baseline remains upstream
+`3d2ee51ca2d5db578f328aa75e20aa22c0197c9a` (`rust-v0.153.4`), as recorded in
+[`codex/upstream.json`](../../codex/upstream.json). Updating upstream and changing
+the execution interface are separate changes so regressions can be attributed.
 
 ## 1. Decision to make explicit
 
@@ -37,43 +46,82 @@ passed the migration gates.
 
 ### 2.1 Canonical repository
 
-Create a GitHub fork of `openai/codex` under the project owner's account. The
+Create a GitHub fork of `openai/codex` under `ZSeanYves`. The
 fork is the user-facing product repository and must be cloneable and buildable
 without this repository, a patch file, or a generated overlay. Add the upstream
 repository as a read-only `upstream` remote and retain the fork as `origin`.
 
-The exact fork name and owner are an administrative decision. The migration must
-record both URLs and the upstream commit used for each release. GitHub forks are
-separate repositories with their own branches, permissions, actions, and issue
-space while retaining an upstream relationship; this is the collaboration model
-the mentor is asking for.
+Use `codex-mbtx-runtime` as the provisional new repository name, subject to
+availability at implementation time. Keep the existing `Codex-MBTX` repository
+and its branches intact as the evidence and migration reference. Adding an
+`upstream` remote or copying upstream files into this repository does not itself
+establish a GitHub fork relationship. Record the parent/source repository
+metadata and verify it after creation. A later public-name change is optional
+and is outside this migration's default path.
+
+The fork starts from the pinned upstream commit on an integration branch. It
+retains upstream ancestry and receives reviewed, ordinary source commits; do not
+replace the existing repository's `main` with unrelated history or rewrite the
+historical branch. The fork's default branch becomes the integrated product only
+after the clean-clone and compatibility gates pass.
 
 ### 2.2 Source layout in the fork
 
-The fork should keep upstream Codex's normal Rust workspace layout. MBTX runtime
-code should be integrated through an ordinary, reviewable source path, for
-example:
+Keep upstream Codex's normal Rust workspace and preserve the existing MoonBit
+launcher implementation. A direct source fork does not require rewriting MBTX in
+Rust. The proposed layout is:
 
 ```text
 codex-rs/
   ... upstream crates ...
-  mbtx-launcher/       # native launcher crate or supported binary boundary
-  mbtx-integration/    # Codex configuration and process-boundary integration
-evaluation/            # optional offline evaluator and scenario definitions
+  core/               # configuration and final process-boundary integration
+mbtx/
+  launcher/           # existing MoonBit launcher package
+  cmd/                # MoonBit launcher and evaluation-worker entry points
+  evaluation/         # MoonBit scenarios, oracles, counters, statistics
+  adapter/            # Rust OS/HTTP collector and report/export adapter
+scripts/mbtx/          # thin .mbtx build, install, replay, and report commands
 docs/mbtx/             # user and developer documentation
 ```
 
 The final layout is subject to the upstream workspace conventions. The key
-property is that a fresh clone can build Codex and the transparent backend using
-normal Cargo commands. `integration.patch`, `overlay/`, and preparation scripts
-that synthesize a private upstream checkout are removed from the product path.
+property is that one fresh clone contains all required source. Cargo builds
+Codex; MoonBit builds MBTX. One documented `.mbtx` build entry orchestrates these
+normal build targets once and emits a manifest with both binary hashes. It must
+not imply that Cargo alone compiles MoonBit. Remove `integration.patch`,
+`overlay/`, and preparation scripts that synthesize a private upstream checkout
+from the product path.
 They may remain in the historical branch only as evidence of the old workflow.
 
-The evaluation harness may stay as a separate companion repository if upstream
-policy or release size makes that preferable. If it remains in the fork, it must
-be an optional evaluation target and must not be required to run Codex.
+Ship the evaluator as an optional directory in the fork by default, so code and
+protocol versions are reproducible together. Large historical evidence remains
+in the existing repository and is referenced by commit/path/hash. Running Codex
+must not require building the evaluator or downloading historical runs.
 
-### 2.3 Upstream synchronization
+Source builds require the recorded Rust and MoonBit toolchains. Release bundles
+for supported Linux/macOS targets contain the matching Codex and launcher
+binaries; transparent-mode users do not compile them during execution. The
+programmable interface has a separate compiler/runtime requirement documented
+with its build-cache contract.
+
+### 2.3 Migration inventory
+
+| Current path | Treatment in the fork |
+|---|---|
+| `launcher/`, `cmd/mbtx/` | Port the existing MoonBit implementation and contracts |
+| `codex/integration.patch` | Port each necessary change to its actual upstream source file; review shared fixes separately |
+| `codex/overlay/` | Move required modules to normal source locations; delete copy/apply logic |
+| `evaluation/`, `cmd/evaluation-model/` | Reuse scenario, oracle, classification and statistics packages; add step schema |
+| `adapter/` | Reuse process, proxy, evidence, replay, and OTLP work; add only missing joins and exports |
+| `scripts/` | Keep thin functional `.mbtx` entries; replace checkout preparation with direct build targets |
+| `codex/Cargo.lock` | Reconcile the existing dependency fixes into the fork's normal lock file once |
+| `evidence/`, `docs/reports/` | Preserve originals; link frozen evidence without relabeling it as new-interface results |
+
+Do not revive retired standalone runners or jobs/session/protocol APIs. The new
+program tool is a separately specified Codex integration that reuses supported
+MoonBit tooling and Codex lifecycle handling.
+
+### 2.4 Upstream synchronization
 
 Every fork release records:
 
@@ -129,7 +177,9 @@ shared fix cannot be reported as an MBTX benefit.
 Adopt the OpenSeek meaning of `agent_step`: **one logical provider round in the
 agent loop**, from the request for a model response through the response that
 ends that round. A response may contain zero, one, or many tool calls. The next
-model response starts the next step. A checkpoint replay is not a new step.
+logical model request starts the next step. Reading already persisted checkpoint
+events does not create steps; a new run against a fixed Responses replay has
+real loop iterations and counts them normally.
 
 This definition is supported by OpenSeek's implementation, which describes one
 provider round per step and counts persisted non-replay assistant responses. Its
@@ -144,10 +194,11 @@ non-interchangeable counters:
 
 | Counter | Meaning |
 |---|---|
-| `agent_steps` | Logical provider rounds, excluding replay copies |
+| `agent_steps` | Completed logical provider rounds, excluding persisted replay copies |
+| `agent_steps_started` | Logical rounds entered, including interrupted or failed rounds |
 | `model_requests` | Requests sent to the provider, including a retry field |
 | `tool_calls` | Model-requested calls, deduplicated by call ID |
-| `tool_executions` | Actual execution instances, including nested child programs |
+| `tool_executions` | Actual tool invocations at observed dispatch boundaries |
 | `process_spawns` | OS process starts observed by the common observer |
 | `tool_errors` | Tool results classified as errors |
 | `repair_steps` | Later model steps whose purpose is recovery from a prior failure |
@@ -167,6 +218,12 @@ tool call, tool result, process execution, retry, and repair marker carries the
 step ID plus `experiment_id`, `pair_id`, `attempt_id`, `task_id`, `backend`, and
 `parent_id`.
 
+First audit existing upstream IDs and reuse a logical-round ID if one has the
+required lifecycle. Add `agent_step_id` only where the current native interface
+does not expose that boundary. In the pinned code, CLI `turn.started` and
+`turn.completed` describe a user turn, not each provider round. One turn may
+contain several steps; neither event is a step counter by itself.
+
 The native `codex exec --json` stream remains the durable primary source for
 thread, turn, item, command, and terminal events. Native Codex OTel events remain
 the diagnostic source for API requests, stream events, tool decisions, and tool
@@ -177,6 +234,36 @@ Missing IDs, incomplete streams, or a request whose step boundary cannot be
 proved are `unknown`, not zero. Retry attempts retain their own request sequence
 under the same logical step. Internal model reasoning that the provider does not
 expose is not estimated from tokens or log-line counts.
+
+### 4.4 Counting and attribution rules
+
+- Allocate a step ID before the logical request; count `agent_steps` when a
+  complete response is accepted. Retain `agent_steps_started` and the terminal
+  status for failed or interrupted rounds. Report known partial counts and
+  completeness separately rather than imputing a complete task total.
+- One response with three tool calls followed by a final response is two
+  completed steps and three tool calls. HTTP chunks, commentary items, and
+  output polls do not each become a step.
+- A failed transport attempt followed by a successful retry within one round is
+  one completed step, two model requests, and one transport retry. A terminal
+  429 before any response is zero completed steps, one started round, and a
+  failed task; it is never scored as efficient completion.
+- An explicit tool execution is different from a function call inside a program
+  or an OS spawn. Nested executions are counted only when an actual invocation
+  boundary is observed; arbitrary MoonBit statements are not tool executions.
+- `process_spawns` is an observed count with a coverage field. In-process file
+  operations and unobserved descendants cannot be inferred from it.
+- An extra round following an error is observable. Calling it a `repair_step`
+  requires an explicit recovery cause or a reviewed attribution rule. Ambiguous
+  recovery stays `inferred` or `unknown`; keyword matching is insufficient.
+- Compaction, review, and auxiliary model requests carry a request purpose and
+  are counted separately. Freeze their configuration and include them in request
+  and token totals. Internal provider reasoning and CPU instruction counts are
+  outside this metric.
+
+These rules measure visible agent interaction structure. Fewer steps alone do
+not establish less model computation, fewer CPU instructions, lower monetary
+cost, or faster execution.
 
 ## 5. Experimental cohorts
 
@@ -196,7 +283,7 @@ are used only in replay or calibrated runs.
 
 ### 5.2 Programmable execution cohort
 
-This cohort addresses the mentor's step question. Compare:
+This cohort addresses the step-efficiency question. Compare:
 
 - a shell-oriented execution interface that can submit a complete script;
 - a MoonBit/MBTX program interface that can perform equivalent file, parsing,
@@ -217,6 +304,91 @@ because it stopped early is not an efficiency win.
 Fixed replay remains necessary for causal backend diagnosis. It supplies equal
 model trajectories and isolates execution effects; it cannot establish that one
 interface causes an agent to choose a shorter trajectory in open-ended work.
+
+### 5.3 Task and control matrix
+
+Retain the existing 24 low-level scenarios as compatibility regressions. Add a
+separate set of 24 goal-oriented tasks, three per family, for step measurement:
+
+| Task family | Three proposed cases | Acceptance evidence |
+|---|---|---|
+| Repository inspection | Locate a declaration; join configuration references; summarize dependency relationships | Exact paths and structured facts checked against a frozen fixture |
+| Structured data | Filter JSON; aggregate JSONL; join two datasets | Canonical structured result and expected error handling |
+| File transformation | Update one file; apply a rule across files; make a repeated transformation idempotent | Content hashes and allowed-change manifest |
+| Command orchestration | Run dependent commands; branch on exit status; collect several independent command results | Receipts, exit codes, and expected artifacts |
+| Diagnostics | Locate a failing test; identify a configuration mismatch; explain a controlled error | Fault identity and bounded diagnostic output |
+| Repair | Fix a small syntax error; correct a data conversion; repair a failing test | External acceptance tests and edit-scope oracle |
+| Output handling | Summarize large streams; preserve Unicode records; extract data from mixed diagnostic output | Exact records, completeness and truncation checks |
+| Session recovery | Poll a background task; cancel and continue; recover after a failed execution | Session trajectory, final result and controlled-process cleanup |
+
+Use neutral goal prompts and equally detailed interface documentation. Freeze
+the common system instructions, model identifier, reasoning settings, context
+budget, output caps, compiler versions and dependencies. Store both tool schemas;
+their difference is the intended treatment and must not be hidden as an input
+equality check. Shell may use installed utilities and complete scripts. Both
+arms have equivalent task capabilities, file permissions and acceptance tests.
+If equivalent permissions cannot be implemented, report that scenario as an
+interface-plus-policy comparison, not a launcher effect.
+
+Disable optional delegation and Code Mode for the initial programmable cohort.
+If Code Mode is studied later, enable the same mode in both arms and report it
+as a separate stratum. Record successful compilation, compile errors and cache
+hits in the program arm; one program containing many operations remains one
+model tool call, while its internal operations remain observable separately.
+
+### 5.4 Sample design and analysis
+
+The proposed pilot is six representative tasks with two pairs each (12 pairs).
+Its purpose is to check task difficulty, counting completeness and request cost;
+it is stored separately from formal results. A proposed first formal dataset is
+24 tasks with four pairs each (96 attempted pairs), split into two balanced
+rounds. This replaces reuse of the old 192-pair latency schedule for the new
+question; it does not alter that schedule or its historical results.
+
+Before collecting formal data, freeze task IDs, a seed for task order, AB/BA
+allocation, sample count, a 12-step limit per arm, tool/context budgets and the
+timeout in a versioned manifest. If the pilot shows the budget is unsuitable,
+revise the protocol before formal collection and record the decision without
+selecting tasks for favorable MBTX outcomes. Ninety-six pairs is an initial
+coverage budget, not a claim of statistical power for every task.
+
+For this goal-oriented experiment, collect a fixed number of attempts rather
+than filling a quota of successful pairs. Retain all failures and use an
+intention-to-treat curve of oracle-verified success by step budget. Report the
+success-rate difference alongside paired step differences among pairs where
+both arms succeeded. The latter is a conditional analysis and cannot conceal
+one arm's larger failure rate. Relay failures and censored attempts receive
+their own breakdown; they are neither zero-step successes nor backend faults.
+
+Use a fixed seed for 95% bootstrap intervals, preserving pair identity and task
+clustering. Show per-task counts, aggregate absolute step differences and
+ratios only where denominators are valid. Report medians and distributions,
+not unsupported per-task p99 claims. Additional formal samples require a new
+predeclared tranche; do not stop early when a favorable interval appears.
+
+### 5.5 Request budget and runtime
+
+Reuse the current proxy's run-wide gate: one complete upstream stream at a time,
+with a default 15-second minimum between request starts (at most four RPM from
+this run). Probes and auxiliary requests must use the same gate. Keep Codex's
+automatic request/stream retries disabled in the collection profile; retain
+429 as a failure and apply `Retry-After`, or a 30-second fallback, to subsequent
+requests. Record pacing and cooldown separately. Another application using the
+same account is outside this gate, so this bounds collection load rather than
+guaranteeing that the relay never returns 429.
+
+Estimate pacing from requests, not pairs: approximately
+`2 * pairs * mean_requests_per_arm * interval`. For 96 pairs at 15 seconds,
+three to six requests per arm imply about 2.4 to 4.8 hours of pacing; 12 requests
+per arm imply about 9.6 hours. Tool work, slow streams and cooldown can extend
+this. Use the pilot to replace these planning examples with an observed request
+budget before a full run. Persist and resume between pairs without rewriting
+completed attempts.
+
+Preserve the current permissive infrastructure gates: at least one successful
+probe out of three; pause after five consecutive final infrastructure failures,
+at least eight infrastructure failures in the latest 16 arms, or loss of a core
+collector component. Produce a partial report with all completed evidence.
 
 ## 6. SigNoz and OpenTelemetry design
 
@@ -247,16 +419,34 @@ queueing remain one external interval and are labeled `unknown` internally.
 Trace attributes include backend, task, pair, round, step, call ID, phase,
 status, failure class, platform, execution mode, and evidence path/hash.
 
+The step span can enclose the response and its resulting tool batch; its duration
+is not itself the step counter. Preserve native trace/span IDs and use links
+when asynchronous lifetimes overlap rather than inventing a nested sequence.
+If a combined attempt trace is reconstructed offline, mark it `derived`, retain
+the original IDs and the source-event mapping, and label missing boundaries.
+
+OTLP timestamps use Unix epoch time, while the primary OS events use a monotonic
+clock. Capture a documented clock anchor and uncertainty for display conversion.
+Only aligned times may share a quantitative timeline; wall-clock adjustments,
+missing anchors, or cross-host uncertainty must remain visible. All formal
+duration arithmetic continues to use the original comparable monotonic domain.
+
 ### 6.2 Ingestion and measurement isolation
 
 The formal minimal profile must not start SigNoz, a collector, or a second
 observer in the measured process path. It writes the common OS-monotonic event
-layer only. Diagnostic runs export to a loopback OTel collector or saved OTLP
+layer and native JSONL needed for counters, under the same profile for both arms.
+Diagnostic runs export to a loopback OTel collector or saved OTLP
 files, and the files are imported into SigNoz after the run.
 
 Shell and MBTX use the same observation profile. A trace-on versus trace-off
 calibration quantifies observer perturbation; trace export time and database
 ingestion time are never included in launcher or child latency.
+
+Capture event timestamps before buffering/writing them. Record buffer overflow,
+missing events and flush time; do not silently drop rows. Equal instrumentation
+does not prove zero perturbation, so publish the calibration and its limits
+instead of describing measured time as disturbance-free.
 
 Self-hosted SigNoz may run on Linux and be viewed from macOS over a controlled
 network. Its OTLP endpoints are normally 4317 (gRPC) and 4318 (HTTP). The
@@ -275,6 +465,12 @@ The first dashboard set should provide:
 5. process tree, signal, wait/reap, and IO-drain details;
 6. links from each span to the immutable attempt evidence and its hash.
 
+Use SigNoz's existing filters, trace details and dashboards first. Validate the
+chosen version's support for pair navigation; if it cannot embed two waterfalls
+in one view, provide paired trace links or two trace panes. Do not start another
+custom trace UI to reproduce that capability. Keep offline HTML as a small
+readable report summary with raw-evidence and trace links.
+
 SigNoz visualizations are explanatory. The report generator remains the authority
 for pair selection, confidence intervals, ITT treatment, and conclusion labels.
 
@@ -282,11 +478,11 @@ for pair selection, confidence intervals, ITT treatment, and conclusion labels.
 
 ### Phase A — freeze and fork scaffold
 
-- Verify the archive branch points to the current main commit and record its hash.
+- Verify the archive branch points to the pre-plan baseline hash recorded above.
 - Create the upstream Codex fork and document remotes, ownership, and license.
 - Import the pinned upstream commit into a normal fork branch.
 - Build upstream Codex from a fresh clone before adding MBTX.
-- Decide whether evaluation code lives in the fork or a companion repository.
+- Include the optional evaluation directory and references to frozen evidence.
 
 **Gate:** a fresh upstream fork clone builds with ordinary documented commands;
 no patch or overlay is needed for the upstream baseline.
@@ -304,7 +500,7 @@ fresh user can configure the launcher without knowing the old repository layout.
 
 ### Phase C — explicit step events
 
-- Add the logical `agent_step_id` at the Codex model-loop boundary.
+- Reuse native loop IDs and add the missing logical `agent_step_id` boundary.
 - Add parent IDs and retry sequence fields to JSONL and OTel records.
 - Update the evaluator to derive step and related-counter vectors.
 - Add fixtures for one response with many tools, retries inside one step,
@@ -346,8 +542,9 @@ raw evidence can independently regenerate the same summary without SigNoz.
   stable.
 - Keep requests serial, use the existing start interval and `Retry-After`
   handling, and retain all relay/provider failures.
-- Expand only after confirming that no arm uses a different model trajectory,
-  prompt, fixture, or permission.
+- Expand after checking shared task/model/fixture/permission controls. Fixed
+  replay requires identical trajectories; the programmable cohort allows and
+  measures different trajectories under the same goal and declared treatment.
 
 **Gate:** publish a step report with ITT, successful comparable attempts,
 external-failure counts, and explicit unknowns. Do not change the default backend
@@ -361,6 +558,27 @@ based on this phase alone.
 - Document transparent and programmable cohorts as separate features.
 - Publish English Markdown, JSON, CSV, offline HTML, and SigNoz import guidance.
 - Include a short contributor guide for synchronizing with `upstream`.
+
+### CI and build acceptance
+
+Preserve one aggregate required status and separate three layers:
+
+- Fast PR checks: MoonBit/Rust checks, launcher contracts, JSONL/OTLP counter
+  fixtures, report parsing, schema and formatting checks; no relay.
+- Offline integration: build the fork, launcher and immutable fixture once;
+  run real Codex replay, policy/sandbox, signal, stream and recovery regressions.
+  Exercise missing/corrupt events, collector interruption, 429/5xx/stream faults,
+  immutable attempts, HTML escaping and null preservation.
+- Release validation: build supported Linux/macOS bundles, verify checksums and
+  fresh-clone/install/configuration instructions, and check upstream ancestry.
+  Live relay collection remains an explicit local operation.
+
+Cache keys include source, lock files, toolchains, platform, target, profile and
+fixture hash. Documentation-only changes do not rebuild Codex. A second build
+with identical inputs must reuse the bundle. Fixtures and host binaries are
+never compiled inside measurement loops. Compiling a newly model-authored
+MoonBit program is legitimate tool work in the programmable cohort and must be
+recorded; cold compilation and a verified cache hit are separate conditions.
 
 ## 8. Acceptance criteria
 
@@ -377,7 +595,8 @@ The migration is complete only when all of the following are true:
 - formal timing excludes exporter, report, and database work;
 - raw evidence alone regenerates every reported count and conclusion;
 - relay/provider errors are never classified as backend failures;
-- lower steps are reported only with equal correctness and explicit scope;
+- lower steps are reported with oracle correctness, ITT failures, conditional
+  sample selection and explicit scope;
 - no conclusion is generalized beyond the tested model, platform, toolchain,
   execution interface, and sample design.
 
@@ -389,8 +608,28 @@ truth. It will not merge SeekMoon into the project; SeekMoon remains a client
 for OpenSeek conversations, while SigNoz is the observability view for this
 evaluation.
 
-Before implementation starts, the project owner must choose the fork repository
-name, decide whether the evaluator is shipped inside the fork, and confirm that
-“programmable MBTX interface” is the intended mentor-facing comparison. Those
-choices affect repository topology but do not change the archived baseline or
-the step definition proposed here.
+The implementation defaults are the provisional fork name in Section 2 and an
+optional evaluator inside that fork. Validate name availability when creating
+the fork. Final source paths and SigNoz version are implementation decisions;
+record them in the build/export manifest. The runtime target and permission
+mapping of the programmable interface must pass the capability-parity gate
+before its online comparison begins. This document introduces no new results.
+
+## 10. Reference points
+
+- [GitHub fork model](https://docs.github.com/en/pull-requests/reference/forks):
+  repository relationship and collaboration semantics.
+- [Pinned OpenSeek loop](https://github.com/moonbitlang/openseek/blob/d818b71b1760b3f9f78cf662c662af2e716edbb1/agent/turn_loop.mbt):
+  provider-round step semantics; the new metric uses this as its reference.
+- [Pinned OpenSeek MBTX tool](https://github.com/moonbitlang/openseek/blob/d818b71b1760b3f9f78cf662c662af2e716edbb1/agent_tool/mbtx/README.mbt.md):
+  programmable execution and explicit build/run phases. Its implementation and
+  policy are reference material, not assumed to be present in this launcher.
+- [Pinned Codex JSONL events](https://github.com/openai/codex/blob/3d2ee51ca2d5db578f328aa75e20aa22c0197c9a/codex-rs/exec/src/exec_events.rs)
+  and [native telemetry](https://github.com/openai/codex/blob/3d2ee51ca2d5db578f328aa75e20aa22c0197c9a/codex-rs/otel/src/events/session_telemetry.rs):
+  the upstream surfaces to extend only where necessary.
+- [SigNoz Trace Explorer](https://signoz.io/docs/userguide/traces/) and
+  [trace details](https://signoz.io/docs/userguide/span-details/): native analysis
+  views to validate before designing extra presentation code.
+- [Current architecture](../architecture.md), [evaluation protocol](../evaluation.md)
+  and [verification record](../code-validation.md): existing contracts and the
+  distinction between code validation and newly collected evidence.
