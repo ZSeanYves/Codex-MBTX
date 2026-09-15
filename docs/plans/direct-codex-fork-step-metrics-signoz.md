@@ -3,8 +3,8 @@
 **Status:** Proposed. This document defines the next implementation cycle. It
 does not change the runtime, the evaluator, or the current report conclusions.
 
-**Baseline preserved:** the pre-plan `main` state is preserved at
-[`archive/pre-openseek-step-refactor-2026-09-15`](https://github.com/ZSeanYves/Codex-MBTX/tree/archive/pre-openseek-step-refactor-2026-09-15),
+**Baseline preserved:** the pre-migration `main` state is preserved at
+[`archive/historical-research-version`](https://github.com/ZSeanYves/Codex-MBTX/tree/archive/historical-research-version),
 commit `3527b02a4bc35df8017ac8d1f3b296d9fcdc1d2c`. The branch was pushed before
 this plan was written. The baseline contains the transparent launcher, the current
 evaluation harness, the pinned Codex revision, and the existing evidence
@@ -20,27 +20,25 @@ the execution interface are separate changes so regressions can be attributed.
 
 ## 1. Decision to make explicit
 
-The project has two related but different research questions:
+The new fork has one research question:
 
-1. Can MBTX transparently replace the final local process-launch boundary used
-   by Codex while preserving command, policy, approval, sandbox, stream, exit,
-   and cancellation semantics?
-2. Can a programmable MoonBit execution interface allow an agent to complete
-   the same accepted task in fewer agent steps, tool calls, retries, or process
-   operations than a shell-oriented interface?
+> Under the same task goal, model, permissions and correctness oracle, can a
+> programmable MoonBit/MBTX execution interface complete work in fewer logical
+> provider rounds than a shell-oriented execution interface?
 
-The current transparent launcher answers the first question. It does not turn a
-shell script into a MoonBit program and therefore cannot be expected to reduce
-the model trajectory in a fixed replay. The second question requires a separate
-programmable-execution cohort. Results from the two cohorts must never be
-combined into a single speed or step claim.
+The transparent Shell-versus-MBTX launcher experiment is archived historical
+research. It remains available on the archived branch and is not a new cohort, a
+control arm, or a result to be recomputed by this plan. The new work measures
+agent-visible execution structure: steps, tool calls, process operations,
+retries and successful completion. It does not claim a launcher latency benefit
+or silently combine the old compatibility results with the new step results.
 
 The proposed implementation will use a direct fork of upstream Codex as the
-distribution and runtime repository. MBTX integration will live in Codex source
-and normal build targets, rather than being reconstructed by applying a local
-patch and overlay at collection time. The existing Codex-MBTX repository will
-remain the evaluation and historical evidence reference until the fork has
-passed the migration gates.
+distribution and runtime repository. The MBTX program interface will live in
+Codex source and normal build targets, rather than being reconstructed by
+applying a local patch and overlay at collection time. The existing Codex-MBTX
+repository remains the evaluation and historical evidence reference until the
+fork has passed its migration gates.
 
 ## 2. Repository and distribution architecture
 
@@ -63,21 +61,24 @@ The fork starts from the pinned upstream commit on an integration branch. It
 retains upstream ancestry and receives reviewed, ordinary source commits; do not
 replace the existing repository's `main` with unrelated history or rewrite the
 historical branch. The fork's default branch becomes the integrated product only
-after the clean-clone and compatibility gates pass.
+after the clean-clone and program-tool validation gates pass.
 
 ### 2.2 Source layout in the fork
 
-Keep upstream Codex's normal Rust workspace and preserve the existing MoonBit
-launcher implementation. A direct source fork does not require rewriting MBTX in
-Rust. The proposed layout is:
+Keep upstream Codex's normal Rust workspace. The new product surface is a
+programmable MBTX tool; the archived transparent launcher is not duplicated as a
+new experiment. Reuse low-level process, sandbox and stream primitives only
+where the program tool needs them, with its own capability and lifecycle tests.
+The proposed layout is:
 
 ```text
 codex-rs/
   ... upstream crates ...
-  core/               # configuration and final process-boundary integration
+  core/               # tool registration, configuration, policy and dispatch
 mbtx/
-  launcher/           # existing MoonBit launcher package
-  cmd/                # MoonBit launcher and evaluation-worker entry points
+  program/            # programmable MoonBit tool and build/run contract
+  runtime/            # process and stream primitives used by the program tool
+  cmd/                # program tooling and evaluation-worker entry points
   evaluation/         # MoonBit scenarios, oracles, counters, statistics
   adapter/            # Rust OS/HTTP collector and report/export adapter
 scripts/mbtx/          # thin .mbtx build, install, replay, and report commands
@@ -87,7 +88,7 @@ docs/mbtx/             # user and developer documentation
 The final layout is subject to the upstream workspace conventions. The key
 property is that one fresh clone contains all required source. Cargo builds
 Codex; MoonBit builds MBTX. One documented `.mbtx` build entry orchestrates these
-normal build targets once and emits a manifest with both binary hashes. It must
+normal build targets once and emits a manifest with the resulting artifact hashes. It must
 not imply that Cargo alone compiles MoonBit. Remove `integration.patch`,
 `overlay/`, and preparation scripts that synthesize a private upstream checkout
 from the product path.
@@ -99,27 +100,28 @@ in the existing repository and is referenced by commit/path/hash. Running Codex
 must not require building the evaluator or downloading historical runs.
 
 Source builds require the recorded Rust and MoonBit toolchains. Release bundles
-for supported Linux/macOS targets contain the matching Codex and launcher
-binaries; transparent-mode users do not compile them during execution. The
-programmable interface has a separate compiler/runtime requirement documented
-with its build-cache contract.
+for supported Linux/macOS targets contain Codex and its required program-tool
+components. Document the MoonBit compiler/runtime requirement and the program
+build-cache contract explicitly. Compiling submitted programs is part of the
+tool's execution work, not a product installation step hidden in measurement.
 
 ### 2.3 Migration inventory
 
 | Current path | Treatment in the fork |
 |---|---|
-| `launcher/`, `cmd/mbtx/` | Port the existing MoonBit implementation and contracts |
-| `codex/integration.patch` | Port each necessary change to its actual upstream source file; review shared fixes separately |
-| `codex/overlay/` | Move required modules to normal source locations; delete copy/apply logic |
-| `evaluation/`, `cmd/evaluation-model/` | Reuse scenario, oracle, classification and statistics packages; add step schema |
-| `adapter/` | Reuse process, proxy, evidence, replay, and OTLP work; add only missing joins and exports |
+| `launcher/`, `cmd/mbtx/` | Historical transparent-launch implementation; extract reusable primitives only when the program tool requires them, with no new Shell-versus-launcher cohort |
+| `codex/integration.patch` | Port only the Codex tool/configuration changes required for the programmable interface into actual upstream source files |
+| `codex/overlay/` | Remove from the product path; no generated upstream checkout |
+| `evaluation/`, `cmd/evaluation-model/` | Reuse schemas and statistics where sound; replace compatibility scenarios with step tasks and capability oracles |
+| `adapter/` | Reuse OS, proxy, evidence, replay and OTLP collection; remove active compatibility-arm decisions |
 | `scripts/` | Keep thin functional `.mbtx` entries; replace checkout preparation with direct build targets |
 | `codex/Cargo.lock` | Reconcile the existing dependency fixes into the fork's normal lock file once |
 | `evidence/`, `docs/reports/` | Preserve originals; link frozen evidence without relabeling it as new-interface results |
 
 Do not revive retired standalone runners or jobs/session/protocol APIs. The new
 program tool is a separately specified Codex integration that reuses supported
-MoonBit tooling and Codex lifecycle handling.
+MoonBit tooling and Codex lifecycle handling. The archive preserves the original
+transparent-launch comparison and its conclusion boundaries.
 
 ### 2.4 Upstream synchronization
 
@@ -132,43 +134,39 @@ Every fork release records:
 - generated artifacts and their hashes.
 
 Upstream synchronization is performed by an explicit update branch and reviewed
-merge. A changed upstream process or OTel interface must fail a compatibility
+merge. A changed upstream tool or OTel interface must fail an integration
 check until the integration is consciously migrated. No collection command may
 silently fetch a different upstream revision or regenerate a lock file.
 
 ## 3. Runtime boundaries and public behavior
 
-The transparent backend retains the following call chain:
+The experiment compares two model-visible tools within the same Codex fork:
 
 ```text
-Codex unified_exec
-  -> approval / policy / sandbox
-  -> MBTX launcher with resolved argv
-  -> child process
-  -> wait / reap / stdout+stderr drain
-  -> Codex result
+Codex agent loop -> tool dispatch -> approval / policy / sandbox
+  -> Shell tool: submitted script -> execution -> result
+  -> MBTX program tool: submitted MoonBit program -> build -> run -> result
+Codex agent loop consumes the result and chooses the next step
 ```
 
-The default remains the upstream shell path. `mbtx_backend = "transparent"` is
-opt-in and requires an absolute launcher path. The original command remains the
-input to approval and policy decisions; MBTX is inserted only after those
-decisions. Invalid backend values, missing launchers, remote execution, and
-malformed configuration continue to produce explicit errors.
+Use explicit experiment arm names `shell_tool` and `mbtx_program`. The historical
+`mbtx_backend = "transparent"` setting is not the programmable tool selector and
+will not be migrated as a new research feature. Define the new tool's opt-in
+configuration and schema in the fork; leave upstream Shell behavior as the
+default until a separate product decision is made.
 
-The fork must preserve the existing semantic contract before any step-efficiency
-work begins:
+Before collecting step results, validate the program tool's actual capabilities:
+source/filename handling, arguments, cwd/environment, build and runtime errors,
+output limits, cancellation, foreground/background lifecycle, and recovery.
+Policy and approval must cover both compilation and execution, including any
+child commands. Compilers and fixtures are pinned, workspace state is isolated,
+and tool results expose the evidence required by the task oracle.
 
-- literal argv, whitespace, Unicode, stdin, EOF, cwd, and environment;
-- independent stdout/stderr bytes, observed ordering, truncation, and tail data;
-- numeric nonzero exits versus signal termination;
-- process-group cancellation, 500 ms TERM grace, KILL escalation, wait/reap,
-  and final IO drain;
-- approval and sandbox decisions made by Codex;
-- per-attempt process identity and cleanup evidence;
-- default Shell behavior when the MBTX setting is absent.
-
-Shared Codex fixes must be applied to both backends and labeled as shared. A
-shared fix cannot be reported as an MBTX benefit.
+These are implementation tests for the new tool and the shared Codex boundary,
+not a revived transparent-launcher compatibility experiment. Reuse relevant
+process cleanup and stream tests only where the program tool depends on them.
+Shared Codex fixes apply to both experiment arms and cannot be reported as an
+MBTX-specific step improvement.
 
 ## 4. Agent-step metric
 
@@ -215,8 +213,8 @@ reduction is attributable to the execution interface.
 The direct Codex fork will emit an explicit monotonically increasing
 `agent_step_id` at the model-loop boundary. Every provider request, response,
 tool call, tool result, process execution, retry, and repair marker carries the
-step ID plus `experiment_id`, `pair_id`, `attempt_id`, `task_id`, `backend`, and
-`parent_id`.
+step ID plus `experiment_id`, `pair_id`, `attempt_id`, `task_id`,
+`execution_interface`, and `parent_id`.
 
 First audit existing upstream IDs and reuse a logical-round ID if one has the
 required lifecycle. Add `agent_step_id` only where the current native interface
@@ -265,25 +263,11 @@ These rules measure visible agent interaction structure. Fewer steps alone do
 not establish less model computation, fewer CPU instructions, lower monetary
 cost, or faster execution.
 
-## 5. Experimental cohorts
+## 5. Programmable MBTX step experiment
 
-### 5.1 Transparent compatibility cohort
+### 5.1 Execution interfaces
 
-This is the existing Shell versus Transparent MBTX comparison. Both arms receive
-the same resolved command, fixture, model response trajectory, policy, and
-environment. AB/BA order remains balanced. The primary outcomes are semantic
-compatibility, failure classification, process lifecycle correctness, and
-launcher-local cost. Agent-step counts are a control check and should normally
-match between arms.
-
-Latency remains secondary and is split into fixture/build, preparation, Codex
-local work, launcher, child, external request, rate waiting, and publication
-intervals. Minimal observation is used for formal timing; diagnostic exporters
-are used only in replay or calibrated runs.
-
-### 5.2 Programmable execution cohort
-
-This cohort addresses the step-efficiency question. Compare:
+Compare:
 
 - a shell-oriented execution interface that can submit a complete script;
 - a MoonBit/MBTX program interface that can perform equivalent file, parsing,
@@ -301,14 +285,16 @@ probes, repair steps, output reads, and resource leaks. Failed and censored
 attempts remain in intention-to-treat results. A task that uses fewer steps only
 because it stopped early is not an efficiency win.
 
-Fixed replay remains necessary for causal backend diagnosis. It supplies equal
-model trajectories and isolates execution effects; it cannot establish that one
-interface causes an agent to choose a shorter trajectory in open-ended work.
+Fixed Responses replay validates step counting, tool handling and observability
+with known transcripts. Each interface has the tool arguments appropriate to
+its schema. These validation runs are not a separate compatibility cohort or
+evidence of reduced agent steps: that claim requires open-ended task execution.
 
-### 5.3 Task and control matrix
+### 5.2 Task and control matrix
 
-Retain the existing 24 low-level scenarios as compatibility regressions. Add a
-separate set of 24 goal-oriented tasks, three per family, for step measurement:
+Define 24 goal-oriented tasks, three per family, for step measurement. The old
+24-scenario launcher suite stays in the historical branch; the new suite uses
+capability oracles designed for the program tool:
 
 | Task family | Three proposed cases | Acceptance evidence |
 |---|---|---|
@@ -336,7 +322,7 @@ as a separate stratum. Record successful compilation, compile errors and cache
 hits in the program arm; one program containing many operations remains one
 model tool call, while its internal operations remain observable separately.
 
-### 5.4 Sample design and analysis
+### 5.3 Sample design and analysis
 
 The proposed pilot is six representative tasks with two pairs each (12 pairs).
 Its purpose is to check task difficulty, counting completeness and request cost;
@@ -366,7 +352,7 @@ ratios only where denominators are valid. Report medians and distributions,
 not unsupported per-task p99 claims. Additional formal samples require a new
 predeclared tranche; do not stop early when a favorable interval appears.
 
-### 5.5 Request budget and runtime
+### 5.4 Request budget and runtime
 
 Reuse the current proxy's run-wide gate: one complete upstream stream at a time,
 with a default 15-second minimum between request starts (at most four RPM from
@@ -406,8 +392,8 @@ attempt
   ├─ agent_step N
   │   ├─ provider request / response
   │   ├─ tool call
-  │   │   ├─ launcher
-  │   │   ├─ child process
+  │   │   ├─ program build / compiler (when applicable)
+  │   │   ├─ script or program execution / child processes
   │   │   └─ wait / reap / stream drain
   │   └─ tool result
   └─ terminal result
@@ -416,7 +402,7 @@ attempt
 Relay and provider events are linked by request ID and represented as external
 segments. If server-side timing is unavailable, model computation and relay
 queueing remain one external interval and are labeled `unknown` internally.
-Trace attributes include backend, task, pair, round, step, call ID, phase,
+Trace attributes include execution interface, task, pair, round, step, call ID, phase,
 status, failure class, platform, execution mode, and evidence path/hash.
 
 The step span can enclose the response and its resulting tool batch; its duration
@@ -439,9 +425,9 @@ layer and native JSONL needed for counters, under the same profile for both arms
 Diagnostic runs export to a loopback OTel collector or saved OTLP
 files, and the files are imported into SigNoz after the run.
 
-Shell and MBTX use the same observation profile. A trace-on versus trace-off
+The Shell tool and MBTX program tool use the same observation profile. A trace-on versus trace-off
 calibration quantifies observer perturbation; trace export time and database
-ingestion time are never included in launcher or child latency.
+ingestion time are never included in tool build or execution intervals.
 
 Capture event timestamps before buffering/writing them. Record buffer overflow,
 missing events and flush time; do not silently drop rows. Equal instrumentation
@@ -457,10 +443,10 @@ offline replay or evidence reconstruction.
 
 The first dashboard set should provide:
 
-1. pair selector with Shell/MBTX side-by-side waterfall;
+1. pair selector with Shell-tool/MBTX-program side-by-side step timelines;
 2. step histogram and step-to-success distribution;
-3. first observed divergence, grouped by launcher, child, Codex, relay, or
-   unknown;
+3. first observed step or tool-path divergence, grouped by model decision,
+   tool build, program execution, Codex, relay, or unknown;
 4. API/retry/429/stream-error filters;
 5. process tree, signal, wait/reap, and IO-drain details;
 6. links from each span to the immutable attempt evidence and its hash.
@@ -487,16 +473,19 @@ for pair selection, confidence intervals, ITT treatment, and conclusion labels.
 **Gate:** a fresh upstream fork clone builds with ordinary documented commands;
 no patch or overlay is needed for the upstream baseline.
 
-### Phase B — direct transparent integration
+### Phase B — direct programmable MBTX integration
 
-- Port the launcher and Codex configuration changes into normal upstream files.
-- Remove patch-generation and private checkout code from the product path.
-- Preserve the default Shell path and explicit transparent configuration.
-- Port launcher contract, approval, sandbox, signal, stream, and cleanup tests.
+- Define the MoonBit program tool contract, source/filename policy, arguments,
+  target, sandbox, build cache, foreground/background behavior, and output cap.
+- Register the tool and its opt-in configuration directly in Codex source.
+- Make compilation, execution and background lifecycle separately observable.
+- Implement approval, sandbox, error propagation, output and cleanup tests for
+  the program tool and its actual runtime dependencies.
 - Add a one-command build and install path suitable for an external contributor.
 
-**Gate:** upstream tests plus launcher contracts pass on Linux and macOS, and a
-fresh user can configure the launcher without knowing the old repository layout.
+**Gate:** the program tool and upstream Shell control work from a fresh clone on
+supported Linux/macOS targets. The tool's capability and policy tests pass, and
+installation requires no patch or generated upstream checkout.
 
 ### Phase C — explicit step events
 
@@ -509,31 +498,30 @@ fresh user can configure the launcher without knowing the old repository layout.
 **Gate:** fixed replay counts match hand-checked transcripts and no duplicate or
 missing step IDs occur in complete evidence.
 
-### Phase D — programmable MBTX interface
+### Phase D — task and control implementation
 
-- Define the MoonBit program tool contract, source/filename policy, arguments,
-  target, sandbox, build cache, foreground/background behavior, and output cap.
-- Make compilation, execution, and adopted background jobs separate observable
-  phases.
-- Add shell-script controls that are allowed to submit an equivalent complete
-  script.
-- Keep this cohort separate from transparent launcher configuration and reports.
+- Implement the 24 goal-oriented tasks and their independent acceptance oracles.
+- Configure the `shell_tool` and `mbtx_program` arms with equivalent capabilities,
+  permissions and budgets; allow complete Shell scripts.
+- Validate known transcripts for each interface using fixed Responses replay.
+- Record build/cache state, task artifacts and actual tool arguments.
+- Keep historical launcher scenarios and reports out of the new collection path.
 
-**Gate:** equal-oracle fixed tasks pass for both interfaces; compilation cost is
-reported separately from pure execution; no model prompt silently prescribes a
-trajectory in the open-ended cohort.
+**Gate:** both interfaces can satisfy each oracle under the declared policy.
+Replay proves the counters and evidence pipeline work; the step experiment
+allows the model to choose its trajectory under neutral goal prompts.
 
 ### Phase E — OTel and SigNoz export
 
-- Normalize Codex, launcher, child, relay, and evaluator records into the trace
+- Normalize Codex, program build, execution, relay and evaluator records into the trace
   shape above.
 - Validate trace IDs, parent relationships, null handling, and evidence links.
 - Add a local diagnostic export command and a documented self-hosted SigNoz
   profile. Keep the default formal profile exporter-free.
 - Confirm that importing a derived trace never changes the original evidence.
 
-**Gate:** a fixed replay can be inspected in SigNoz with both backends, and its
-raw evidence can independently regenerate the same summary without SigNoz.
+**Gate:** validation transcripts for both tools can be inspected in SigNoz, and
+their raw evidence independently regenerates the same counts without SigNoz.
 
 ### Phase F — step-focused evaluation
 
@@ -542,20 +530,21 @@ raw evidence can independently regenerate the same summary without SigNoz.
   stable.
 - Keep requests serial, use the existing start interval and `Retry-After`
   handling, and retain all relay/provider failures.
-- Expand after checking shared task/model/fixture/permission controls. Fixed
-  replay requires identical trajectories; the programmable cohort allows and
-  measures different trajectories under the same goal and declared treatment.
+- Expand after checking shared task/model/fixture/permission controls. Measure
+  different trajectories under the same goal and declared tool treatment;
+  fixed validation transcripts are not included in the formal step dataset.
 
 **Gate:** publish a step report with ITT, successful comparable attempts,
-external-failure counts, and explicit unknowns. Do not change the default backend
-based on this phase alone.
+external-failure counts, and explicit unknowns. Do not generalize a step result
+beyond the tested tasks, interfaces, model, platform and policy.
 
 ### Phase G — distribution and documentation
 
 - Replace patch-era instructions with fork clone, build, configuration, and
   upgrade instructions.
 - Link the archived repository branch and explain its historical role.
-- Document transparent and programmable cohorts as separate features.
+- Document the programmable step experiment as the sole active research scope;
+  link the historical branch for the transparent-launcher research.
 - Publish English Markdown, JSON, CSV, offline HTML, and SigNoz import guidance.
 - Include a short contributor guide for synchronizing with `upstream`.
 
@@ -563,10 +552,11 @@ based on this phase alone.
 
 Preserve one aggregate required status and separate three layers:
 
-- Fast PR checks: MoonBit/Rust checks, launcher contracts, JSONL/OTLP counter
+- Fast PR checks: MoonBit/Rust checks, program-tool contracts, JSONL/OTLP counter
   fixtures, report parsing, schema and formatting checks; no relay.
-- Offline integration: build the fork, launcher and immutable fixture once;
-  run real Codex replay, policy/sandbox, signal, stream and recovery regressions.
+- Offline integration: build the fork, program tooling and immutable fixture once;
+  run real Codex transcript validation and program-tool policy, output and
+  lifecycle regressions without rerunning the historical launcher suite.
   Exercise missing/corrupt events, collector interruption, 429/5xx/stream faults,
   immutable attempts, HTML escaping and null preservation.
 - Release validation: build supported Linux/macOS bundles, verify checksums and
@@ -587,10 +577,11 @@ The migration is complete only when all of the following are true:
 - a clean clone of the direct Codex fork builds and runs without applying a
   project-local patch or overlay;
 - upstream synchronization and dependency revisions are reproducible;
-- default Shell behavior is unchanged and transparent mode remains opt-in;
-- semantic launcher tests pass on the supported Linux and macOS targets;
+- upstream Shell behavior remains the default and the program tool is opt-in;
+- program-tool capability, policy and lifecycle tests pass on supported platforms;
 - step IDs, tool IDs, process IDs, retries, and terminal states are traceable;
-- fixed replay and open-ended programmable cohorts are reported separately;
+- replay validation is identified separately from formal step measurements;
+- the active suite contains only the Shell-tool versus MBTX-program comparison;
 - SigNoz shows both arms through the same OTel observation layer;
 - formal timing excludes exporter, report, and database work;
 - raw evidence alone regenerates every reported count and conclusion;
@@ -602,7 +593,7 @@ The migration is complete only when all of the following are true:
 
 ## 9. Non-goals and unresolved decisions
 
-This cycle will not make MBTX the default backend, claim universal shell
+This cycle will not change Codex's default Shell tool, claim universal shell
 replacement, infer hidden model reasoning steps, or treat SigNoz as a source of
 truth. It will not merge SeekMoon into the project; SeekMoon remains a client
 for OpenSeek conversations, while SigNoz is the observability view for this
@@ -623,13 +614,14 @@ before its online comparison begins. This document introduces no new results.
   provider-round step semantics; the new metric uses this as its reference.
 - [Pinned OpenSeek MBTX tool](https://github.com/moonbitlang/openseek/blob/d818b71b1760b3f9f78cf662c662af2e716edbb1/agent_tool/mbtx/README.mbt.md):
   programmable execution and explicit build/run phases. Its implementation and
-  policy are reference material, not assumed to be present in this launcher.
+  policy are reference material for the new program tool.
 - [Pinned Codex JSONL events](https://github.com/openai/codex/blob/3d2ee51ca2d5db578f328aa75e20aa22c0197c9a/codex-rs/exec/src/exec_events.rs)
   and [native telemetry](https://github.com/openai/codex/blob/3d2ee51ca2d5db578f328aa75e20aa22c0197c9a/codex-rs/otel/src/events/session_telemetry.rs):
   the upstream surfaces to extend only where necessary.
 - [SigNoz Trace Explorer](https://signoz.io/docs/userguide/traces/) and
   [trace details](https://signoz.io/docs/userguide/span-details/): native analysis
   views to validate before designing extra presentation code.
-- [Current architecture](../architecture.md), [evaluation protocol](../evaluation.md)
-  and [verification record](../code-validation.md): existing contracts and the
-  distinction between code validation and newly collected evidence.
+- [Historical architecture](https://github.com/ZSeanYves/Codex-MBTX/blob/3527b02a4bc35df8017ac8d1f3b296d9fcdc1d2c/docs/architecture.md),
+  [historical protocol](https://github.com/ZSeanYves/Codex-MBTX/blob/3527b02a4bc35df8017ac8d1f3b296d9fcdc1d2c/docs/evaluation.md)
+  and [verification record](https://github.com/ZSeanYves/Codex-MBTX/blob/3527b02a4bc35df8017ac8d1f3b296d9fcdc1d2c/docs/code-validation.md):
+  frozen background evidence, not an additional experiment in this plan.
